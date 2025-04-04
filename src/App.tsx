@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Import, Trash2, Scissors } from "lucide-react";
+import { Import, Trash2, Scissors, XCircle, RefreshCw } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -131,12 +131,12 @@ const WardrobeBuilder = () => {
           seasons: ["Fall", "Winter"],
         },
         {
-          name: "Oversized Long-Sleeve Tee",
-          owned: false,
+          name: "Turtleneck Long Sleeve Tee",
+          owned: true,
           color: "Black",
-          priority: "High",
-          brand: "UNIQLO U",
-          seasons: ["Spring", "Summer", "Fall", "Winter"],
+          brand: "ionism",
+          size: "M",
+          seasons: ["Spring", "Fall", "Winter"],
         },
         {
           name: "Oversized Long-Sleeve Tee",
@@ -230,11 +230,11 @@ const WardrobeBuilder = () => {
           size: "30x30",
         },
         {
-          name: "Baggy Jeans",
-          owned: false,
+          name: "Straight Leg Jeans",
+          owned: true,
           color: "Washed Black",
-          priority: "High",
-          brand: "Levi's Silver Tab",
+          brand: "COS",
+          size: "30x30",
           seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
@@ -263,6 +263,14 @@ const WardrobeBuilder = () => {
         },
       ],
       Outerwear: [
+        {
+          name: "Bone Patching Varsity Jacket",
+          owned: true,
+          color: "Black",
+          brand: "Aelfric Eden",
+          size: "M",
+          seasons: ["Spring", "Fall", "Winter"],
+        },
         {
           name: "Oversized Leather Jacket",
           owned: false,
@@ -354,6 +362,20 @@ const WardrobeBuilder = () => {
       ],
       Accessories: [
         {
+          name: "Urban Sporty Sunglasses",
+          owned: true,
+          color: "Black",
+          brand: "Hawkers",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Metal Sunglasses",
+          owned: true,
+          color: "Black",
+          brand: "RayBan",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
           name: "Tech Knit Beanie",
           owned: true,
           color: "Black/Dark Gray",
@@ -410,6 +432,8 @@ const WardrobeBuilder = () => {
   const [newItemSize, setNewItemSize] = useState("");
   const [newItemIsTailored, setNewItemIsTailored] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [stylingMode, setStylingMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<FilteredItem[]>([]);
 
   // Move item from wishlist to owned
   const moveToOwned = (location: string, category: string, index: number) => {
@@ -609,21 +633,196 @@ const WardrobeBuilder = () => {
     }
   };
 
+  // Add a function to select/deselect items
+  const toggleItemSelection = (item: FilteredItem) => {
+    if (
+      selectedItems.some(
+        (i) => i.index === item.index && i.category === item.category
+      )
+    ) {
+      setSelectedItems(
+        selectedItems.filter(
+          (i) => !(i.index === item.index && i.category === item.category)
+        )
+      );
+    } else {
+      // Limit selection to one item per category to create balanced outfits
+      const existingCategory = selectedItems.findIndex(
+        (i) => i.category === item.category
+      );
+      if (existingCategory >= 0) {
+        const newSelection = [...selectedItems];
+        newSelection[existingCategory] = item;
+        setSelectedItems(newSelection);
+      } else {
+        setSelectedItems([...selectedItems, item]);
+      }
+    }
+  };
+
+  // Add outfit suggestion algorithm
+  const getSuggestedItems = (): FilteredItem[] => {
+    if (selectedItems.length === 0) return [];
+
+    // Get all owned items
+    const ownedItems = Object.entries(wardrobe[activeView] || {}).flatMap(
+      ([category, items]) =>
+        items
+          .filter((item) => item.owned)
+          .map((item, index) => ({ ...item, category, index }))
+    );
+
+    // Determine what categories we need to suggest
+    const selectedCategories = selectedItems.map((item) => item.category);
+    const missingCategories = categories.filter(
+      (category) => !selectedCategories.includes(category)
+    );
+
+    // Determine seasons to filter by (intersection of selected items' seasons)
+    let compatibleSeasons: string[] = [];
+    if (selectedItems.length > 0) {
+      compatibleSeasons = selectedItems[0].seasons || [];
+      for (const item of selectedItems) {
+        compatibleSeasons = compatibleSeasons.filter((season) =>
+          item.seasons?.includes(season)
+        );
+      }
+      // If no common seasons, use the first item's seasons
+      if (compatibleSeasons.length === 0 && selectedItems[0].seasons) {
+        compatibleSeasons = selectedItems[0].seasons;
+      }
+    }
+
+    // Filter and score items
+    const filteredItems = ownedItems.filter(
+      (item) =>
+        // Exclude already selected items
+        !selectedItems.some(
+          (i) => i.index === item.index && i.category === item.category
+        )
+    );
+
+    // First try with strict filtering
+    let suggestedItems = filteredItems.filter(
+      (item) =>
+        // Only suggest items from missing categories
+        missingCategories.includes(item.category) &&
+        // Ensure season compatibility
+        item.seasons?.some((season) => compatibleSeasons.includes(season))
+    );
+
+    // If we don't have any suggestions, relax the constraints to just missing categories
+    if (suggestedItems.length === 0) {
+      suggestedItems = filteredItems.filter((item) =>
+        missingCategories.includes(item.category)
+      );
+    }
+
+    // If we still don't have suggestions, just show other owned items
+    if (suggestedItems.length === 0) {
+      suggestedItems = filteredItems;
+    }
+
+    // Get complementary colors based on selected items
+    const selectedColors = selectedItems.map((item) =>
+      item.color.toLowerCase()
+    );
+    const complementaryColors = getComplementaryColors(selectedColors);
+
+    // Score and sort items
+    return suggestedItems
+      .map((item) => ({
+        ...item,
+        // Score based on color compatibility and season overlap
+        score:
+          (complementaryColors.includes(item.color.toLowerCase()) ? 2 : 0) +
+          (item.seasons?.filter((s) => compatibleSeasons.includes(s))?.length /
+            Math.max(compatibleSeasons.length, 1) || 0),
+      }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+      .slice(0, 4); // Limit to top 4 suggestions
+  };
+
+  // Add helper function for color compatibility
+  const getComplementaryColors = (colors: string[]): string[] => {
+    // Basic complementary color logic - this can be made more sophisticated
+    const neutrals = ["black", "white", "gray", "cream", "navy", "natural"];
+
+    // If neutrals are selected, suggest earthy or other neutral colors
+    if (colors.some((c) => neutrals.includes(c) || c.includes("gray"))) {
+      return [...neutrals, "olive", "camel", "taupe", "washed blue", "brown"];
+    }
+
+    // For black items, suggest contrasting colors
+    if (colors.includes("black")) {
+      return ["white", "cream", "gray", "washed blue", "earth tone"];
+    }
+
+    // For earthy tones, suggest neutrals
+    if (
+      colors.some(
+        (c) =>
+          c.includes("brown") ||
+          c.includes("olive") ||
+          c.includes("earth") ||
+          c.includes("natural")
+      )
+    ) {
+      return ["black", "white", "gray", "cream", "navy"];
+    }
+
+    // Default complementary colors
+    return neutrals;
+  };
+
+  // Add function to clear selection
+  const clearSelection = () => {
+    setSelectedItems([]);
+  };
+
+  // Add function to generate a complete outfit suggestion
+  const suggestCompleteOutfit = () => {
+    // Start with the first selected item or pick a random owned top if nothing selected
+    let newSelection: FilteredItem[] = [];
+
+    if (selectedItems.length > 0) {
+      newSelection = [...selectedItems];
+    } else {
+      const ownedTops = wardrobe[activeView]?.Tops
+        ? wardrobe[activeView].Tops.filter((item) => item.owned).map(
+            (item, index) => ({ ...item, category: "Tops" as const, index })
+          )
+        : [];
+
+      if (ownedTops.length > 0) {
+        newSelection = [
+          ownedTops[Math.floor(Math.random() * ownedTops.length)],
+        ];
+      }
+    }
+
+    // Get suggestions based on this selection
+    if (newSelection.length > 0) {
+      setSelectedItems(newSelection);
+      // The rest will be handled by the getSuggestedItems function
+    }
+  };
+
   return (
     <div className="w-full p-4 md:p-8 bg-gray-50 min-h-screen">
       <div className="w-full mx-auto">
         <header className="mb-8 border-b border-gray-200 pb-4">
-          <h1 className="text-4xl font-bold mb-2 text-gray-800 uppercase tracking-tighter">
-            Japanese Streetwear Wardrobe
+          <h1 className="text-4xl font-bold mb-2 text-gray-800 uppercase tracking-wide">
+            CAPSULE // Your Digital Wardrobe Curator
           </h1>
           <div className="flex justify-between items-center">
             <p className="text-gray-600 font-light">
-              Track your wardrobe transition from Boston to San Francisco
+              Track and organize your personal wardrobe collection
             </p>
-            <a 
-              href="https://www.pinterest.com/linsh586/style/" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://www.pinterest.com/linsh586/style/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-xs uppercase tracking-wide text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-none"
             >
               Mood Board
@@ -650,6 +849,21 @@ const WardrobeBuilder = () => {
             </TabsList>
 
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStylingMode(!stylingMode);
+                  if (!stylingMode) {
+                    setSelectedItems([]);
+                  }
+                }}
+                className={`px-3 rounded-none font-medium uppercase tracking-wide ${
+                  stylingMode ? "bg-black text-white hover:bg-gray-800" : ""
+                }`}
+              >
+                {stylingMode ? "Exit Styling" : "Outfit Builder"}
+              </Button>
               <Button
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
@@ -1157,6 +1371,24 @@ const WardrobeBuilder = () => {
                                 className="flex flex-col"
                               >
                                 <Card className="w-full overflow-hidden border border-gray-200 group relative h-[200px] flex items-center justify-center bg-white rounded-none">
+                                  {stylingMode && (
+                                    <div
+                                      className="absolute inset-0 z-20 cursor-pointer"
+                                      onClick={() => toggleItemSelection(item)}
+                                    />
+                                  )}
+                                  {stylingMode &&
+                                    selectedItems.some(
+                                      (i) =>
+                                        i.index === item.index &&
+                                        i.category === item.category
+                                    ) && (
+                                      <div className="absolute inset-0 bg-black bg-opacity-10 z-10 flex items-center justify-center">
+                                        <div className="bg-white px-3 py-1 text-xs uppercase tracking-wide">
+                                          Selected
+                                        </div>
+                                      </div>
+                                    )}
                                   <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                     {item.size && (
                                       <Badge
@@ -1266,8 +1498,23 @@ const WardrobeBuilder = () => {
                             {getOwnedAndWishlistItems().owned.map((item, i) => (
                               <Card
                                 key={`owned-list-${item.category}-${item.index}-${i}`}
-                                className="w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none"
+                                className={`w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none ${
+                                  stylingMode &&
+                                  selectedItems.some(
+                                    (i) =>
+                                      i.index === item.index &&
+                                      i.category === item.category
+                                  )
+                                    ? "bg-gray-50"
+                                    : ""
+                                }`}
                               >
+                                {stylingMode && (
+                                  <div
+                                    className="absolute inset-0 z-20 cursor-pointer"
+                                    onClick={() => toggleItemSelection(item)}
+                                  />
+                                )}
                                 <CardContent className="p-4 flex items-center">
                                   <div className="flex-1">
                                     <p className="text-gray-800 font-medium">
@@ -1383,6 +1630,26 @@ const WardrobeBuilder = () => {
                                   className="flex flex-col"
                                 >
                                   <Card className="w-full overflow-hidden border border-gray-200 group relative h-[200px] flex items-center justify-center bg-white rounded-none">
+                                    {stylingMode && (
+                                      <div
+                                        className="absolute inset-0 z-20 cursor-pointer"
+                                        onClick={() =>
+                                          toggleItemSelection(item)
+                                        }
+                                      />
+                                    )}
+                                    {stylingMode &&
+                                      selectedItems.some(
+                                        (i) =>
+                                          i.index === item.index &&
+                                          i.category === item.category
+                                      ) && (
+                                        <div className="absolute inset-0 bg-black bg-opacity-10 z-10 flex items-center justify-center">
+                                          <div className="bg-white px-3 py-1 text-xs uppercase tracking-wide">
+                                            Selected
+                                          </div>
+                                        </div>
+                                      )}
                                     <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
                                       {item.size && (
                                         <Badge
@@ -1466,8 +1733,23 @@ const WardrobeBuilder = () => {
                               (item, i) => (
                                 <Card
                                   key={`wishlist-list-${item.category}-${item.index}-${i}`}
-                                  className="w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none"
+                                  className={`w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none ${
+                                    stylingMode &&
+                                    selectedItems.some(
+                                      (i) =>
+                                        i.index === item.index &&
+                                        i.category === item.category
+                                    )
+                                      ? "bg-gray-50"
+                                      : ""
+                                  }`}
                                 >
+                                  {stylingMode && (
+                                    <div
+                                      className="absolute inset-0 z-20 cursor-pointer"
+                                      onClick={() => toggleItemSelection(item)}
+                                    />
+                                  )}
                                   <CardContent className="p-4 flex items-center">
                                     <div className="flex-1">
                                       <p className="text-gray-800 font-medium">
@@ -1548,6 +1830,111 @@ const WardrobeBuilder = () => {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* Styling panel below wardrobe tabs if in styling mode */}
+        {stylingMode && (
+          <div className="mb-8 bg-white border rounded-none p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium uppercase tracking-tight">
+                Outfit Builder
+              </h2>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                  className="rounded-none text-xs"
+                >
+                  Clear All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={suggestCompleteOutfit}
+                  className="rounded-none text-xs flex items-center gap-1"
+                >
+                  <RefreshCw className="h-3 w-3" /> Suggest
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm uppercase tracking-wide mb-3 text-gray-500">
+                  Selected Items
+                </h3>
+                {selectedItems.length === 0 ? (
+                  <div className="border border-dashed p-8 text-center text-gray-400 text-sm">
+                    Select items from your wardrobe to build an outfit
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {selectedItems.map((item, i) => (
+                      <div
+                        key={`selected-${i}`}
+                        className="relative border bg-gray-50 p-2"
+                      >
+                        <button
+                          onClick={() => toggleItemSelection(item)}
+                          className="absolute -top-2 -right-2 text-gray-400 hover:text-gray-700 z-10"
+                        >
+                          <XCircle className="h-5 w-5" />
+                        </button>
+                        <div className="text-center">
+                          <span className="text-xl text-gray-300">
+                            {categoryIcons[item.category]}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-xs text-center">
+                          <p className="font-medium">{item.name}</p>
+                          <p className="text-gray-500">{item.color}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-sm uppercase tracking-wide mb-3 text-gray-500">
+                  Suggested Pairings
+                </h3>
+                {selectedItems.length === 0 ? (
+                  <div className="border border-dashed p-8 text-center text-gray-400 text-sm">
+                    Select at least one item to see suggestions
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {getSuggestedItems().length > 0 ? (
+                      getSuggestedItems().map((item, i) => (
+                        <div
+                          key={`suggestion-${i}`}
+                          className="border p-2 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => toggleItemSelection(item)}
+                        >
+                          <div className="text-center">
+                            <span className="text-xl text-gray-300">
+                              {categoryIcons[item.category]}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-center">
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-gray-500">{item.color}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="col-span-2 border p-4 text-center text-gray-400">
+                        No matching items found. Try selecting a different item
+                        or add more items to your wardrobe.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
