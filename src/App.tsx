@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,14 +12,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Import, Trash2, Scissors } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Define types for the wardrobe items
 interface WardrobeItem {
   name: string;
   owned: boolean;
+  color: string;
+  seasons: string[];
   priority?: string;
   brand?: string;
-  season?: string;
+  size?: string;
+  tailored?: boolean;
 }
 
 interface CategoryItems {
@@ -30,6 +46,15 @@ interface CategoryItems {
 interface WardrobeData {
   [location: string]: CategoryItems;
 }
+
+// Icons for categories - make them larger
+const categoryIcons: Record<string, string> = {
+  Tops: "👕",
+  Bottoms: "👖",
+  Outerwear: "🧥",
+  Footwear: "👟",
+  Accessories: "🕶",
+};
 
 const WardrobeBuilder = () => {
   // Categories for wardrobe items
@@ -42,229 +67,329 @@ const WardrobeBuilder = () => {
   ];
 
   // Wardrobe views
-  const wardrobeViews = ["Guide", "Current", "Year-Round Collection"];
+  const wardrobeViews = ["Guide", "My Wardrobe"];
 
   // Initial wardrobe items
   const initialWardrobe: WardrobeData = {
     Guide: {},
-    Current: {
-      Tops: [
-        { name: "Black Tank Top", owned: true },
-        { name: "Gray Tank Top", owned: true },
-        { name: "White Tank Top", owned: true },
-        { name: "White Oversized Dress Shirt w/ Japanese Art", owned: true },
-        { name: "Black Sweatshirt w/ Destructive Patches", owned: true },
-        { name: "Dark Gray Sweater w/ Destructive Holes", owned: true },
-      ],
-      Bottoms: [
-        { name: "Wisdom Nylon Wide Opening Pants", owned: true },
-        { name: "Black Wide-Leg Pants w/ Zipper & Buttons", owned: true },
-      ],
-      Outerwear: [],
-      Footwear: [
-        { name: "All Saints Boots", owned: true },
-        { name: "Light Gray Nike Dunk Low", owned: true },
-      ],
-      Accessories: [],
-    },
-    "Year-Round Collection": {
+    "My Wardrobe": {
       Tops: [
         {
-          name: "Oversized Long-Sleeve Tee - Black",
-          owned: false,
-          priority: "High",
-          brand: "UNIQLO U",
-          season: "All Seasons",
+          name: "Ribbed Vest",
+          owned: true,
+          color: "Black",
+          brand: "BOILER ROOM",
+          size: "M",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Oversized Long-Sleeve Tee - Earth Tone",
+          name: "Tank Top",
+          owned: true,
+          color: "Black",
+          brand: "Falari",
+          size: "M",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Tank Top",
+          owned: true,
+          color: "Gray",
+          brand: "Falari",
+          size: "M",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Tank Top",
+          owned: true,
+          color: "White",
+          brand: "Falari",
+          size: "M",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Oversized Dress Shirt",
+          owned: true,
+          color: "White",
+          brand: "Fanjiuniu",
+          size: "L",
+          seasons: ["Spring", "Summer"],
+        },
+        {
+          name: "Patched Oversized Sweatshirt",
+          owned: true,
+          color: "Black",
+          brand: "Professor.E",
+          size: "L",
+          seasons: ["Spring", "Fall", "Winter"],
+        },
+        {
+          name: "Distressed Sweater",
+          owned: true,
+          color: "Dark Gray",
+          brand: "anonymous talking:",
+          size: "L",
+          seasons: ["Fall", "Winter"],
+        },
+        {
+          name: "Oversized Long-Sleeve Tee",
           owned: false,
+          color: "Black",
+          priority: "High",
+          brand: "UNIQLO U",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Oversized Long-Sleeve Tee",
+          owned: false,
+          color: "Earth Tone",
           priority: "High",
           brand: "Needles",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Striped Oversized Sweater - Gray/Black",
+          name: "Striped Oversized Sweater",
           owned: false,
+          color: "Gray/Black",
           priority: "Medium",
           brand: "Kapital",
-          season: "Cool Weather",
+          seasons: ["Winter"],
         },
         {
-          name: "Loose Fit Button-Up - Cream",
+          name: "Loose Fit Button-Up",
           owned: false,
+          color: "Cream",
           priority: "Medium",
           brand: "Evan Kinori",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Loose Fit Button-Up - Washed Black",
+          name: "Loose Fit Button-Up",
           owned: false,
+          color: "Washed Black",
           priority: "Medium",
           brand: "Engineered Garments",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Oversized T-Shirt - Black",
+          name: "Oversized T-Shirt",
           owned: false,
+          color: "Black",
           priority: "High",
           brand: "Lady White Co.",
-          season: "Warm Weather",
+          seasons: ["Summer"],
         },
         {
-          name: "Oversized T-Shirt - White",
+          name: "Oversized T-Shirt",
           owned: false,
+          color: "White",
           priority: "High",
           brand: "UNIQLO U",
-          season: "Warm Weather",
+          seasons: ["Summer"],
         },
         {
-          name: "Loose Fit Linen Shirt - Natural",
+          name: "Loose Fit Linen Shirt",
           owned: false,
+          color: "Natural",
           priority: "Medium",
           brand: "Story MFG",
-          season: "Warm Weather",
+          seasons: ["Summer"],
         },
       ],
       Bottoms: [
         {
-          name: "Baggy Jeans - Washed Black",
+          name: "Nylon Wide Leg Pants",
+          owned: true,
+          color: "Black",
+          brand: "WISDOM",
+          size: "31x28",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Wide Leg Pants w/ Zipper & Buttons",
+          owned: true,
+          color: "Black",
+          brand: "CATSSTAC",
+          size: "29x32",
+          tailored: true,
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Wide Leg Pants",
+          owned: true,
+          color: "Washed Blue",
+          brand: "Protémoa",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+          size: "31x30",
+        },
+        {
+          name: "Hand Made Canvas Pants",
+          owned: true,
+          color: "Washed Charcoal Gray",
+          brand: "whoisjyra",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+          size: "30x30",
+        },
+        {
+          name: "Baggy Jeans",
           owned: false,
+          color: "Washed Black",
           priority: "High",
           brand: "Levi's Silver Tab",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Wide-Leg Wool Pants - Gray",
+          name: "Wide Leg Wool Pants",
           owned: false,
+          color: "Gray",
           priority: "High",
           brand: "COS",
-          season: "Cool Weather",
+          seasons: ["Fall"],
         },
         {
-          name: "Baggy Cargo Pants - Olive",
+          name: "Relaxed Denim",
           owned: false,
-          priority: "Medium",
-          brand: "Carhartt WIP",
-          season: "All Seasons",
-        },
-        {
-          name: "Wide-Leg Pants - Washed Blue",
-          owned: false,
-          priority: "High",
-          brand: "OrSlow",
-          season: "All Seasons",
-        },
-        {
-          name: "Relaxed Denim - Gray",
-          owned: false,
+          color: "Gray",
           priority: "Medium",
           brand: "Nanamica",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Wide-Leg Work Pants - Black",
+          name: "Wide Leg Work Pants",
           owned: false,
+          color: "Black",
           priority: "Medium",
           brand: "Stan Ray",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
       ],
       Outerwear: [
         {
-          name: "Oversized Leather Jacket - Black",
+          name: "Oversized Leather Jacket",
           owned: false,
+          color: "Black",
           priority: "High",
           brand: "Vintage",
-          season: "Boston Spring/SF Nights",
+          seasons: ["Fall"],
         },
         {
-          name: "Oversized Wool Shirt Jacket - Brown Check",
+          name: "Oversized Wool Shirt Jacket",
           owned: false,
+          color: "Brown Check",
           priority: "High",
           brand: "Universal Works",
-          season: "Cool Weather",
+          seasons: ["Winter"],
         },
         {
-          name: "Padded Work Jacket - Black",
+          name: "Padded Work Jacket",
           owned: false,
+          color: "Black",
           priority: "Medium",
           brand: "Snow Peak",
-          season: "Boston Spring",
+          seasons: ["Spring"],
         },
         {
-          name: "Lightweight Work Jacket - Indigo",
+          name: "Lightweight Work Jacket",
           owned: false,
+          color: "Indigo",
           priority: "High",
           brand: "Blue Blue Japan",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Oversized Denim Jacket - Washed Black",
+          name: "Oversized Denim Jacket",
           owned: false,
+          color: "Washed Black",
           priority: "Medium",
           brand: "Dickies",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Light Chore Coat - Natural",
+          name: "Light Chore Coat",
           owned: false,
+          color: "Natural",
           priority: "Medium",
           brand: "Le Laboureur",
-          season: "SF Fog",
+          seasons: ["Spring"],
         },
       ],
       Footwear: [
         {
-          name: "Chunky Leather Boots - Black",
+          name: "Leather Boots",
+          owned: true,
+          color: "Black",
+          brand: "All Saints",
+          seasons: ["Fall", "Winter"],
+        },
+        {
+          name: "Dunk Low Sneakers",
+          owned: true,
+          color: "Light Gray",
+          brand: "Nike",
+          seasons: ["Spring", "Summer", "Fall"],
+        },
+        {
+          name: "Chunky Leather Boots",
           owned: false,
+          color: "Black",
           priority: "Medium",
           brand: "Dr. Martens",
-          season: "Cool Weather",
+          seasons: ["Fall"],
         },
         {
-          name: "Low-Top Canvas Sneakers - Black",
+          name: "Low-Top Canvas Sneakers",
           owned: false,
+          color: "Black",
           priority: "Medium",
           brand: "Moonstar",
-          season: "Warm Weather",
+          seasons: ["Summer"],
         },
         {
-          name: "Chunky Loafers - Black",
+          name: "Chunky Loafers",
           owned: false,
+          color: "Black",
           priority: "Low",
           brand: "Paraboot",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
       ],
       Accessories: [
         {
-          name: "Loose Beanie - Gray",
+          name: "Tech Knit Beanie",
+          owned: true,
+          color: "Black/Dark Gray",
+          brand: "WISDOM",
+          seasons: ["Fall", "Winter"],
+        },
+        {
+          name: "Plain Leather Belt",
+          owned: true,
+          color: "Black",
+          brand: "Coach",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
+          name: "Shiny Leather Belt",
           owned: false,
+          color: "Black",
           priority: "Medium",
-          brand: "Carhartt WIP",
-          season: "Cool Weather",
+          brand: "Maison Margiela",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Simple Leather Belt - Black",
+          name: "Canvas Tote",
           owned: false,
-          priority: "Low",
-          brand: "Knickerbocker",
-          season: "All Seasons",
-        },
-        {
-          name: "Canvas Tote - Natural",
-          owned: false,
+          color: "Natural",
           priority: "Low",
           brand: "Arpenteur",
-          season: "All Seasons",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Simple Cap - Black",
+          name: "Simple Cap",
           owned: false,
+          color: "Washed Blue",
           priority: "Low",
-          brand: "Paa",
-          season: "All Seasons",
+          brand: "Buildspace",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
       ],
     },
@@ -272,29 +397,29 @@ const WardrobeBuilder = () => {
 
   // State for wardrobe and selected location/category
   const [wardrobe, setWardrobe] = useState<WardrobeData>(initialWardrobe);
-  const [activeView, setActiveView] = useState("Current");
+  const [activeView, setActiveView] = useState("My Wardrobe");
   const [activeCategory, setActiveCategory] = useState("All");
   const [activeSeason, setActiveSeason] = useState("All");
   const [showAddItemForm, setShowAddItemForm] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("Tops");
-  const [newItemPriority] = useState("Medium");
-  const [newItemSeason, setNewItemSeason] = useState("All Seasons");
+  const [newItemPriority, setNewItemPriority] = useState("Medium");
+  const [newItemColor, setNewItemColor] = useState("");
+  const [newItemBrand, setNewItemBrand] = useState("");
+  const [newItemSeasons, setNewItemSeasons] = useState<string[]>([]);
+  const [newItemSize, setNewItemSize] = useState("");
+  const [newItemIsTailored, setNewItemIsTailored] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  // Toggle item ownership
-  const toggleItemOwned = (
-    location: string,
-    category: string,
-    index: number
-  ) => {
+  // Move item from wishlist to owned
+  const moveToOwned = (location: string, category: string, index: number) => {
     const updatedWardrobe = { ...wardrobe };
     if (
       updatedWardrobe[location] &&
       updatedWardrobe[location][category] &&
       updatedWardrobe[location][category][index]
     ) {
-      updatedWardrobe[location][category][index].owned =
-        !updatedWardrobe[location][category][index].owned;
+      updatedWardrobe[location][category][index].owned = true;
       setWardrobe(updatedWardrobe);
     }
   };
@@ -302,7 +427,7 @@ const WardrobeBuilder = () => {
   // Add new item
   const addNewItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemName.trim()) return;
+    if (!newItemName.trim() || !newItemColor.trim()) return;
 
     const updatedWardrobe = { ...wardrobe };
     if (!updatedWardrobe[activeView][newItemCategory]) {
@@ -312,12 +437,20 @@ const WardrobeBuilder = () => {
     updatedWardrobe[activeView][newItemCategory].push({
       name: newItemName,
       owned: false,
+      color: newItemColor,
       priority: newItemPriority,
-      season: newItemSeason,
+      brand: newItemBrand || undefined,
+      seasons: newItemSeasons.length > 0 ? newItemSeasons : [],
+      size: newItemSize || undefined,
+      tailored: newItemIsTailored,
     });
 
     setWardrobe(updatedWardrobe);
     setNewItemName("");
+    setNewItemColor("");
+    setNewItemBrand("");
+    setNewItemSize("");
+    setNewItemSeasons([]);
     setShowAddItemForm(false);
   };
 
@@ -375,14 +508,26 @@ const WardrobeBuilder = () => {
       );
     }
 
-    // Apply season filter if on Year-Round Collection and a season is selected
-    if (activeView === "Year-Round Collection" && activeSeason !== "All") {
-      filteredItems = filteredItems.filter(
-        (item) => item.season === activeSeason || item.season === "All Seasons"
+    // Apply season filter if a season is selected
+    if (activeSeason !== "All") {
+      filteredItems = filteredItems.filter((item) =>
+        item.seasons?.includes(activeSeason)
       );
     }
 
     return filteredItems;
+  };
+
+  // Get owned and wishlist items separately
+  const getOwnedAndWishlistItems = (): {
+    owned: FilteredItem[];
+    wishlist: FilteredItem[];
+  } => {
+    const allItems = getFilteredItems();
+    return {
+      owned: allItems.filter((item) => item.owned),
+      wishlist: allItems.filter((item) => !item.owned),
+    };
   };
 
   // Color coding for priority
@@ -401,395 +546,1009 @@ const WardrobeBuilder = () => {
     }
   };
 
+  // Helper function to render appropriate size input based on category
+  const renderSizeInput = () => {
+    switch (newItemCategory) {
+      case "Tops":
+      case "Outerwear":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="size">Size</Label>
+            <Select value={newItemSize} onValueChange={setNewItemSize}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="XS">XS</SelectItem>
+                <SelectItem value="S">S</SelectItem>
+                <SelectItem value="M">M</SelectItem>
+                <SelectItem value="L">L</SelectItem>
+                <SelectItem value="XL">XL</SelectItem>
+                <SelectItem value="XXL">XXL</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        );
+      case "Bottoms":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="size">Size (Waist x Inseam)</Label>
+            <Input
+              id="size"
+              value={newItemSize}
+              onChange={(e) => setNewItemSize(e.target.value)}
+              placeholder="e.g. 30x32 or 32"
+            />
+            <p className="text-xs text-gray-500">Inseam is optional</p>
+          </div>
+        );
+      case "Footwear":
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="size">Shoe Size</Label>
+            <Input
+              id="size"
+              value={newItemSize}
+              onChange={(e) => setNewItemSize(e.target.value)}
+              placeholder="e.g. 9.5"
+            />
+          </div>
+        );
+      default:
+        return (
+          <div className="space-y-2">
+            <Label htmlFor="size">Size (Optional)</Label>
+            <Input
+              id="size"
+              value={newItemSize}
+              onChange={(e) => setNewItemSize(e.target.value)}
+              placeholder="Size"
+            />
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="w-full mx-auto p-4 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-2 text-gray-800">
-        Japanese Streetwear Wardrobe Builder
-      </h1>
-      <p className="mb-6 text-gray-600">
-        Track your wardrobe transition from Boston to San Francisco
-      </p>
+    <div className="w-full p-4 md:p-8 bg-gray-50 min-h-screen">
+      <div className="w-full mx-auto">
+        <header className="mb-8 border-b border-gray-200 pb-4">
+          <h1 className="text-4xl font-bold mb-2 text-gray-800 uppercase tracking-tighter">
+            Japanese Streetwear Wardrobe
+          </h1>
+          <div className="flex justify-between items-center">
+            <p className="text-gray-600 font-light">
+              Track your wardrobe transition from Boston to San Francisco
+            </p>
+            <a 
+              href="https://www.pinterest.com/linsh586/style/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-xs uppercase tracking-wide text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1 rounded-none"
+            >
+              Mood Board
+            </a>
+          </div>
+        </header>
 
-      {activeView === "Guide" && (
-        <Card className="mb-8">
-          <CardContent className="p-6">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">
-              Japanese Streetwear Guide
-            </h2>
+        {/* Wardrobe views tabs */}
+        <Tabs value={activeView} onValueChange={setActiveView} className="mb-6">
+          <div className="flex justify-between items-center mb-6">
+            <TabsList className="border-b rounded-none bg-transparent p-0 h-auto">
+              {wardrobeViews.map((view) => (
+                <TabsTrigger
+                  key={view}
+                  value={view}
+                  onClick={() => {
+                    setActiveSeason("All");
+                  }}
+                  className="px-6 py-2 rounded-none border-0 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none data-[state=active]:bg-transparent bg-transparent hover:bg-transparent text-foreground/70 data-[state=active]:text-foreground font-medium uppercase tracking-wide"
+                >
+                  {view} {view !== "Guide" && `(${calculateCompletion(view)}%)`}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
-                  Layering Strategy
-                </h3>
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700">
-                    For cooler days (Boston Spring or SF fog):
-                  </p>
-                  <ul className="text-sm text-gray-600 list-disc ml-6 mb-3 space-y-1 mt-2">
-                    <li>Base layer: Tank top or t-shirt</li>
-                    <li>Mid layer: Oversized button-up or long-sleeve tee</li>
-                    <li>
-                      Outer layer: Leather jacket, wool shirt jacket, or work
-                      jacket
-                    </li>
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    For warmer days:
-                  </p>
-                  <ul className="text-sm text-gray-600 list-disc ml-6 space-y-1 mt-2">
-                    <li>Single layer: Oversized tee or loose linen shirt</li>
-                    <li>Light layer: Tank top with thin overshirt</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
-                  Essential Purchases
-                </h3>
-                <ol className="text-sm text-gray-600 list-decimal ml-6 space-y-2">
-                  <li>
-                    <span className="font-medium">
-                      Baggy jeans - washed black
-                    </span>{" "}
-                    (Levi's Silver Tab)
-                  </li>
-                  <li>
-                    <span className="font-medium">
-                      Oversized long-sleeve tees
-                    </span>{" "}
-                    (UNIQLO U)
-                  </li>
-                  <li>
-                    <span className="font-medium">
-                      Leather jacket or work jacket
-                    </span>{" "}
-                    (Vintage or Blue Blue Japan)
-                  </li>
-                  <li>
-                    <span className="font-medium">Wide-leg pants</span> in a
-                    different color (OrSlow)
-                  </li>
-                  <li>
-                    <span className="font-medium">Layering pieces</span>{" "}
-                    (button-ups, light jackets)
-                  </li>
-                </ol>
-              </div>
+            <div className="flex gap-2">
+              <Button
+                variant={viewMode === "grid" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="px-3 rounded-none font-medium uppercase tracking-wide"
+              >
+                Grid
+              </Button>
+              <Button
+                variant={viewMode === "list" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setViewMode("list")}
+                className="px-3 rounded-none font-medium uppercase tracking-wide"
+              >
+                List
+              </Button>
             </div>
+          </div>
 
-            <div>
-              <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
-                Brand Recommendations
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Investment Pieces:
-                  </p>
-                  <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
-                    <li>Kapital</li>
-                    <li>Needles</li>
-                    <li>Engineered Garments</li>
-                    <li>Evan Kinori</li>
-                    <li>Blue Blue Japan</li>
-                  </ul>
-                </div>
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Mid-range Options:
-                  </p>
-                  <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
-                    <li>OrSlow</li>
-                    <li>Universal Works</li>
-                    <li>Carhartt WIP</li>
-                    <li>Story MFG</li>
-                    <li>Beams Plus</li>
-                  </ul>
-                </div>
-                <div className="bg-gray-50 p-3 rounded">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Accessible Options:
-                  </p>
-                  <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
-                    <li>UNIQLO U</li>
-                    <li>Dickies (sized up)</li>
-                    <li>Vintage/secondhand</li>
-                    <li>COS</li>
-                    <li>Stan Ray</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Wardrobe views tabs */}
-      <Tabs value={activeView} onValueChange={setActiveView} className="mb-4">
-        <TabsList className="w-full justify-start border-b rounded-none bg-transparent p-0 h-auto">
           {wardrobeViews.map((view) => (
-            <TabsTrigger
+            <TabsContent
               key={view}
               value={view}
-              onClick={() => {
-                setActiveSeason("All"); // Reset season filter when changing view
-              }}
-              className="px-6 py-2 rounded-none border-0 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none data-[state=active]:bg-transparent bg-transparent hover:bg-transparent text-foreground/70 data-[state=active]:text-foreground font-medium"
+              className="pt-4 animate-in fade-in-50"
             >
-              {view} {view !== "Current" && `(${calculateCompletion(view)}%)`}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+              {view === "Guide" ? (
+                <Card className="mb-8 rounded-none border shadow-none">
+                  <CardContent className="p-6">
+                    <h2 className="text-2xl font-bold mb-4 text-gray-800 uppercase tracking-tight">
+                      Japanese Streetwear Guide
+                    </h2>
 
-        {wardrobeViews.map((view) => (
-          <TabsContent key={view} value={view} className="pt-4">
-            {/* Category filter */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              <Button
-                variant={activeCategory === "All" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory("All")}
-                className="rounded-full"
-              >
-                All
-              </Button>
-              {categories.map((category) => (
-                <Button
-                  key={category}
-                  variant={activeCategory === category ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveCategory(category)}
-                  className="rounded-full"
-                >
-                  {category}
-                </Button>
-              ))}
-            </div>
-
-            {/* Season filter */}
-            {view === "Year-Round Collection" && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
-                  Filter by Season:
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant={activeSeason === "All" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveSeason("All")}
-                    className="rounded-full text-xs"
-                  >
-                    All Seasons
-                  </Button>
-                  <Button
-                    variant={
-                      activeSeason === "All Seasons" ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setActiveSeason("All Seasons")}
-                    className="rounded-full text-xs"
-                  >
-                    Year Round
-                  </Button>
-                  <Button
-                    variant={
-                      activeSeason === "Cool Weather" ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setActiveSeason("Cool Weather")}
-                    className="rounded-full text-xs"
-                  >
-                    Cool Weather
-                  </Button>
-                  <Button
-                    variant={
-                      activeSeason === "Warm Weather" ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setActiveSeason("Warm Weather")}
-                    className="rounded-full text-xs"
-                  >
-                    Warm Weather
-                  </Button>
-                  <Button
-                    variant={
-                      activeSeason === "Boston Spring" ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setActiveSeason("Boston Spring")}
-                    className="rounded-full text-xs"
-                  >
-                    Boston Spring
-                  </Button>
-                  <Button
-                    variant={activeSeason === "SF Fog" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActiveSeason("SF Fog")}
-                    className="rounded-full text-xs"
-                  >
-                    SF Fog
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Add item button */}
-            {view !== "Current" && (
-              <Button
-                onClick={() => setShowAddItemForm(!showAddItemForm)}
-                className="mb-4"
-              >
-                {showAddItemForm ? "Cancel" : "Add New Item"}
-              </Button>
-            )}
-
-            {/* Add item form */}
-            {showAddItemForm && (
-              <Card className="mb-6">
-                <CardContent className="pt-6">
-                  <form onSubmit={addNewItem} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="itemName">Item Name</Label>
-                        <Input
-                          id="itemName"
-                          value={newItemName}
-                          onChange={(e) => setNewItemName(e.target.value)}
-                          placeholder="Item name"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category</Label>
-                        <Select
-                          value={newItemCategory}
-                          onValueChange={setNewItemCategory}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="season">Season</Label>
-                        <Select
-                          value={newItemSeason}
-                          onValueChange={setNewItemSeason}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select season" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="All Seasons">
-                              All Seasons
-                            </SelectItem>
-                            <SelectItem value="Cool Weather">
-                              Cool Weather
-                            </SelectItem>
-                            <SelectItem value="Warm Weather">
-                              Warm Weather
-                            </SelectItem>
-                            <SelectItem value="Boston Spring">
-                              Boston Spring
-                            </SelectItem>
-                            <SelectItem value="SF Fog">SF Fog</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <Button type="submit">Add Item</Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Items list */}
-            <div className="space-y-2">
-              {getFilteredItems().map((item: FilteredItem, i: number) => (
-                <Card
-                  key={`${item.category}-${item.index}-${i}`}
-                  className={`${
-                    item.owned ? "bg-green-50 border-l-4 border-green-500" : ""
-                  }`}
-                >
-                  <CardContent className="p-3 flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Checkbox
-                        checked={item.owned}
-                        onCheckedChange={() =>
-                          toggleItemOwned(view, item.category, item.index)
-                        }
-                        className="h-5 w-5"
-                      />
-                      <div className="ml-3">
-                        <p
-                          className={`text-gray-800 ${
-                            item.owned ? "line-through opacity-70" : ""
-                          }`}
-                        >
-                          {item.name}
-                        </p>
-                        <div className="flex flex-wrap">
-                          <p className="text-xs text-gray-500">
-                            {item.category}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
+                          Layering Strategy
+                        </h3>
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-gray-700">
+                            For cooler days (Boston Spring or SF fog):
                           </p>
-                          {item.brand && (
-                            <p className="text-xs text-blue-600 ml-2">
-                              {item.brand}
-                            </p>
-                          )}
-                          {item.season && (
-                            <p className="text-xs text-green-600 ml-2">
-                              • {item.season}
-                            </p>
-                          )}
+                          <ul className="text-sm text-gray-600 list-disc ml-6 mb-3 space-y-1 mt-2">
+                            <li>Base layer: Tank top or t-shirt</li>
+                            <li>
+                              Mid layer: Oversized button-up or long-sleeve tee
+                            </li>
+                            <li>
+                              Outer layer: Leather jacket, wool shirt jacket, or
+                              work jacket
+                            </li>
+                          </ul>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">
+                            For warmer days:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc ml-6 space-y-1 mt-2">
+                            <li>
+                              Single layer: Oversized tee or loose linen shirt
+                            </li>
+                            <li>Light layer: Tank top with thin overshirt</li>
+                          </ul>
                         </div>
                       </div>
-                      {item.priority && (
-                        <Badge
-                          className="ml-3"
-                          variant={getPriorityColor(item.priority)}
-                        >
-                          {item.priority}
-                        </Badge>
-                      )}
+
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
+                          Essential Purchases
+                        </h3>
+                        <ol className="text-sm text-gray-600 list-decimal ml-6 space-y-2">
+                          <li>
+                            <span className="font-medium">
+                              Baggy jeans - washed black
+                            </span>{" "}
+                            (Levi's Silver Tab)
+                          </li>
+                          <li>
+                            <span className="font-medium">
+                              Oversized long-sleeve tees
+                            </span>{" "}
+                            (UNIQLO U)
+                          </li>
+                          <li>
+                            <span className="font-medium">
+                              Leather jacket or work jacket
+                            </span>{" "}
+                            (Vintage or Blue Blue Japan)
+                          </li>
+                          <li>
+                            <span className="font-medium">Wide leg pants</span>{" "}
+                            in a different color (OrSlow)
+                          </li>
+                          <li>
+                            <span className="font-medium">Layering pieces</span>{" "}
+                            (button-ups, light jackets)
+                          </li>
+                        </ol>
+                      </div>
                     </div>
-                    {view !== "Current" && (
-                      <Button
-                        onClick={() =>
-                          removeItem(view, item.category, item.index)
-                        }
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700 p-0 h-auto"
-                      >
-                        ✕
-                      </Button>
-                    )}
+
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-800 mb-3 border-b pb-2">
+                        Brand Recommendations
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="bg-gray-50 p-3 rounded">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Investment Pieces:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
+                            <li>Kapital</li>
+                            <li>Needles</li>
+                            <li>Engineered Garments</li>
+                            <li>Evan Kinori</li>
+                            <li>Blue Blue Japan</li>
+                          </ul>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Mid-range Options:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
+                            <li>OrSlow</li>
+                            <li>Universal Works</li>
+                            <li>Carhartt WIP</li>
+                            <li>Story MFG</li>
+                            <li>Beams Plus</li>
+                          </ul>
+                        </div>
+                        <div className="bg-gray-50 p-3 rounded">
+                          <p className="text-sm font-medium text-gray-700 mb-2">
+                            Accessible Options:
+                          </p>
+                          <ul className="text-sm text-gray-600 list-disc ml-4 space-y-1">
+                            <li>UNIQLO U</li>
+                            <li>Dickies (sized up)</li>
+                            <li>Vintage/secondhand</li>
+                            <li>COS</li>
+                            <li>Stan Ray</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                <>
+                  {/* Filters bar */}
+                  <div className="bg-white p-4 rounded-none border shadow-none mb-6">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">
+                          Filter by Category:
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant={
+                              activeCategory === "All" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveCategory("All")}
+                            className="rounded-none font-medium"
+                          >
+                            All
+                          </Button>
+                          {categories.map((category) => (
+                            <Button
+                              key={category}
+                              variant={
+                                activeCategory === category
+                                  ? "default"
+                                  : "outline"
+                              }
+                              size="sm"
+                              onClick={() => setActiveCategory(category)}
+                              className="rounded-none font-medium"
+                            >
+                              <span className="text-lg mr-1">
+                                {categoryIcons[category]}
+                              </span>{" "}
+                              {category}
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
 
-              {getFilteredItems().length === 0 && (
-                <div className="p-8 text-center text-gray-500">
-                  No items found in this category.
-                </div>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">
+                          Filter by Season:
+                        </h3>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant={
+                              activeSeason === "All" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveSeason("All")}
+                            className="rounded-none text-xs font-medium"
+                          >
+                            All Seasons
+                          </Button>
+                          <Button
+                            variant={
+                              activeSeason === "Spring" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveSeason("Spring")}
+                            className="rounded-none text-xs font-medium"
+                          >
+                            Spring
+                          </Button>
+                          <Button
+                            variant={
+                              activeSeason === "Summer" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveSeason("Summer")}
+                            className="rounded-none text-xs font-medium"
+                          >
+                            Summer
+                          </Button>
+                          <Button
+                            variant={
+                              activeSeason === "Fall" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveSeason("Fall")}
+                            className="rounded-none text-xs font-medium"
+                          >
+                            Fall
+                          </Button>
+                          <Button
+                            variant={
+                              activeSeason === "Winter" ? "default" : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setActiveSeason("Winter")}
+                            className="rounded-none text-xs font-medium"
+                          >
+                            Winter
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add item button */}
+                  <div className="mb-8 flex justify-between items-center">
+                    <h2 className="text-xl font-semibold text-gray-800">
+                      {view} Items
+                    </h2>
+                    <Button
+                      onClick={() => setShowAddItemForm(!showAddItemForm)}
+                      size="sm"
+                      className="rounded-none uppercase tracking-wide"
+                    >
+                      {showAddItemForm ? "Cancel" : "Add New Item"}
+                    </Button>
+                  </div>
+
+                  {/* Add item form */}
+                  {showAddItemForm && (
+                    <Card className="mb-8 border-2 border-dashed border-primary/50 rounded-none">
+                      <CardHeader className="border-b">
+                        <CardTitle className="uppercase tracking-tight">
+                          Add New Item
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <form onSubmit={addNewItem} className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="itemName">Item Name</Label>
+                              <Input
+                                id="itemName"
+                                value={newItemName}
+                                onChange={(e) => setNewItemName(e.target.value)}
+                                placeholder="Item name"
+                                required
+                                className="rounded-none"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="category">Category</Label>
+                              <Select
+                                value={newItemCategory}
+                                onValueChange={(value) => {
+                                  setNewItemCategory(value);
+                                  setNewItemSize("");
+                                }}
+                              >
+                                <SelectTrigger className="rounded-none">
+                                  <SelectValue placeholder="Select category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((category) => (
+                                    <SelectItem key={category} value={category}>
+                                      <span className="text-lg mr-1">
+                                        {categoryIcons[category]}
+                                      </span>{" "}
+                                      {category}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="brand">Brand</Label>
+                              <Input
+                                id="brand"
+                                value={newItemBrand}
+                                onChange={(e) =>
+                                  setNewItemBrand(e.target.value)
+                                }
+                                placeholder="Brand name"
+                              />
+                            </div>
+                            {renderSizeInput()}
+                            <div className="space-y-2">
+                              <Label htmlFor="priority">Priority</Label>
+                              <Select
+                                value={newItemPriority}
+                                onValueChange={setNewItemPriority}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select priority" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="High">High</SelectItem>
+                                  <SelectItem value="Medium">Medium</SelectItem>
+                                  <SelectItem value="Low">Low</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="seasons">
+                                Seasons (select multiple)
+                              </Label>
+                              <div className="flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    newItemSeasons.includes("Spring")
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="rounded-none text-xs"
+                                  onClick={() => {
+                                    if (newItemSeasons.includes("Spring")) {
+                                      setNewItemSeasons(
+                                        newItemSeasons.filter(
+                                          (s) => s !== "Spring"
+                                        )
+                                      );
+                                    } else {
+                                      setNewItemSeasons([
+                                        ...newItemSeasons,
+                                        "Spring",
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  Spring
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    newItemSeasons.includes("Summer")
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="rounded-none text-xs"
+                                  onClick={() => {
+                                    if (newItemSeasons.includes("Summer")) {
+                                      setNewItemSeasons(
+                                        newItemSeasons.filter(
+                                          (s) => s !== "Summer"
+                                        )
+                                      );
+                                    } else {
+                                      setNewItemSeasons([
+                                        ...newItemSeasons,
+                                        "Summer",
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  Summer
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    newItemSeasons.includes("Fall")
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="rounded-none text-xs"
+                                  onClick={() => {
+                                    if (newItemSeasons.includes("Fall")) {
+                                      setNewItemSeasons(
+                                        newItemSeasons.filter(
+                                          (s) => s !== "Fall"
+                                        )
+                                      );
+                                    } else {
+                                      setNewItemSeasons([
+                                        ...newItemSeasons,
+                                        "Fall",
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  Fall
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant={
+                                    newItemSeasons.includes("Winter")
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  className="rounded-none text-xs"
+                                  onClick={() => {
+                                    if (newItemSeasons.includes("Winter")) {
+                                      setNewItemSeasons(
+                                        newItemSeasons.filter(
+                                          (s) => s !== "Winter"
+                                        )
+                                      );
+                                    } else {
+                                      setNewItemSeasons([
+                                        ...newItemSeasons,
+                                        "Winter",
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  Winter
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="rounded-none text-xs"
+                                  onClick={() => {
+                                    if (newItemSeasons.length === 4) {
+                                      setNewItemSeasons([]);
+                                    } else {
+                                      setNewItemSeasons([
+                                        "Spring",
+                                        "Summer",
+                                        "Fall",
+                                        "Winter",
+                                      ]);
+                                    }
+                                  }}
+                                >
+                                  {newItemSeasons.length === 4
+                                    ? "Clear All"
+                                    : "Select All"}
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Checkbox
+                                id="tailored"
+                                checked={newItemIsTailored}
+                                onCheckedChange={(checked) =>
+                                  setNewItemIsTailored(checked === true)
+                                }
+                              />
+                              <Label htmlFor="tailored" className="text-sm">
+                                Item has been tailored
+                              </Label>
+                            </div>
+                          </div>
+                          <Button
+                            type="submit"
+                            className="rounded-none uppercase tracking-wide"
+                          >
+                            Add Item
+                          </Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Wardrobe display */}
+                  <div className="space-y-8">
+                    {/* Owned items */}
+                    <div className="mb-8 w-full">
+                      <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                        Owned Items
+                      </h2>
+                      {getOwnedAndWishlistItems().owned.length > 0 ? (
+                        viewMode === "grid" ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
+                            {getOwnedAndWishlistItems().owned.map((item, i) => (
+                              <div
+                                key={`owned-${item.category}-${item.index}-${i}`}
+                                className="flex flex-col"
+                              >
+                                <Card className="w-full overflow-hidden border border-gray-200 group relative h-[200px] flex items-center justify-center bg-white rounded-none">
+                                  <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                    {item.size && (
+                                      <Badge
+                                        variant="outline"
+                                        className="rounded-none bg-white backdrop-blur-sm text-xs"
+                                      >
+                                        {item.size}
+                                        {item.tailored && (
+                                          <span className="ml-1 text-amber-600 flex items-center">
+                                            <Scissors className="h-3 w-3 ml-1" />
+                                          </span>
+                                        )}
+                                      </Badge>
+                                    )}
+                                    {item.seasons &&
+                                      item.seasons.length > 0 && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs bg-white backdrop-blur-sm rounded-none"
+                                        >
+                                          {item.seasons.length === 4
+                                            ? "All Seasons"
+                                            : item.seasons.join(", ")}
+                                        </Badge>
+                                      )}
+                                  </div>
+
+                                  <div className="text-center z-10 px-3 flex items-center justify-center">
+                                    <span className="text-2xl text-gray-300">
+                                      {categoryIcons[item.category]}
+                                    </span>
+                                  </div>
+
+                                  <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="bg-white backdrop-blur-sm rounded-none"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="rounded-none">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            Remove Item
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to remove{" "}
+                                            <span className="font-semibold">
+                                              {item.name}
+                                            </span>{" "}
+                                            from your owned items?
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() =>
+                                              removeItem(
+                                                view,
+                                                item.category,
+                                                item.index
+                                              )
+                                            }
+                                            className="bg-red-500 hover:bg-red-600"
+                                          >
+                                            Remove
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+
+                                  {item.priority && (
+                                    <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Badge
+                                        variant={getPriorityColor(
+                                          item.priority
+                                        )}
+                                        className="rounded-none"
+                                      >
+                                        {item.priority}
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </Card>
+                                <div className="mt-2">
+                                  <p className="font-medium text-gray-800">
+                                    {item.name}
+                                  </p>
+                                  {item.brand && (
+                                    <p className="text-sm text-gray-600">
+                                      {item.brand}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="w-full space-y-2">
+                            {getOwnedAndWishlistItems().owned.map((item, i) => (
+                              <Card
+                                key={`owned-list-${item.category}-${item.index}-${i}`}
+                                className="w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none"
+                              >
+                                <CardContent className="p-4 flex items-center">
+                                  <div className="flex-1">
+                                    <p className="text-gray-800 font-medium">
+                                      {item.name}
+                                    </p>
+                                    {item.brand && (
+                                      <p className="text-sm text-gray-600">
+                                        {item.brand}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {item.size && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-xs rounded-none"
+                                      >
+                                        {item.size}
+                                        {item.tailored && (
+                                          <span className="ml-1 text-amber-600 flex items-center">
+                                            <Scissors className="h-3 w-3 ml-1" />
+                                          </span>
+                                        )}
+                                      </Badge>
+                                    )}
+                                    {item.seasons &&
+                                      item.seasons.length > 0 && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs rounded-none"
+                                        >
+                                          {item.seasons.length === 4
+                                            ? "All Seasons"
+                                            : item.seasons.join(", ")}
+                                        </Badge>
+                                      )}
+                                    {item.priority && (
+                                      <Badge
+                                        variant={getPriorityColor(
+                                          item.priority
+                                        )}
+                                        className="rounded-none"
+                                      >
+                                        {item.priority}
+                                      </Badge>
+                                    )}
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="outline" size="sm">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="rounded-none">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle>
+                                            Remove Item
+                                          </AlertDialogTitle>
+                                          <AlertDialogDescription>
+                                            Are you sure you want to remove{" "}
+                                            <span className="font-semibold">
+                                              {item.name}
+                                            </span>{" "}
+                                            from your owned items?
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>
+                                            Cancel
+                                          </AlertDialogCancel>
+                                          <AlertDialogAction
+                                            onClick={() =>
+                                              removeItem(
+                                                view,
+                                                item.category,
+                                                item.index
+                                              )
+                                            }
+                                            className="bg-red-500 hover:bg-red-600"
+                                          >
+                                            Remove
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )
+                      ) : (
+                        <div className="p-8 text-center bg-white rounded-none border border-dashed text-gray-500 w-full">
+                          No owned items in this category.
+                        </div>
+                      )}
+                    </div>
+
+                    <Separator className="my-8" />
+
+                    {/* Wishlist items */}
+                    <div className="mb-8 w-full">
+                      <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                        Wishlist Items
+                      </h2>
+                      {getOwnedAndWishlistItems().wishlist.length > 0 ? (
+                        viewMode === "grid" ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
+                            {getOwnedAndWishlistItems().wishlist.map(
+                              (item, i) => (
+                                <div
+                                  key={`wishlist-${item.category}-${item.index}-${i}`}
+                                  className="flex flex-col"
+                                >
+                                  <Card className="w-full overflow-hidden border border-gray-200 group relative h-[200px] flex items-center justify-center bg-white rounded-none">
+                                    <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                                      {item.size && (
+                                        <Badge
+                                          variant="outline"
+                                          className="rounded-none bg-white backdrop-blur-sm text-xs"
+                                        >
+                                          {item.size}
+                                          {item.tailored && (
+                                            <span className="ml-1 text-amber-600 flex items-center">
+                                              <Scissors className="h-3 w-3 ml-1" />
+                                            </span>
+                                          )}
+                                        </Badge>
+                                      )}
+                                      {item.seasons &&
+                                        item.seasons.length > 0 && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs bg-white backdrop-blur-sm rounded-none"
+                                          >
+                                            {item.seasons.length === 4
+                                              ? "All Seasons"
+                                              : item.seasons.join(", ")}
+                                          </Badge>
+                                        )}
+                                    </div>
+
+                                    <div className="text-center z-10 px-3 flex items-center justify-center">
+                                      <span className="text-2xl text-gray-300">
+                                        {categoryIcons[item.category]}
+                                      </span>
+                                    </div>
+
+                                    <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-white backdrop-blur-sm rounded-none"
+                                        onClick={() =>
+                                          moveToOwned(
+                                            view,
+                                            item.category,
+                                            item.index
+                                          )
+                                        }
+                                      >
+                                        <Import className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+
+                                    {item.priority && (
+                                      <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Badge
+                                          variant={getPriorityColor(
+                                            item.priority
+                                          )}
+                                          className="rounded-none"
+                                        >
+                                          {item.priority}
+                                        </Badge>
+                                      </div>
+                                    )}
+                                  </Card>
+                                  <div className="mt-2">
+                                    <p className="font-medium text-gray-800">
+                                      {item.name}
+                                    </p>
+                                    {item.brand && (
+                                      <p className="text-sm text-gray-600">
+                                        {item.brand}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full space-y-2">
+                            {getOwnedAndWishlistItems().wishlist.map(
+                              (item, i) => (
+                                <Card
+                                  key={`wishlist-list-${item.category}-${item.index}-${i}`}
+                                  className="w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none"
+                                >
+                                  <CardContent className="p-4 flex items-center">
+                                    <div className="flex-1">
+                                      <p className="text-gray-800 font-medium">
+                                        {item.name}
+                                      </p>
+                                      {item.brand && (
+                                        <p className="text-sm text-gray-600">
+                                          {item.brand}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {item.size && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs rounded-none"
+                                        >
+                                          {item.size}
+                                          {item.tailored && (
+                                            <span className="ml-1 text-amber-600 flex items-center">
+                                              <Scissors className="h-3 w-3 ml-1" />
+                                            </span>
+                                          )}
+                                        </Badge>
+                                      )}
+                                      {item.seasons &&
+                                        item.seasons.length > 0 && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs rounded-none"
+                                          >
+                                            {item.seasons.length === 4
+                                              ? "All Seasons"
+                                              : item.seasons.join(", ")}
+                                          </Badge>
+                                        )}
+                                      {item.priority && (
+                                        <Badge
+                                          variant={getPriorityColor(
+                                            item.priority
+                                          )}
+                                          className="rounded-none"
+                                        >
+                                          {item.priority}
+                                        </Badge>
+                                      )}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="bg-white backdrop-blur-sm rounded-none"
+                                        onClick={() =>
+                                          moveToOwned(
+                                            view,
+                                            item.category,
+                                            item.index
+                                          )
+                                        }
+                                      >
+                                        <Import className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )
+                            )}
+                          </div>
+                        )
+                      ) : (
+                        <div className="p-8 text-center bg-white rounded-none border border-dashed text-gray-500 w-full">
+                          No wishlist items in this category.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
               )}
-            </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
     </div>
   );
 };

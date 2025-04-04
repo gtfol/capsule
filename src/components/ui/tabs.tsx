@@ -40,7 +40,7 @@ const TabsTriggerVariants = cva(
         default:
           "data-[state=active]:bg-background ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 data-[state=active]:shadow disabled:opacity-50 rounded-md py-1",
         underline:
-          "bg-background border-b-2 border-background focus:border-primary ring-0 outline-none shadow-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary disabled:opacity-100 data-[state=active]:shadow-none rounded-none m-0 pt-1.5 pb-2 hover:bg-background-muted",
+          "bg-background border-b-2 border-transparent focus:border-primary ring-0 outline-none shadow-none data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary disabled:opacity-100 data-[state=active]:shadow-none rounded-none m-0 pt-1.5 pb-2 hover:bg-background-muted",
       },
       size: {
         default: "",
@@ -94,20 +94,6 @@ const TabsTrigger = React.forwardRef<
   />
 ));
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName;
-
-// const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-//     ({ className, variant, size, asChild = false, ...props }, ref) => {
-//       const Comp = asChild ? Slot : "button"
-//       return (
-//         <Comp
-//           className={cn(buttonVariants({ variant, size, className }))}
-//           ref={ref}
-//           {...props}
-//         />
-//       )
-//     }
-//   )
-//   Button.displayName = "Button"
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
