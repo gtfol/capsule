@@ -11,7 +11,7 @@ function hasValidImageExtension(url: string): boolean {
     return extension
       ? VALID_IMAGE_EXTENSIONS.some((ext) => ext.includes(extension))
       : false;
-  } catch (error) {
+  } catch {
     // If URL parsing fails, fall back to the simple string check
     const extension = url.toLowerCase().split(".").pop();
     return extension
@@ -41,7 +41,7 @@ async function getHashedFilename(url: string): Promise<string> {
 
     // Use the first 12 characters of the hash for a reasonable filename length
     return `capsule/${hashBase64.slice(0, 12)}.${extension}`;
-  } catch (error) {
+  } catch {
     // Fallback to the original URL if parsing fails
     const extension = url.toLowerCase().split(".").pop() || "jpg";
     const encoder = new TextEncoder();
@@ -56,7 +56,9 @@ async function getHashedFilename(url: string): Promise<string> {
   }
 }
 
-async function downloadImage(url: string): Promise<{ blob: Blob; filename: string }> {
+async function downloadImage(
+  url: string
+): Promise<{ blob: Blob; filename: string }> {
   const response = await fetch(url, { mode: "cors" });
   if (!response.ok) throw new Error("Failed to fetch image");
 
@@ -92,7 +94,8 @@ export async function POST(request: Request) {
       if (!hasValidImageExtension(imageUrl)) {
         return NextResponse.json(
           {
-            error: "Invalid image format. Please use JPG, JPEG, PNG, WEBP, or GIF files.",
+            error:
+              "Invalid image format. Please use JPG, JPEG, PNG, WEBP, or GIF files.",
           },
           { status: 400 }
         );
@@ -106,7 +109,8 @@ export async function POST(request: Request) {
       if (!hasValidImageExtension(uploadFile.name)) {
         return NextResponse.json(
           {
-            error: "Invalid image format. Please use JPG, JPEG, PNG, WEBP, or GIF files.",
+            error:
+              "Invalid image format. Please use JPG, JPEG, PNG, WEBP, or GIF files.",
           },
           { status: 400 }
         );
@@ -116,8 +120,8 @@ export async function POST(request: Request) {
 
     // Check if file already exists
     const { blobs } = await list();
-    const existingBlob = blobs.find(blob => blob.pathname === filename);
-    
+    const existingBlob = blobs.find((blob) => blob.pathname === filename);
+
     if (existingBlob) {
       // If file exists, return its URL
       return NextResponse.json({ url: existingBlob.url });

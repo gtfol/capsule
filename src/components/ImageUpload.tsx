@@ -66,6 +66,7 @@ export function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       }
 
       onUploadComplete?.(data.url);
+      setPreviewUrl(data.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to upload image");
     } finally {
@@ -76,6 +77,7 @@ export function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   const handleClose = () => {
     setIsOpen(false);
     setImageUrl("");
+    setPreviewUrl("");
     setError(null);
   };
 

@@ -963,7 +963,7 @@ export default function Home() {
                             <span className="font-medium">
                               Baggy jeans - washed black
                             </span>{" "}
-                            (Levi's Silver Tab)
+                            {`(Levi's Silver Tab)`}
                           </li>
                           <li>
                             <span className="font-medium">
