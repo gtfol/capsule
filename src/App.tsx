@@ -26,8 +26,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ImageUpload } from "@/components/ImageUpload";
+import { cn } from "@/lib/utils";
 
-// Define types for the wardrobe items
 interface WardrobeItem {
   name: string;
   owned: boolean;
@@ -37,6 +38,7 @@ interface WardrobeItem {
   brand?: string;
   size?: string;
   tailored?: boolean;
+  imageUrl?: string;
 }
 
 interface CategoryItems {
@@ -47,7 +49,6 @@ interface WardrobeData {
   [location: string]: CategoryItems;
 }
 
-// Icons for categories - make them larger
 const categoryIcons: Record<string, string> = {
   Tops: "👕",
   Bottoms: "👖",
@@ -57,7 +58,6 @@ const categoryIcons: Record<string, string> = {
 };
 
 const WardrobeBuilder = () => {
-  // Categories for wardrobe items
   const categories = [
     "Tops",
     "Bottoms",
@@ -66,10 +66,8 @@ const WardrobeBuilder = () => {
     "Accessories",
   ];
 
-  // Wardrobe views
   const wardrobeViews = ["Guide", "My Wardrobe"];
 
-  // Initial wardrobe items
   const initialWardrobe: WardrobeData = {
     Guide: {},
     "My Wardrobe": {
@@ -390,6 +388,14 @@ const WardrobeBuilder = () => {
           seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
+          name: "Curved-Buckle Leather Belt",
+          owned: true,
+          color: "Black",
+          brand: "COS",
+          size: "Small",
+          seasons: ["Spring", "Summer", "Fall", "Winter"],
+        },
+        {
           name: "Shiny Leather Belt",
           owned: false,
           color: "Black",
@@ -406,18 +412,17 @@ const WardrobeBuilder = () => {
           seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
         {
-          name: "Simple Cap",
-          owned: false,
+          name: "Dad Hat",
+          owned: true,
           color: "Washed Blue",
           priority: "Low",
-          brand: "Buildspace",
+          brand: "buildspace",
           seasons: ["Spring", "Summer", "Fall", "Winter"],
         },
       ],
     },
   };
 
-  // State for wardrobe and selected location/category
   const [wardrobe, setWardrobe] = useState<WardrobeData>(initialWardrobe);
   const [activeView, setActiveView] = useState("My Wardrobe");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -434,8 +439,8 @@ const WardrobeBuilder = () => {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [stylingMode, setStylingMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<FilteredItem[]>([]);
+  const [newItemImageUrl, setNewItemImageUrl] = useState("");
 
-  // Move item from wishlist to owned
   const moveToOwned = (location: string, category: string, index: number) => {
     const updatedWardrobe = { ...wardrobe };
     if (
@@ -448,7 +453,6 @@ const WardrobeBuilder = () => {
     }
   };
 
-  // Add new item
   const addNewItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemColor.trim()) return;
@@ -460,13 +464,14 @@ const WardrobeBuilder = () => {
 
     updatedWardrobe[activeView][newItemCategory].push({
       name: newItemName,
-      owned: false,
+      owned: activeView === "My Wardrobe",
       color: newItemColor,
       priority: newItemPriority,
       brand: newItemBrand || undefined,
       seasons: newItemSeasons.length > 0 ? newItemSeasons : [],
       size: newItemSize || undefined,
       tailored: newItemIsTailored,
+      imageUrl: newItemImageUrl,
     });
 
     setWardrobe(updatedWardrobe);
@@ -476,9 +481,9 @@ const WardrobeBuilder = () => {
     setNewItemSize("");
     setNewItemSeasons([]);
     setShowAddItemForm(false);
+    setNewItemImageUrl("");
   };
 
-  // Remove item
   const removeItem = (location: string, category: string, index: number) => {
     const updatedWardrobe = { ...wardrobe };
     if (updatedWardrobe[location] && updatedWardrobe[location][category]) {
@@ -487,7 +492,6 @@ const WardrobeBuilder = () => {
     }
   };
 
-  // Calculate completion percentage
   const calculateCompletion = (view: string) => {
     if (view === "Guide") return 0;
 
@@ -514,7 +518,6 @@ const WardrobeBuilder = () => {
   }
 
   const getFilteredItems = (): FilteredItem[] => {
-    // No items to show on the Guide tab
     if (activeView === "Guide") {
       return [];
     }
@@ -532,7 +535,6 @@ const WardrobeBuilder = () => {
       );
     }
 
-    // Apply season filter if a season is selected
     if (activeSeason !== "All") {
       filteredItems = filteredItems.filter((item) =>
         item.seasons?.includes(activeSeason)
@@ -542,7 +544,6 @@ const WardrobeBuilder = () => {
     return filteredItems;
   };
 
-  // Get owned and wishlist items separately
   const getOwnedAndWishlistItems = (): {
     owned: FilteredItem[];
     wishlist: FilteredItem[];
@@ -554,7 +555,6 @@ const WardrobeBuilder = () => {
     };
   };
 
-  // Color coding for priority
   const getPriorityColor = (
     priority: string
   ): "destructive" | "default" | "outline" | "secondary" => {
@@ -570,7 +570,6 @@ const WardrobeBuilder = () => {
     }
   };
 
-  // Helper function to render appropriate size input based on category
   const renderSizeInput = () => {
     switch (newItemCategory) {
       case "Tops":
@@ -633,7 +632,6 @@ const WardrobeBuilder = () => {
     }
   };
 
-  // Add a function to select/deselect items
   const toggleItemSelection = (item: FilteredItem) => {
     if (
       selectedItems.some(
@@ -646,7 +644,6 @@ const WardrobeBuilder = () => {
         )
       );
     } else {
-      // Limit selection to one item per category to create balanced outfits
       const existingCategory = selectedItems.findIndex(
         (i) => i.category === item.category
       );
@@ -660,11 +657,9 @@ const WardrobeBuilder = () => {
     }
   };
 
-  // Add outfit suggestion algorithm
   const getSuggestedItems = (): FilteredItem[] => {
     if (selectedItems.length === 0) return [];
 
-    // Get all owned items
     const ownedItems = Object.entries(wardrobe[activeView] || {}).flatMap(
       ([category, items]) =>
         items
@@ -672,13 +667,11 @@ const WardrobeBuilder = () => {
           .map((item, index) => ({ ...item, category, index }))
     );
 
-    // Determine what categories we need to suggest
     const selectedCategories = selectedItems.map((item) => item.category);
     const missingCategories = categories.filter(
       (category) => !selectedCategories.includes(category)
     );
 
-    // Determine seasons to filter by (intersection of selected items' seasons)
     let compatibleSeasons: string[] = [];
     if (selectedItems.length > 0) {
       compatibleSeasons = selectedItems[0].seasons || [];
@@ -687,78 +680,62 @@ const WardrobeBuilder = () => {
           item.seasons?.includes(season)
         );
       }
-      // If no common seasons, use the first item's seasons
       if (compatibleSeasons.length === 0 && selectedItems[0].seasons) {
         compatibleSeasons = selectedItems[0].seasons;
       }
     }
 
-    // Filter and score items
     const filteredItems = ownedItems.filter(
       (item) =>
-        // Exclude already selected items
         !selectedItems.some(
           (i) => i.index === item.index && i.category === item.category
         )
     );
 
-    // First try with strict filtering
     let suggestedItems = filteredItems.filter(
       (item) =>
-        // Only suggest items from missing categories
         missingCategories.includes(item.category) &&
-        // Ensure season compatibility
         item.seasons?.some((season) => compatibleSeasons.includes(season))
     );
 
-    // If we don't have any suggestions, relax the constraints to just missing categories
     if (suggestedItems.length === 0) {
       suggestedItems = filteredItems.filter((item) =>
         missingCategories.includes(item.category)
       );
     }
 
-    // If we still don't have suggestions, just show other owned items
     if (suggestedItems.length === 0) {
       suggestedItems = filteredItems;
     }
 
-    // Get complementary colors based on selected items
     const selectedColors = selectedItems.map((item) =>
       item.color.toLowerCase()
     );
     const complementaryColors = getComplementaryColors(selectedColors);
 
-    // Score and sort items
     return suggestedItems
       .map((item) => ({
         ...item,
-        // Score based on color compatibility and season overlap
         score:
           (complementaryColors.includes(item.color.toLowerCase()) ? 2 : 0) +
           (item.seasons?.filter((s) => compatibleSeasons.includes(s))?.length /
             Math.max(compatibleSeasons.length, 1) || 0),
       }))
       .sort((a, b) => (b.score || 0) - (a.score || 0))
-      .slice(0, 4); // Limit to top 4 suggestions
+      .slice(0, 4);
   };
 
-  // Add helper function for color compatibility
   const getComplementaryColors = (colors: string[]): string[] => {
-    // Basic complementary color logic - this can be made more sophisticated
     const neutrals = ["black", "white", "gray", "cream", "navy", "natural"];
 
-    // If neutrals are selected, suggest earthy or other neutral colors
     if (colors.some((c) => neutrals.includes(c) || c.includes("gray"))) {
       return [...neutrals, "olive", "camel", "taupe", "washed blue", "brown"];
     }
 
-    // For black items, suggest contrasting colors
     if (colors.includes("black")) {
       return ["white", "cream", "gray", "washed blue", "earth tone"];
     }
 
-    // For earthy tones, suggest neutrals
     if (
       colors.some(
         (c) =>
@@ -771,18 +748,14 @@ const WardrobeBuilder = () => {
       return ["black", "white", "gray", "cream", "navy"];
     }
 
-    // Default complementary colors
     return neutrals;
   };
 
-  // Add function to clear selection
   const clearSelection = () => {
     setSelectedItems([]);
   };
 
-  // Add function to generate a complete outfit suggestion
   const suggestCompleteOutfit = () => {
-    // Start with the first selected item or pick a random owned top if nothing selected
     let newSelection: FilteredItem[] = [];
 
     if (selectedItems.length > 0) {
@@ -801,11 +774,13 @@ const WardrobeBuilder = () => {
       }
     }
 
-    // Get suggestions based on this selection
     if (newSelection.length > 0) {
       setSelectedItems(newSelection);
-      // The rest will be handled by the getSuggestedItems function
     }
+  };
+
+  const handleImageUploaded = (url: string) => {
+    setNewItemImageUrl(url);
   };
 
   return (
@@ -830,7 +805,6 @@ const WardrobeBuilder = () => {
           </div>
         </header>
 
-        {/* Wardrobe views tabs */}
         <Tabs value={activeView} onValueChange={setActiveView} className="mb-6">
           <div className="flex justify-between items-center mb-6">
             <TabsList className="border-b rounded-none bg-transparent p-0 h-auto">
@@ -858,9 +832,9 @@ const WardrobeBuilder = () => {
                     setSelectedItems([]);
                   }
                 }}
-                className={`px-3 rounded-none font-medium uppercase tracking-wide ${
-                  stylingMode ? "bg-black text-white hover:bg-gray-800" : ""
-                }`}
+                className={cn(
+                  stylingMode && "bg-black text-white hover:bg-gray-800"
+                )}
               >
                 {stylingMode ? "Exit Styling" : "Outfit Builder"}
               </Button>
@@ -868,7 +842,6 @@ const WardrobeBuilder = () => {
                 variant={viewMode === "grid" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("grid")}
-                className="px-3 rounded-none font-medium uppercase tracking-wide"
               >
                 Grid
               </Button>
@@ -876,7 +849,6 @@ const WardrobeBuilder = () => {
                 variant={viewMode === "list" ? "default" : "outline"}
                 size="sm"
                 onClick={() => setViewMode("list")}
-                className="px-3 rounded-none font-medium uppercase tracking-wide"
               >
                 List
               </Button>
@@ -1011,7 +983,6 @@ const WardrobeBuilder = () => {
                 </Card>
               ) : (
                 <>
-                  {/* Filters bar */}
                   <div className="bg-white p-4 rounded-none border shadow-none mb-6">
                     <div className="flex flex-col items-center gap-4">
                       <div className="flex-1">
@@ -1025,7 +996,6 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveCategory("All")}
-                            className="rounded-none font-medium"
                           >
                             All
                           </Button>
@@ -1039,7 +1009,6 @@ const WardrobeBuilder = () => {
                               }
                               size="sm"
                               onClick={() => setActiveCategory(category)}
-                              className="rounded-none font-medium"
                             >
                               <span className="text-lg mr-1">
                                 {categoryIcons[category]}
@@ -1061,7 +1030,7 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveSeason("All")}
-                            className="rounded-none text-xs font-medium"
+                            className="text-xs"
                           >
                             All Seasons
                           </Button>
@@ -1071,7 +1040,7 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveSeason("Spring")}
-                            className="rounded-none text-xs font-medium"
+                            className="text-xs"
                           >
                             Spring
                           </Button>
@@ -1081,7 +1050,7 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveSeason("Summer")}
-                            className="rounded-none text-xs font-medium"
+                            className="text-xs"
                           >
                             Summer
                           </Button>
@@ -1091,7 +1060,7 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveSeason("Fall")}
-                            className="rounded-none text-xs font-medium"
+                            className="text-xs"
                           >
                             Fall
                           </Button>
@@ -1101,7 +1070,7 @@ const WardrobeBuilder = () => {
                             }
                             size="sm"
                             onClick={() => setActiveSeason("Winter")}
-                            className="rounded-none text-xs font-medium"
+                            className="text-xs"
                           >
                             Winter
                           </Button>
@@ -1110,7 +1079,6 @@ const WardrobeBuilder = () => {
                     </div>
                   </div>
 
-                  {/* Add item button */}
                   <div className="mb-8 flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-gray-800">
                       {view} Items
@@ -1118,13 +1086,11 @@ const WardrobeBuilder = () => {
                     <Button
                       onClick={() => setShowAddItemForm(!showAddItemForm)}
                       size="sm"
-                      className="rounded-none uppercase tracking-wide"
                     >
                       {showAddItemForm ? "Cancel" : "Add New Item"}
                     </Button>
                   </div>
 
-                  {/* Add item form */}
                   {showAddItemForm && (
                     <Card className="mb-8 border-2 border-dashed border-primary/50 rounded-none">
                       <CardHeader className="border-b">
@@ -1134,16 +1100,39 @@ const WardrobeBuilder = () => {
                       </CardHeader>
                       <CardContent className="p-6">
                         <form onSubmit={addNewItem} className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="mb-6">
+                            <Label>Item Image</Label>
+                            <div className="mt-2 min-h-[200px] border-2 border-dashed border-gray-200 rounded-none flex items-center justify-center">
+                              {newItemImageUrl ? (
+                                <div className="relative w-full h-full min-h-[200px] flex items-center justify-center">
+                                  <img
+                                    src={newItemImageUrl}
+                                    alt="Item preview"
+                                    className="max-h-[200px] object-contain"
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="absolute top-2 right-2"
+                                    onClick={() => setNewItemImageUrl("")}
+                                  >
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <ImageUpload onUploadComplete={handleImageUploaded} />
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label htmlFor="itemName">Item Name</Label>
+                              <Label htmlFor="name">Name</Label>
                               <Input
-                                id="itemName"
+                                id="name"
                                 value={newItemName}
                                 onChange={(e) => setNewItemName(e.target.value)}
-                                placeholder="Item name"
                                 required
-                                className="rounded-none"
                               />
                             </div>
                             <div className="space-y-2">
@@ -1211,7 +1200,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="rounded-none text-xs"
+                                  className="text-xs"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Spring")) {
                                       setNewItemSeasons(
@@ -1237,7 +1226,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="rounded-none text-xs"
+                                  className="text-xs"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Summer")) {
                                       setNewItemSeasons(
@@ -1263,7 +1252,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="rounded-none text-xs"
+                                  className="text-xs"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Fall")) {
                                       setNewItemSeasons(
@@ -1289,7 +1278,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="rounded-none text-xs"
+                                  className="text-xs"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Winter")) {
                                       setNewItemSeasons(
@@ -1311,7 +1300,7 @@ const WardrobeBuilder = () => {
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="rounded-none text-xs"
+                                  className="text-xs"
                                   onClick={() => {
                                     if (newItemSeasons.length === 4) {
                                       setNewItemSeasons([]);
@@ -1344,20 +1333,13 @@ const WardrobeBuilder = () => {
                               </Label>
                             </div>
                           </div>
-                          <Button
-                            type="submit"
-                            className="rounded-none uppercase tracking-wide"
-                          >
-                            Add Item
-                          </Button>
+                          <Button type="submit">Add Item</Button>
                         </form>
                       </CardContent>
                     </Card>
                   )}
 
-                  {/* Wardrobe display */}
                   <div className="space-y-8">
-                    {/* Owned items */}
                     <div className="mb-8 w-full">
                       <h2 className="text-xl font-semibold text-gray-800 mb-4">
                         Owned Items
@@ -1393,7 +1375,10 @@ const WardrobeBuilder = () => {
                                     {item.size && (
                                       <Badge
                                         variant="outline"
-                                        className="rounded-none bg-white backdrop-blur-sm text-xs"
+                                        className={cn(
+                                          "rounded-none",
+                                          "bg-white backdrop-blur-sm text-xs"
+                                        )}
                                       >
                                         {item.size}
                                         {item.tailored && (
@@ -1407,7 +1392,10 @@ const WardrobeBuilder = () => {
                                       item.seasons.length > 0 && (
                                         <Badge
                                           variant="secondary"
-                                          className="text-xs bg-white backdrop-blur-sm rounded-none"
+                                          className={cn(
+                                            "text-xs",
+                                            "bg-white backdrop-blur-sm rounded-none"
+                                          )}
                                         >
                                           {item.seasons.length === 4
                                             ? "All Seasons"
@@ -1428,7 +1416,9 @@ const WardrobeBuilder = () => {
                                         <Button
                                           variant="outline"
                                           size="sm"
-                                          className="bg-white backdrop-blur-sm rounded-none"
+                                          className={cn(
+                                            "bg-white backdrop-blur-sm rounded-none"
+                                          )}
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1473,7 +1463,7 @@ const WardrobeBuilder = () => {
                                         variant={getPriorityColor(
                                           item.priority
                                         )}
-                                        className="rounded-none"
+                                        className={cn("rounded-none")}
                                       >
                                         {item.priority}
                                       </Badge>
@@ -1498,16 +1488,16 @@ const WardrobeBuilder = () => {
                             {getOwnedAndWishlistItems().owned.map((item, i) => (
                               <Card
                                 key={`owned-list-${item.category}-${item.index}-${i}`}
-                                className={`w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none ${
+                                className={cn(
+                                  "w-full overflow-hidden border border-gray-200 group relative bg-white",
                                   stylingMode &&
-                                  selectedItems.some(
-                                    (i) =>
-                                      i.index === item.index &&
-                                      i.category === item.category
-                                  )
-                                    ? "bg-gray-50"
-                                    : ""
-                                }`}
+                                    selectedItems.some(
+                                      (i) =>
+                                        i.index === item.index &&
+                                        i.category === item.category
+                                    ) &&
+                                    "bg-gray-50"
+                                )}
                               >
                                 {stylingMode && (
                                   <div
@@ -1527,11 +1517,19 @@ const WardrobeBuilder = () => {
                                     )}
                                   </div>
 
-                                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <div
+                                    className={cn(
+                                      "flex items-center gap-2",
+                                      "opacity-0 group-hover:opacity-100 transition-opacity"
+                                    )}
+                                  >
                                     {item.size && (
                                       <Badge
                                         variant="outline"
-                                        className="text-xs rounded-none"
+                                        className={cn(
+                                          "text-xs",
+                                          "bg-white backdrop-blur-sm"
+                                        )}
                                       >
                                         {item.size}
                                         {item.tailored && (
@@ -1545,7 +1543,10 @@ const WardrobeBuilder = () => {
                                       item.seasons.length > 0 && (
                                         <Badge
                                           variant="secondary"
-                                          className="text-xs rounded-none"
+                                          className={cn(
+                                            "text-xs",
+                                            "bg-white backdrop-blur-sm rounded-none"
+                                          )}
                                         >
                                           {item.seasons.length === 4
                                             ? "All Seasons"
@@ -1557,7 +1558,7 @@ const WardrobeBuilder = () => {
                                         variant={getPriorityColor(
                                           item.priority
                                         )}
-                                        className="rounded-none"
+                                        className={cn("rounded-none")}
                                       >
                                         {item.priority}
                                       </Badge>
@@ -1615,7 +1616,6 @@ const WardrobeBuilder = () => {
 
                     <Separator className="my-8" />
 
-                    {/* Wishlist items */}
                     <div className="mb-8 w-full">
                       <h2 className="text-xl font-semibold text-gray-800 mb-4">
                         Wishlist Items
@@ -1654,7 +1654,9 @@ const WardrobeBuilder = () => {
                                       {item.size && (
                                         <Badge
                                           variant="outline"
-                                          className="rounded-none bg-white backdrop-blur-sm text-xs"
+                                          className={cn(
+                                            "rounded-none bg-white backdrop-blur-sm text-xs"
+                                          )}
                                         >
                                           {item.size}
                                           {item.tailored && (
@@ -1668,7 +1670,10 @@ const WardrobeBuilder = () => {
                                         item.seasons.length > 0 && (
                                           <Badge
                                             variant="secondary"
-                                            className="text-xs bg-white backdrop-blur-sm rounded-none"
+                                            className={cn(
+                                              "text-xs",
+                                              "bg-white backdrop-blur-sm rounded-none"
+                                            )}
                                           >
                                             {item.seasons.length === 4
                                               ? "All Seasons"
@@ -1687,7 +1692,9 @@ const WardrobeBuilder = () => {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="bg-white backdrop-blur-sm rounded-none"
+                                        className={cn(
+                                          "bg-white backdrop-blur-sm rounded-none"
+                                        )}
                                         onClick={() =>
                                           moveToOwned(
                                             view,
@@ -1706,7 +1713,7 @@ const WardrobeBuilder = () => {
                                           variant={getPriorityColor(
                                             item.priority
                                           )}
-                                          className="rounded-none"
+                                          className={cn("rounded-none")}
                                         >
                                           {item.priority}
                                         </Badge>
@@ -1733,16 +1740,16 @@ const WardrobeBuilder = () => {
                               (item, i) => (
                                 <Card
                                   key={`wishlist-list-${item.category}-${item.index}-${i}`}
-                                  className={`w-full overflow-hidden border border-gray-200 group relative bg-white rounded-none ${
+                                  className={cn(
+                                    "w-full overflow-hidden border border-gray-200 group relative bg-white",
                                     stylingMode &&
-                                    selectedItems.some(
-                                      (i) =>
-                                        i.index === item.index &&
-                                        i.category === item.category
-                                    )
-                                      ? "bg-gray-50"
-                                      : ""
-                                  }`}
+                                      selectedItems.some(
+                                        (i) =>
+                                          i.index === item.index &&
+                                          i.category === item.category
+                                      ) &&
+                                      "bg-gray-50"
+                                  )}
                                 >
                                   {stylingMode && (
                                     <div
@@ -1762,11 +1769,19 @@ const WardrobeBuilder = () => {
                                       )}
                                     </div>
 
-                                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div
+                                      className={cn(
+                                        "flex items-center gap-2",
+                                        "opacity-0 group-hover:opacity-100 transition-opacity"
+                                      )}
+                                    >
                                       {item.size && (
                                         <Badge
                                           variant="outline"
-                                          className="text-xs rounded-none"
+                                          className={cn(
+                                            "text-xs",
+                                            "bg-white backdrop-blur-sm"
+                                          )}
                                         >
                                           {item.size}
                                           {item.tailored && (
@@ -1780,7 +1795,10 @@ const WardrobeBuilder = () => {
                                         item.seasons.length > 0 && (
                                           <Badge
                                             variant="secondary"
-                                            className="text-xs rounded-none"
+                                            className={cn(
+                                              "text-xs",
+                                              "bg-white backdrop-blur-sm rounded-none"
+                                            )}
                                           >
                                             {item.seasons.length === 4
                                               ? "All Seasons"
@@ -1792,7 +1810,7 @@ const WardrobeBuilder = () => {
                                           variant={getPriorityColor(
                                             item.priority
                                           )}
-                                          className="rounded-none"
+                                          className={cn("rounded-none")}
                                         >
                                           {item.priority}
                                         </Badge>
@@ -1800,7 +1818,9 @@ const WardrobeBuilder = () => {
                                       <Button
                                         variant="outline"
                                         size="sm"
-                                        className="bg-white backdrop-blur-sm rounded-none"
+                                        className={cn(
+                                          "bg-white backdrop-blur-sm rounded-none"
+                                        )}
                                         onClick={() =>
                                           moveToOwned(
                                             view,
@@ -1831,7 +1851,6 @@ const WardrobeBuilder = () => {
           ))}
         </Tabs>
 
-        {/* Styling panel below wardrobe tabs if in styling mode */}
         {stylingMode && (
           <div className="mb-8 bg-white border rounded-none p-4">
             <div className="flex justify-between items-center mb-4">
@@ -1843,7 +1862,7 @@ const WardrobeBuilder = () => {
                   variant="outline"
                   size="sm"
                   onClick={clearSelection}
-                  className="rounded-none text-xs"
+                  className="text-xs"
                 >
                   Clear All
                 </Button>
@@ -1851,7 +1870,7 @@ const WardrobeBuilder = () => {
                   variant="outline"
                   size="sm"
                   onClick={suggestCompleteOutfit}
-                  className="rounded-none text-xs flex items-center gap-1"
+                  className="text-xs flex items-center gap-1"
                 >
                   <RefreshCw className="h-3 w-3" /> Suggest
                 </Button>
