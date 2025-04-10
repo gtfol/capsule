@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageUpload } from "@/components/ImageUpload";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface WardrobeItem {
   name: string;
@@ -57,7 +60,7 @@ const categoryIcons: Record<string, string> = {
   Accessories: "🕶",
 };
 
-const WardrobeBuilder = () => {
+export default function Home() {
   const categories = [
     "Tops",
     "Bottoms",
@@ -430,7 +433,6 @@ const WardrobeBuilder = () => {
   const [showAddItemForm, setShowAddItemForm] = useState(false);
   const [newItemName, setNewItemName] = useState("");
   const [newItemCategory, setNewItemCategory] = useState("Tops");
-  const [newItemPriority, setNewItemPriority] = useState("Medium");
   const [newItemColor, setNewItemColor] = useState("");
   const [newItemBrand, setNewItemBrand] = useState("");
   const [newItemSeasons, setNewItemSeasons] = useState<string[]>([]);
@@ -441,6 +443,18 @@ const WardrobeBuilder = () => {
   const [selectedItems, setSelectedItems] = useState<FilteredItem[]>([]);
   const [newItemImageUrl, setNewItemImageUrl] = useState("");
 
+  const handleCloseAddItemForm = () => {
+    setNewItemName("");
+    setNewItemColor("");
+    setNewItemBrand("");
+    setNewItemSize("");
+    setNewItemSeasons([]);
+    setNewItemIsTailored(false);
+    setNewItemImageUrl("");
+    setNewItemCategory("Tops");
+    setShowAddItemForm(false);
+  };
+
   const moveToOwned = (location: string, category: string, index: number) => {
     const updatedWardrobe = { ...wardrobe };
     if (
@@ -450,12 +464,41 @@ const WardrobeBuilder = () => {
     ) {
       updatedWardrobe[location][category][index].owned = true;
       setWardrobe(updatedWardrobe);
+      handleCloseAddItemForm();
     }
   };
 
   const addNewItem = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemName.trim() || !newItemColor.trim()) return;
+
+    // Validate required fields
+    if (!newItemName.trim()) {
+      toast.error("Name is required", {
+        description: "Please enter a name for the item",
+      });
+      return;
+    }
+
+    if (!newItemColor.trim()) {
+      toast.error("Color is required", {
+        description: "Please specify the color of the item",
+      });
+      return;
+    }
+
+    if (!newItemCategory) {
+      toast.error("Category is required", {
+        description: "Please select a category for the item",
+      });
+      return;
+    }
+
+    if (newItemSeasons.length === 0) {
+      toast.error("Seasons are required", {
+        description: "Please select at least one season for the item",
+      });
+      return;
+    }
 
     const updatedWardrobe = { ...wardrobe };
     if (!updatedWardrobe[activeView][newItemCategory]) {
@@ -466,22 +509,19 @@ const WardrobeBuilder = () => {
       name: newItemName,
       owned: activeView === "My Wardrobe",
       color: newItemColor,
-      priority: newItemPriority,
       brand: newItemBrand || undefined,
-      seasons: newItemSeasons.length > 0 ? newItemSeasons : [],
+      seasons: newItemSeasons,
       size: newItemSize || undefined,
       tailored: newItemIsTailored,
-      imageUrl: newItemImageUrl,
+      imageUrl: newItemImageUrl || undefined,
     });
 
     setWardrobe(updatedWardrobe);
-    setNewItemName("");
-    setNewItemColor("");
-    setNewItemBrand("");
-    setNewItemSize("");
-    setNewItemSeasons([]);
-    setShowAddItemForm(false);
-    setNewItemImageUrl("");
+    handleCloseAddItemForm();
+
+    toast.success("Item added successfully", {
+      description: `${newItemName} has been added to your ${activeView}`,
+    });
   };
 
   const removeItem = (location: string, category: string, index: number) => {
@@ -571,14 +611,19 @@ const WardrobeBuilder = () => {
   };
 
   const renderSizeInput = () => {
+    if (!newItemCategory) return null;
+
     switch (newItemCategory) {
       case "Tops":
       case "Outerwear":
         return (
-          <div className="space-y-2">
-            <Label htmlFor="size">Size</Label>
+          <div>
+            <div className="flex items-center h-[14px] gap-2 mb-2">
+              <Label htmlFor="size">Size</Label>
+              <span className="text-xs text-gray-500">Optional</span>
+            </div>
             <Select value={newItemSize} onValueChange={setNewItemSize}>
-              <SelectTrigger>
+              <SelectTrigger id="size">
                 <SelectValue placeholder="Select size" />
               </SelectTrigger>
               <SelectContent>
@@ -594,21 +639,26 @@ const WardrobeBuilder = () => {
         );
       case "Bottoms":
         return (
-          <div className="space-y-2">
-            <Label htmlFor="size">Size (Waist x Inseam)</Label>
+          <div>
+            <div className="flex items-center h-[14px] gap-2 mb-2">
+              <Label htmlFor="size">Size (Waist x Inseam)</Label>
+              <span className="text-xs text-gray-500">Optional</span>
+            </div>
             <Input
               id="size"
               value={newItemSize}
               onChange={(e) => setNewItemSize(e.target.value)}
               placeholder="e.g. 30x32 or 32"
             />
-            <p className="text-xs text-gray-500">Inseam is optional</p>
           </div>
         );
       case "Footwear":
         return (
-          <div className="space-y-2">
-            <Label htmlFor="size">Shoe Size</Label>
+          <div>
+            <div className="flex items-center h-[14px] gap-2 mb-2">
+              <Label htmlFor="size">Shoe Size</Label>
+              <span className="text-xs text-gray-500">Optional</span>
+            </div>
             <Input
               id="size"
               value={newItemSize}
@@ -619,8 +669,11 @@ const WardrobeBuilder = () => {
         );
       default:
         return (
-          <div className="space-y-2">
-            <Label htmlFor="size">Size (Optional)</Label>
+          <div>
+            <div className="flex items-center h-[14px] gap-2 mb-2">
+              <Label htmlFor="size">Size</Label>
+              <span className="text-xs text-gray-500">Optional</span>
+            </div>
             <Input
               id="size"
               value={newItemSize}
@@ -1084,7 +1137,13 @@ const WardrobeBuilder = () => {
                       {view} Items
                     </h2>
                     <Button
-                      onClick={() => setShowAddItemForm(!showAddItemForm)}
+                      onClick={() => {
+                        if (showAddItemForm) {
+                          handleCloseAddItemForm();
+                        } else {
+                          setShowAddItemForm(true);
+                        }
+                      }}
                       size="sm"
                     >
                       {showAddItemForm ? "Cancel" : "Add New Item"}
@@ -1092,23 +1151,23 @@ const WardrobeBuilder = () => {
                   </div>
 
                   {showAddItemForm && (
-                    <Card className="mb-8 border-2 border-dashed border-primary/50 rounded-none">
+                    <Card className="mb-8 border-2 border-dashed border-primary/50 rounded-none py-8">
                       <CardHeader className="border-b">
                         <CardTitle className="uppercase tracking-tight">
                           Add New Item
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="p-6">
+                      <CardContent className="p-6 py-0">
                         <form onSubmit={addNewItem} className="space-y-4">
                           <div className="mb-6">
                             <Label>Item Image</Label>
-                            <div className="mt-2 min-h-[200px] border-2 border-dashed border-gray-200 rounded-none flex items-center justify-center">
+                            <div className="mt-2 w-64 h-64 border-2 border-dashed border-gray-200 rounded-none">
                               {newItemImageUrl ? (
-                                <div className="relative w-full h-full min-h-[200px] flex items-center justify-center">
+                                <div className="relative w-full h-full flex items-center justify-center">
                                   <img
                                     src={newItemImageUrl}
                                     alt="Item preview"
-                                    className="max-h-[200px] object-contain"
+                                    className="w-full h-full object-cover"
                                   />
                                   <Button
                                     type="button"
@@ -1121,7 +1180,11 @@ const WardrobeBuilder = () => {
                                   </Button>
                                 </div>
                               ) : (
-                                <ImageUpload onUploadComplete={handleImageUploaded} />
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageUpload
+                                    onUploadComplete={handleImageUploaded}
+                                  />
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1132,7 +1195,6 @@ const WardrobeBuilder = () => {
                                 id="name"
                                 value={newItemName}
                                 onChange={(e) => setNewItemName(e.target.value)}
-                                required
                               />
                             </div>
                             <div className="space-y-2">
@@ -1170,22 +1232,16 @@ const WardrobeBuilder = () => {
                                 placeholder="Brand name"
                               />
                             </div>
-                            {renderSizeInput()}
                             <div className="space-y-2">
-                              <Label htmlFor="priority">Priority</Label>
-                              <Select
-                                value={newItemPriority}
-                                onValueChange={setNewItemPriority}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select priority" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="High">High</SelectItem>
-                                  <SelectItem value="Medium">Medium</SelectItem>
-                                  <SelectItem value="Low">Low</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <Label htmlFor="color">Color</Label>
+                              <Input
+                                id="color"
+                                value={newItemColor}
+                                onChange={(e) =>
+                                  setNewItemColor(e.target.value)
+                                }
+                                placeholder="e.g. Black, Navy, Washed Blue"
+                              />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="seasons">
@@ -1200,7 +1256,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="text-xs"
+                                  className="text-xs min-w-[70px] border"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Spring")) {
                                       setNewItemSeasons(
@@ -1226,7 +1282,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="text-xs"
+                                  className="text-xs min-w-[70px] border"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Summer")) {
                                       setNewItemSeasons(
@@ -1252,7 +1308,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="text-xs"
+                                  className="text-xs min-w-[70px] border"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Fall")) {
                                       setNewItemSeasons(
@@ -1278,7 +1334,7 @@ const WardrobeBuilder = () => {
                                       ? "default"
                                       : "outline"
                                   }
-                                  className="text-xs"
+                                  className="text-xs min-w-[70px] border"
                                   onClick={() => {
                                     if (newItemSeasons.includes("Winter")) {
                                       setNewItemSeasons(
@@ -1300,7 +1356,7 @@ const WardrobeBuilder = () => {
                                   type="button"
                                   size="sm"
                                   variant="outline"
-                                  className="text-xs"
+                                  className="text-xs min-w-[70px] border"
                                   onClick={() => {
                                     if (newItemSeasons.length === 4) {
                                       setNewItemSeasons([]);
@@ -1320,7 +1376,8 @@ const WardrobeBuilder = () => {
                                 </Button>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 mt-2">
+                            {renderSizeInput()}
+                            <div className="flex items-center space-x-2">
                               <Checkbox
                                 id="tailored"
                                 checked={newItemIsTailored}
@@ -1333,7 +1390,9 @@ const WardrobeBuilder = () => {
                               </Label>
                             </div>
                           </div>
-                          <Button type="submit">Add Item</Button>
+                          <Button type="submit" className="mt-4">
+                            Add Item
+                          </Button>
                         </form>
                       </CardContent>
                     </Card>
@@ -1957,6 +2016,4 @@ const WardrobeBuilder = () => {
       </div>
     </div>
   );
-};
-
-export default WardrobeBuilder;
+}

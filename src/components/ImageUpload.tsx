@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { uploadImageFromUrl } from "@/lib/upload";
-import { Loader2 } from "lucide-react";
+import { Loader2, ImageIcon } from "lucide-react";
+import Image from "next/image";
 
 interface ImageUploadProps {
   onUploadComplete?: (url: string) => void;
@@ -20,14 +20,16 @@ const VALID_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
 
 export function ImageUpload({ onUploadComplete }: ImageUploadProps) {
   const [imageUrl, setImageUrl] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const validateUrl = (url: string): boolean => {
     try {
-      new URL(url);
-      const extension = url.toLowerCase().split(".").pop();
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const extension = pathname.toLowerCase().split(".").pop();
       return extension
         ? VALID_IMAGE_EXTENSIONS.some((ext) => ext.includes(extension))
         : false;
@@ -42,23 +44,30 @@ export function ImageUpload({ onUploadComplete }: ImageUploadProps) {
 
     if (!validateUrl(imageUrl)) {
       setError(
-        "Please enter a valid image URL ending in .jpg, .jpeg, .png, .webp, or .gif"
+        "Invalid image URL. Please use a direct link to a JPG, JPEG, PNG, WEBP, or GIF file"
       );
       return;
     }
 
     try {
-      setError(null);
       setIsLoading(true);
-      const blobUrl = await uploadImageFromUrl(imageUrl);
-      onUploadComplete?.(blobUrl);
-      handleClose();
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Failed to upload image. Please check the URL and try again.");
+      const formData = new FormData();
+      formData.append("imageUrl", imageUrl);
+
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to upload image");
       }
+
+      onUploadComplete?.(data.url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload image");
     } finally {
       setIsLoading(false);
     }
@@ -82,9 +91,20 @@ export function ImageUpload({ onUploadComplete }: ImageUploadProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" className="cursor-pointer">
-          Add Image URL
-        </Button>
+        <div className="w-64 h-64 border-2 border-none rounded-none cursor-pointer hover:bg-gray-50/50 transition-colors">
+          <div className="relative w-full h-full flex items-center justify-center">
+            {previewUrl ? (
+              <Image
+                src={previewUrl}
+                alt="Preview"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <ImageIcon className="h-8 w-8 text-muted-foreground" />
+            )}
+          </div>
+        </div>
       </DialogTrigger>
       <DialogContent className="rounded-none">
         <DialogHeader>
