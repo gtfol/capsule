@@ -199,7 +199,7 @@ function ShareSession({ space, targetKey, target, appearance }: { space: string;
     </>}
     {error && <div className="mt-4"><p role="alert" className="text-[12px] leading-relaxed">{error}</p>{!enabled && !loading && <button type="button" className="mt-3 text-[12px] underline underline-offset-4" onClick={() => { setLoading(true); setError(""); setReload((value) => value + 1); }}>Try again</button>}</div>}
     {status && <p role="status" className={completed || copied ? "sr-only" : "mt-4 text-[11px] leading-relaxed text-muted-foreground"}>{status}</p>}
-    {((!loading && enabled && record) || target.kind === "wardrobe" || target.kind === "wishlist") && <div role="group" aria-label="Share link actions" className="mt-8 flex items-center justify-end gap-2">
+    {((!loading && enabled && record) || target.kind === "wardrobe" || target.kind === "wishlist") && <div role="group" aria-label="Share link actions" className="mt-2 flex items-center justify-end gap-2">
       {!loading && enabled && <>
         {confirmed && <IconAction label={completed === "update" ? "Link updated" : changed ? "Update link with saved changes" : "Update link"} icon={RefreshCw} loading={busy === "update"} complete={completed === "update"} disabled={!!busy || !canPublish} onClick={() => void mutate("update")} />}
         {confirmed && expiry !== confirmed.expiry && <IconAction label="Save expiry" icon={Save} loading={busy === "expiry"} disabled={!!busy} onClick={() => void mutate("expiry")} />}
