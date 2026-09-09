@@ -1,0 +1,36 @@
+src/components/item-detail.tsx
+  h_606d960bac5d85 65
+src/components/model-photo-picker.tsx
+  h_606d960bac5d85 143
+src/components/piece-photos.tsx
+  h_606d960bac5d85 159-161
+src/components/share-popover.tsx
+  h_606d960bac5d85 185-195
+src/components/sync-popover.tsx
+  h_606d960bac5d85 21
+src/components/theme-control.tsx
+  h_606d960bac5d85 11
+src/components/ui/icon-action.tsx
+  h_606d960bac5d85 13
+src/components/ui/info-tooltip.tsx
+  h_606d960bac5d85 31
+src/components/ui/sheet.tsx
+  h_606d960bac5d85 9
+src/components/unsaved-changes-dialog.tsx
+  h_606d960bac5d85 20
+src/components/wishlist-detail.tsx
+  h_606d960bac5d85 146
+src/components/wishlist.tsx
+  h_606d960bac5d85 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b685258edb8cdd62080197793158fcd1d8da483f",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
