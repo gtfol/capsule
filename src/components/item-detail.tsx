@@ -11,7 +11,7 @@ import { assignPhotoSlot, type PhotoSide, type PhotoSlots } from "@/lib/photo-sl
 import type { Category, Item } from "@/lib/types";
 export const CATEGORIES: { value: Category; label: string }[] = [{ value: "tops", label: "Tops" }, { value: "jackets", label: "Jackets" }, { value: "bottoms", label: "Bottoms" }, { value: "accessories", label: "Accessories" }, { value: "shoes", label: "Shoes" }];
 export type ItemDraft = Omit<Item, "id" | "createdAt" | "updatedAt">;
-type Props = { item: ItemDraft | Item; images?: string[]; uploadedImages?: string[]; isNew?: boolean; onClose: () => void; onSave: (item: Item) => Promise<void>; onDelete?: (item: Item) => Promise<void> };
+type Props = { item: ItemDraft | Item; images?: string[]; uploadedImages?: string[]; isNew?: boolean; active?: boolean; onClose: () => void; onSave: (item: Item) => Promise<void>; onDelete?: (item: Item) => Promise<void> };
 type PhotoChoice = { id: string; imageUrl: string; imageData?: string; cutout?: string; useCutout?: boolean };
 type PhotoState = PhotoSlots & { choices: PhotoChoice[] };
 type BackgroundProgress = { stage: "download" | "processing"; progress?: number };
@@ -35,7 +35,7 @@ function initialPhotos(item: ItemDraft | Item, images: string[], uploadedImages:
 }
 const chosenImage = (choice: PhotoChoice) => ({ imageUrl: choice.imageUrl, imageData: choice.useCutout ? choice.cutout : choice.imageData });
 
-export function ItemDetail({ item, images = [], uploadedImages = [], isNew = false, onClose, onSave, onDelete }: Props) {
+export function ItemDetail({ item, images = [], uploadedImages = [], isNew = false, active = true, onClose, onSave, onDelete }: Props) {
   const [initialState] = useState(() => ({ form: item, photos: initialPhotos(item, images, uploadedImages) }));
   const [form, setForm] = useState<ItemDraft | Item>(initialState.form);
   const [saving, setSaving] = useState(false);
@@ -172,7 +172,7 @@ export function ItemDetail({ item, images = [], uploadedImages = [], isNew = fal
     } catch (cause) { setError(cause instanceof Error ? cause.message : "This piece could not be saved. Try again."); }
     finally { setSaving(false); }
   }
-  return <><Sheet open onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }}>
+  return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }}>
     <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>
     <SheetDescription className="sr-only">Review the product image and edit this piece’s details.</SheetDescription>
     {photos.choices.length > 1 && <div className="mt-7 flex items-center justify-between gap-4">
@@ -222,5 +222,5 @@ export function ItemDetail({ item, images = [], uploadedImages = [], isNew = fal
       {error && <p role="alert" className="text-[12px] leading-relaxed">{error}</p>}
       <div className="flex items-center justify-between gap-5 pt-2"><Button type="submit" disabled={busy || !!review} className="min-w-40">{saving ? <><Loader2 size={14} className="animate-spin" />Saving</> : isNew ? "Save piece" : "Save changes"}</Button>{!isNew && onDelete && "id" in item && <Button type="button" variant="ghost" className="text-[12px] text-muted-foreground" disabled={busy || !!review} onClick={async () => { setSaving(true); try { await onDelete(item as Item); onClose(); } catch { setError("This piece could not be removed. Try again."); setSaving(false); } }}>Remove piece</Button>}</div>
     </fieldset></form>
-  </SheetContent></Sheet><UnsavedChangesDialog open={confirmClose} onOpenChange={setConfirmClose} onDiscard={discard} onSave={() => { setConfirmClose(false); void save(); }} canSave={!busy && !review} isNew={isNew} /></>;
+  </SheetContent></Sheet><UnsavedChangesDialog open={active && confirmClose} onOpenChange={setConfirmClose} onDiscard={discard} onSave={() => { setConfirmClose(false); void save(); }} canSave={!busy && !review} isNew={isNew} /></>;
 }

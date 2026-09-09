@@ -1,6 +1,8 @@
 # capsule
 
-A personal wardrobe and wishlist. Add clothes from product links or your own photos, keep a visual inventory, and render owned pieces on your reference photo. No advice or recommendations. Wishlist ratings are set only by you.
+A personal wardrobe and wishlist. Add clothes from product links or your own photos, keep a visual inventory, and render owned pieces on your saved model photo. No advice or recommendations. Wishlist ratings are set only by you.
+
+Navigation uses nuqs: Wardrobe is `/`, and Wishlist, Add, and Outfits use `?view=wishlist`, `?view=add`, and `?view=outfits`. Add's wishlist destination is kept in `to=wishlist`. Refresh and browser Back/Forward restore the view; navigating between views keeps open editor drafts until the account changes or the page reloads.
 
 ## Run
 
@@ -69,7 +71,7 @@ Sync authenticates via Better Auth at `/api/auth/[...all]`. The browser queues d
 
 ## Outfit rendering
 
-In Outfits, select 1–6 owned pieces and choose a reference photo. Enter your OpenAI API key for the current page session and select Render outfit. The key is held only in memory and sent over HTTPS to the server, which forwards it only to OpenAI's fixed Images edit endpoint. The server does not use a deployment API key, store keys, or log images. This keeps an account-free public deployment from spending a shared key. Rendering charges apply to the user's OpenAI account.
+In Outfits, add a full-body, front-facing model photo using the camera, photo library, or file picker. The photo is saved in IndexedDB for the current browser and guest/account space and reused for future outfits; it is not synced to other devices. The model-photo panel remains available in the outfit gallery as well as the builder. Select 1–6 owned pieces, enter your OpenAI API key for the current page session, and select Render outfit. The key is held only in memory and sent over HTTPS to the server, which forwards it only to OpenAI's fixed Images edit endpoint. The server does not use a deployment API key, store keys, or log images. This keeps an account-free public deployment from spending a shared key. Rendering charges apply to the user's OpenAI account.
 
 The reference photo and selected garment images are sent only for an explicit render. The resulting image is saved in IndexedDB and can be downloaded. No text advice is requested or displayed. `OPENAI_IMAGE_MODEL` defaults to `gpt-image-2`; `OUTFIT_RENDERING_ENABLED=false` disables new rendering. A live paid render is not part of automated tests.
 
