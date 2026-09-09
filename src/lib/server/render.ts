@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 export const MAX_RENDER_BODY_BYTES = 4_000_000;
 export const MAX_RENDER_IMAGE_BYTES = 1_500_000;
 const MAX_RESULT_BYTES = 3_000_000;
+const MAX_PROVIDER_ERROR_BYTES = 16_000;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 export class RenderError extends Error {
@@ -57,8 +58,8 @@ export function parseRenderInput(value: unknown): RenderInput {
     throw new RenderError("The render request is invalid.");
   }
   const body = value as Record<string, unknown>;
-  // A caller-supplied key is required even when the deployment has an OpenAI key.
-  // Never turn this public, account-free endpoint into a server-paid proxy.
+  // Require a user-owned key: supplied for a guest session, or resolved on the
+  // server for an authenticated account. Never use a deployment OpenAI key.
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
   if (!/^sk-[A-Za-z0-9_-]{16,500}$/.test(apiKey)) {
     throw new RenderError("Enter your OpenAI API key to render.", 401);
@@ -128,6 +129,39 @@ export function beginRender(apiKey: string): () => void {
   return () => { state.active = false; };
 }
 
+const providerLimits: Readonly<Record<string, string>> = {
+  credit_balance_exhausted: "Your OpenAI API credit balance is exhausted. Check your API billing to add credits.",
+  organization_spend_limit_exceeded: "Your OpenAI organization’s spending limit was reached. Check its API billing and spending limits.",
+  project_spend_limit_exceeded: "Your OpenAI project’s spending limit was reached. Check this project’s API spending limit.",
+  billing_hard_limit_reached: "Your OpenAI API spending limit was reached. Check your API billing and spending limits.",
+  organization_usage_limit_exceeded: "Your OpenAI organization’s approved usage limit was reached. Check its API usage limits.",
+  insufficient_quota: "Your OpenAI API quota was reached. Check your API credit balance and usage limits.",
+  slow_down: "OpenAI’s temporary request limit was reached. Wait a little, then try again.",
+  rate_limit_error: "OpenAI’s temporary request limit was reached. Wait a little, then try again.",
+  rate_limit_exceeded: "OpenAI’s temporary request limit was reached. Wait a little, then try again.",
+};
+
+async function providerLimitMessage(response: Response): Promise<string | undefined> {
+  try {
+    if (Number(response.headers.get("content-length")) > MAX_PROVIDER_ERROR_BYTES) {
+      await response.body?.cancel();
+      return undefined;
+    }
+    const data = await readLimitedJson(response.body, MAX_PROVIDER_ERROR_BYTES);
+    if (!data || typeof data !== "object" || Array.isArray(data) || !("error" in data)) return undefined;
+    const error = data.error;
+    if (!error || typeof error !== "object" || Array.isArray(error)) return undefined;
+    const fields = error as Record<string, unknown>;
+    // Specific codes distinguish exhausted credits from spend/usage ceilings.
+    // Provider prose may contain credentials or other caller data; ignore it.
+    for (const field of ["code", "type"] as const) {
+      const value = fields[field];
+      if (typeof value === "string" && Object.hasOwn(providerLimits, value)) return providerLimits[value];
+    }
+  } catch { /* A malformed or oversized error must not mask its HTTP status. */ }
+  return undefined;
+}
+
 export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = fetch) {
   const status = getRenderStatus();
   if (!status.enabled) throw new RenderError("Image rendering is currently unavailable.", 503);
@@ -166,11 +200,12 @@ export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = f
     throw new RenderError("The image service did not respond. Try again shortly.", 502);
   }
   if (!response.ok) {
-    await response.body?.cancel();
+    const limitMessage = await providerLimitMessage(response);
+    if (limitMessage) throw new RenderError(limitMessage, 429);
     if (response.status === 401 || response.status === 403) {
       throw new RenderError("Check your API key and image-model access.", 401);
     }
-    if (response.status === 429) throw new RenderError("Your image-service limit was reached. Check your usage or try later.", 429);
+    if (response.status === 429) throw new RenderError("OpenAI returned a limit error. Check your API usage and billing, or try again later.", 429);
     throw new RenderError("The image service could not complete this render.", 502);
   }
   try {

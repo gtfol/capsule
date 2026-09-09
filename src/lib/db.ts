@@ -80,6 +80,23 @@ async function metaValue<T>(key: string): Promise<T | undefined> {
   const value = await request(db.transaction("meta", "readonly").objectStore("meta").get(key)) as Meta | undefined;
   return value?.value as T | undefined;
 }
+// Remove keys saved by the unreleased browser-storage preview. Never read,
+// reuse, upload, or migrate these plaintext credentials into an account.
+export async function clearLegacyRenderKeys(): Promise<void> {
+  const db = await openDatabase();
+  const tx = db.transaction("meta", "readwrite");
+  const done = completed(tx);
+  const store = tx.objectStore("meta");
+  try {
+    const keys = await request(store.getAllKeys());
+    for (const key of keys) if (typeof key === "string" && key.endsWith("|render-api-key")) store.delete(key);
+    await done;
+  } catch (error) {
+    try { tx.abort(); } catch { /* The transaction may already be complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
 export async function currentSpace(): Promise<string> {
   return (await metaValue<string>("active-space")) ?? GUEST_SPACE;
 }

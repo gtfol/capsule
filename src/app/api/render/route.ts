@@ -1,4 +1,6 @@
 import { beginRender, getRenderStatus, MAX_RENDER_BODY_BYTES, parseRenderInput, readLimitedJson, RenderError, renderOutfit } from "@/lib/server/render";
+import { resolveRenderCredential } from "@/lib/server/render-key-api";
+import { RenderKeyError } from "@/lib/server/render-key-storage";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -15,11 +17,11 @@ export async function POST(request: Request) {
     if (!request.headers.get("content-type")?.includes("application/json")) throw new RenderError("Send a JSON render request.", 415);
     const contentLength = Number(request.headers.get("content-length") || 0);
     if (contentLength > MAX_RENDER_BODY_BYTES) throw new RenderError("Use smaller photos to render this outfit.", 413);
-    const input = parseRenderInput(await readLimitedJson(request.body, MAX_RENDER_BODY_BYTES));
+    const input = parseRenderInput(await resolveRenderCredential(await readLimitedJson(request.body, MAX_RENDER_BODY_BYTES), request));
     finish = beginRender(input.apiKey);
     return Response.json(await renderOutfit(input), { headers });
   } catch (error) {
-    const expected = error instanceof RenderError;
+    const expected = error instanceof RenderError || error instanceof RenderKeyError;
     return Response.json({ error: expected ? error.message : "This outfit could not be rendered." }, {
       status: expected ? error.status : 500,
       headers,
