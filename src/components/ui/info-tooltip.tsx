@@ -28,7 +28,7 @@ function InfoTooltipContent({ label, children }: Omit<Props, "active">) {
         event.preventDefault();
         setOpen(event.detail === 0 ? !open : !openOnPress.current);
       }}
-    ><Info size={13} strokeWidth={1.4} aria-hidden="true" /></button></Tooltip.Trigger>
+    ><Info size={12} strokeWidth={1.4} aria-hidden="true" /></button></Tooltip.Trigger>
     <Tooltip.Portal><Tooltip.Content side="bottom" align="start" sideOffset={6} collisionPadding={16} className="z-[100] w-64 max-w-[calc(100vw-32px)] rounded-sm border border-border bg-popover px-3 py-2 text-[11px] leading-relaxed text-muted-foreground shadow-sm">{children}</Tooltip.Content></Tooltip.Portal>
   </Tooltip.Root></Tooltip.Provider>;
 }
