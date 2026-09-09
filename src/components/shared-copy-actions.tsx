@@ -122,7 +122,6 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
       <h2 className="text-[13px] font-normal">{preview.added ? `Add to my ${destination}` : `Already in your ${destination}`}</h2>
       {preview.added > 0 && <>
         <p className="text-xs leading-relaxed text-muted-foreground">{preview.added} shared {noun} will be saved to your {destination}.{snapshot.kind === "outfit" ? " The rendered outfit image stays in this shared view." : ""}</p>
-        <p className="text-[11px] leading-relaxed text-subtle">You’ll have your own copy. The original stays unchanged.{destination === "wishlist" ? " Ratings and price history start fresh." : ""}</p>
       </>}
       {preview.skipped > 0 && preview.added > 0 && <p className="text-xs leading-relaxed text-muted-foreground">{preview.skipped} already in your {destination}. {preview.skipped === 1 ? "It will be skipped." : "These will be skipped."}</p>}
       <p className="truncate text-[11px] text-subtle" title={sync.user.email}>Signed in as {sync.user.email}</p>
