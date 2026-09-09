@@ -31,7 +31,7 @@ export function ItemDetail({ item, images = [], isNew = false, onClose, onSave, 
     finally { setBusy(false); }
   }
   return <Sheet open onOpenChange={(open) => { if (!open && !busy) onClose(); }}><SheetContent onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }} onInteractOutside={(event) => { if (busy) event.preventDefault(); }}>
-    <SheetTitle className="text-[13px] font-semibold">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>
+    <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>
     <SheetDescription className="sr-only">Review the product image and edit this piece’s details.</SheetDescription>
     <div className="detail-image mt-8 flex aspect-[5/4] items-center justify-center bg-white">
       {/* Product images are stored in IndexedDB as data URLs for offline use. */}

@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Lato } from "next/font/google";
 import { OfflineSupport } from "@/components/offline";
 import "./globals.css";
+const lato = Lato({ variable: "--font-lato", weight: "400", subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = { title: "capsule", description: "Your personal wardrobe.", applicationName: "capsule", manifest: "/manifest.webmanifest", icons: { icon: "/icon.svg", apple: "/icon.svg" }, appleWebApp: { capable: true, title: "capsule", statusBarStyle: "default" } };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#ffffff" };
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}<OfflineSupport /></body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body className={`${lato.variable} font-sans antialiased`}>{children}<OfflineSupport /></body></html>; }
