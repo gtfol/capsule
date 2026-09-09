@@ -124,7 +124,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         if (refreshGeneration !== sessionGeneration) return;
         if (error) throw new Error(error.message || "Unable to check your sync session.");
         if (data?.user) {
-          const user = { id: data.user.id, email: data.user.email };
+          const user = { id: data.user.id, email: data.user.email, name: data.user.name ?? "" };
           if (get().user?.id !== user.id) sessionGeneration++;
           refreshGeneration = sessionGeneration;
           await importGuestOnce(user.id);

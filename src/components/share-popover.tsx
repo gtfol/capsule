@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { IconAction } from "@/components/ui/icon-action";
 import { ShareLinkManager } from "@/components/share-link-manager";
 import { useWardrobe } from "@/lib/store";
+import { useSyncStore } from "@/lib/sync";
 import { DEFAULT_SHARE_EXPIRY, type ShareExpiry } from "@/lib/share-types";
 import {
   changeShareExpiry,
   createShareLink,
+  currentShareOwnerName,
   readShareRecord,
   refreshShareRecord,
   removeShareLink,
@@ -49,6 +51,8 @@ export function SharePopover({ target, active = true, disabled = false, disabled
 }
 
 function ShareSession({ space, targetKey, target, appearance }: { space: string; targetKey: string; target: ShareTarget; appearance: "nav" | "icon" }) {
+  const user = useSyncStore((state) => state.user);
+  const ownerName = user ? currentShareOwnerName() : undefined;
   const titleId = useId();
   const descriptionId = useId();
   const expiryId = useId();
@@ -177,7 +181,7 @@ function ShareSession({ space, targetKey, target, appearance }: { space: string;
 
   return <PopoverContent align={appearance === "nav" ? "center" : "end"} side={appearance === "nav" ? "top" : "bottom"} sideOffset={8} className={panelClass} aria-labelledby={titleId} aria-describedby={descriptionId}>
     <h2 id={titleId} className="text-[13px] font-normal">Share {targetLabel(target)}</h2>
-    <p id={descriptionId} className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Anyone with the link can view it.</p>
+    <p id={descriptionId} className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Anyone with the link can view it.{ownerName ? ` Your name, ${ownerName}, appears on the shared page.` : ""}</p>
     <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{snapshotDescription(target)} Changes appear only when you update the link.</p>
     {loading ? <p role="status" className="mt-5 flex items-center gap-2 text-[12px] text-muted-foreground"><Loader2 size={13} className="animate-spin" aria-hidden="true" />Checking share link…</p> : <>
       {!enabled && !error && <p role="status" className="mt-5 text-[12px] text-muted-foreground">Sharing is not available right now.</p>}

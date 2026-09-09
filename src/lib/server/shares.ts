@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { z } from "zod";
 import { CATEGORIES } from "../types";
 import { SOURCE_KEY_PATTERN } from "../piece-identity";
+import { MAX_SHARE_OWNER_NAME } from "../share-owner";
 import { DEFAULT_SHARE_EXPIRY, MAX_SHARE_BODY_BYTES, MAX_SHARED_PIECES, SHARE_EXPIRIES, type ShareExpiry, type ShareMetadata, type SharePublicRecord, type ShareSnapshot } from "../share-types";
 import { dbConfigured, getPool } from "./db";
 
@@ -67,6 +68,7 @@ const pieceSchema = z.object({
 }).strict();
 const snapshotSchema = z.object({
   version: z.literal(1), kind: z.enum(["wardrobe", "wishlist", "piece", "outfit"]),
+  ownerName: z.string().trim().min(1).max(MAX_SHARE_OWNER_NAME).optional(),
   title: z.string().trim().min(1).max(500), pieces: z.array(pieceSchema).max(MAX_SHARED_PIECES),
   outfitImageData: rasterSchema.optional(),
 }).strict().superRefine((value, context) => {

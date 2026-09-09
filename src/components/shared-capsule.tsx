@@ -14,6 +14,7 @@ import type { Category } from "@/lib/types";
 import type { SharedPiece, ShareSnapshot } from "@/lib/share-types";
 import { readSharedCopyIntent } from "@/lib/shared-copy";
 import { useSyncStore } from "@/lib/sync";
+import { sharedHeading } from "@/lib/share-owner";
 
 function PieceDetails({ piece }: { piece: SharedPiece }) {
   const photos = [
@@ -50,6 +51,7 @@ export function SharedCapsule({ shareId, snapshot, updatedAt, expiresAt }: { sha
   useEffect(() => { void useSyncStore.getState().initialize(); return () => useSyncStore.getState().stop(); }, []);
   const wholeSelection = snapshot.kind === "piece" ? 0 : "all";
   const collection = snapshot.kind === "wardrobe" || snapshot.kind === "wishlist";
+  const heading = sharedHeading(snapshot);
   const pieces = snapshot.pieces.filter((piece) => category === "all" || piece.category === category);
   const date = (value: number) => new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(value);
   const note = <p className="mt-8 text-[11px] leading-relaxed text-subtle">Shared snapshot · Updated {date(updatedAt)}{expiresAt !== null ? ` · Available until ${date(expiresAt)}` : ""}</p>;
@@ -57,8 +59,9 @@ export function SharedCapsule({ shareId, snapshot, updatedAt, expiresAt }: { sha
     <a className="skip-link" href="#shared-main">Skip to shared pieces</a>
     <main id="shared-main" className={collection ? "catalog-layout" : "mx-auto max-w-5xl px-[30px] pb-28 pt-[30px] max-sm:px-5"}>
       {collection && <aside className="catalog-sidebar" aria-label="Shared collection filters"><p className="mb-6 text-[12px]">{snapshot.kind === "wishlist" ? "Wishlist" : "Wardrobe"}</p><div className="category-list" role="tablist" aria-label="Categories"><button role="tab" aria-selected={category === "all"} onClick={() => setCategory("all")} className={category === "all" ? "category active" : "category"}>ALL</button>{CATEGORIES.map((value) => <button key={value} role="tab" aria-selected={category === value} onClick={() => setCategory(value)} className={category === value ? "category active" : "category"}>{value.toUpperCase()}</button>)}</div></aside>}
-      <section className={collection ? "catalog-content" : ""} aria-label={snapshot.title}>
-        <div className="catalog-heading"><h1>{snapshot.title}</h1>{collection && <span className="text-[11px] text-subtle">{String(pieces.length).padStart(2, "0")}</span>}</div>
+      <section className={collection ? "catalog-content" : ""} aria-label={heading}>
+        <div className="catalog-heading"><h1 className="min-w-0 break-words">{heading}</h1>{collection && <span className="shrink-0 text-[11px] text-subtle">{String(pieces.length).padStart(2, "0")}</span>}</div>
+        {!collection && snapshot.ownerName && <p className="-mt-4 mb-6 text-[12px] text-muted-foreground">Shared by {snapshot.ownerName}</p>}
         <div className="mb-8"><SharedCopyActions shareId={shareId} snapshot={snapshot} selection={wholeSelection} initialDestination={intent?.selection === wholeSelection ? intent.destination : null} onIntentClosed={clearIntent} /></div>
         {snapshot.kind === "piece" ? <div className="mx-auto max-w-xl"><PieceDetails piece={snapshot.pieces[0]} /></div> : <>
           {snapshot.kind === "outfit" && <img src={snapshot.outfitImageData} alt={snapshot.title} className="mx-auto mb-10 max-h-[80vh] w-full object-contain" />}

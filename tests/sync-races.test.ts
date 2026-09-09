@@ -20,8 +20,8 @@ test("late session reads cannot undo sign-out and a new account syncs after an o
   globalThis.fetch = (input, init) => handleFetch(input, init);
   // Better Auth captures fetch when its client is created.
   const { useSyncStore } = await import("../src/lib/sync");
-  const first = { id: crypto.randomUUID(), email: "first@example.com" };
-  const second = { id: crypto.randomUUID(), email: "second@example.com" };
+  const first = { id: crypto.randomUUID(), email: "first@example.com", name: "First" };
+  const second = { id: crypto.randomUUID(), email: "second@example.com", name: "Second" };
   const startedSession = deferred<void>();
   const delayedSession = deferred<Response>();
   try {
@@ -65,6 +65,11 @@ test("late session reads cannot undo sign-out and a new account syncs after an o
     assert.equal(useSyncStore.getState().user?.id, second.id);
     assert.equal(useWardrobe.getState().space, accountSpace(second.id));
     assert.deepEqual((await readSnapshot(accountSpace(second.id))).items, []);
+    handleFetch = async (input) => String(input).includes("get-session")
+      ? Response.json({ user: { ...second, name: "Updated display name" }, session: { id: "current-session" } })
+      : Response.json({ userId: second.id, results: [], rows: [], cursor: 0, hasMore: false });
+    await useSyncStore.getState().refreshSession();
+    assert.equal(useSyncStore.getState().user?.name, "Updated display name");
   } finally {
     useSyncStore.getState().stop();
     globalThis.fetch = originalFetch;

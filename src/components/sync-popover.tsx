@@ -21,7 +21,8 @@ export function SyncPopover() {
     <PopoverTrigger asChild><button type="button" className="nav-button flex items-center justify-center" aria-label="Sync" title="Sync">{sync.status === "syncing" ? <Loader2 size={16} className="animate-spin" /> : sync.user ? <Cloud size={16} /> : <CloudOff size={16} />}</button></PopoverTrigger>
     <PopoverContent side="top" align="end" className="w-72 p-3">
       {sync.status === "loading" ? <p role="status" className="px-1 text-xs text-muted-foreground">Checking sync…</p> : sync.user ? <div className="flex flex-col gap-1">
-        <p className="truncate px-1 text-sm">{sync.user.email}</p>
+        {sync.user.name && <p className="truncate px-1 text-sm">{sync.user.name}</p>}
+        <p className={`truncate px-1 ${sync.user.name ? "text-xs text-muted-foreground" : "text-sm"}`}>{sync.user.email}</p>
         <p className="px-1 text-xs text-muted-foreground" role="status">{sync.status === "syncing" ? "Syncing…" : sync.status === "offline" ? "Offline. Changes will sync when you reconnect." : sync.lastSyncAt ? `Last synced ${new Date(sync.lastSyncAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Ready to sync."}</p>
         <button type="button" className={optionClass} disabled={sync.status === "syncing" || sync.status === "offline"} onClick={() => void sync.syncNow()}>Sync now</button>
         <button type="button" className={optionClass} disabled={working} onClick={async () => { setWorking(true); try { await sync.signOut(); } catch { setError("Could not sign out. Try again."); } finally { setWorking(false); } }}>Sign out</button>
