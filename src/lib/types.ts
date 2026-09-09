@@ -3,6 +3,7 @@ export type Category = (typeof CATEGORIES)[number];
 
 export interface Item {
   id: string;
+  sourceKey?: string; // Opaque identity retained when copying a shared piece.
   name: string;
   brand: string;
   size: string;

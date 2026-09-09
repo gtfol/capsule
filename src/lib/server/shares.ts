@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { z } from "zod";
 import { CATEGORIES } from "../types";
+import { SOURCE_KEY_PATTERN } from "../piece-identity";
 import { DEFAULT_SHARE_EXPIRY, MAX_SHARE_BODY_BYTES, MAX_SHARED_PIECES, SHARE_EXPIRIES, type ShareExpiry, type ShareMetadata, type SharePublicRecord, type ShareSnapshot } from "../share-types";
 import { dbConfigured, getPool } from "./db";
 
@@ -57,6 +58,7 @@ const purchaseUrlSchema = z.string().max(8000).refine((value) => {
   } catch { return false; }
 });
 const pieceSchema = z.object({
+  sourceKey: z.string().regex(SOURCE_KEY_PATTERN).optional(),
   name: z.string().trim().min(1).max(500), brand: z.string().max(300), category: z.enum(CATEGORIES),
   size: z.string().max(100), color: z.string().max(200), price: z.string().max(100), currency: z.string().max(20),
   description: z.string().max(10_000), purchaseUrl: purchaseUrlSchema,

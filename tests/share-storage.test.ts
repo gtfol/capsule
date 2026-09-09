@@ -224,3 +224,12 @@ test("failed writes roll back rate charges and always release connections; readi
   setFailInsert(false); await store.create(id, token, snapshot, "7d", ipHash);
   assert.equal(state().limits.get(ipHash)?.count, 1);
 });
+
+test("share snapshots accept bounded opaque identities and legacy pieces without them", () => {
+  assert.deepEqual(validateShareSnapshot(snapshot), snapshot);
+  const identified = { ...snapshot, pieces: [{ ...snapshot.pieces[0], sourceKey: "a".repeat(64) }] };
+  assert.deepEqual(validateShareSnapshot(identified), identified);
+  for (const sourceKey of ["raw-local-id", "", "a".repeat(65), 1, null]) {
+    assert.throws(() => validateShareSnapshot({ ...snapshot, pieces: [{ ...snapshot.pieces[0], sourceKey }] }), /invalid/);
+  }
+});

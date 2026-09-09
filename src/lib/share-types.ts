@@ -10,6 +10,7 @@ export type ShareKind = "wardrobe" | "wishlist" | "piece" | "outfit";
 // This explicit snapshot excludes local IDs, account information, original
 // model photos, API keys, price history, and other private application state.
 export interface SharedPiece {
+  sourceKey?: string; // Stable, hashed piece identity; absent on older links.
   name: string;
   brand: string;
   category: Category;

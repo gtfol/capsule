@@ -7,6 +7,7 @@ import { useWardrobe } from "./store";
 import { createWishlistItem, wishlistPriceNumber } from "./wishlist";
 import type { Item, WishlistItem } from "./types";
 import type { SharedPiece, ShareSnapshot } from "./share-types";
+import type { SharedImportResult } from "./piece-identity";
 
 export type SharedCopyDestination = "wardrobe" | "wishlist";
 export type SharedCopySelection = "all" | number;
@@ -46,7 +47,10 @@ export function selectedSharedPieces(snapshot: ShareSnapshot, selection: SharedC
 function pieceContent(piece: SharedPiece) {
   // Fixed field order makes equality and duplicate receipts independent of
   // JSON property order. No ownership identifiers or outfit portrait enter it.
-  return [piece.name, piece.brand, piece.category, piece.size, piece.color, piece.price, piece.currency, piece.description, piece.purchaseUrl, piece.imageData, piece.backImageData ?? "", piece.sideImageData ?? "", piece.rating ?? null];
+  const content = [piece.name, piece.brand, piece.category, piece.size, piece.color, piece.price, piece.currency, piece.description, piece.purchaseUrl, piece.imageData, piece.backImageData ?? "", piece.sideImageData ?? "", piece.rating ?? null];
+  // Keep receipts for legacy snapshots stable while including new identities
+  // in the fresh-snapshot comparison.
+  return piece.sourceKey ? [...content, piece.sourceKey] : content;
 }
 
 export function sharedSelectionMatches(shown: ShareSnapshot, current: ShareSnapshot, selection: SharedCopySelection): boolean {
@@ -75,7 +79,7 @@ export interface SharedCopyDependencies {
   context: () => { userId: string | null; space: string };
   fetchSnapshot: (shareId: string, expectedUserId: string) => Promise<{ snapshot: ShareSnapshot; userId: string }>;
   cacheImages: (piece: SharedPiece) => Promise<{ imageData: string; backImageData?: string; sideImageData?: string }>;
-  persist: (space: string, collection: "items" | "wishlist", records: Array<Item | WishlistItem>, receipt: string, guard: () => void) => Promise<{ count: number; alreadyAdded: boolean }>;
+  persist: (space: string, collection: "items" | "wishlist", records: Array<Item | WishlistItem>, receipt: string, guard: () => void) => Promise<SharedImportResult>;
   uuid: () => string;
   now: () => number;
 }
@@ -99,7 +103,7 @@ const dependencies: SharedCopyDependencies = {
   now: () => Date.now(),
 };
 
-export async function copySharedPieces(input: { shareId: string; shownSnapshot: ShareSnapshot; selection: SharedCopySelection; destination: SharedCopyDestination; expectedUserId: string }, deps: SharedCopyDependencies = dependencies): Promise<{ count: number; alreadyAdded: boolean }> {
+export async function copySharedPieces(input: { shareId: string; shownSnapshot: ShareSnapshot; selection: SharedCopySelection; destination: SharedCopyDestination; expectedUserId: string }, deps: SharedCopyDependencies = dependencies): Promise<SharedImportResult> {
   const space = accountSpace(input.expectedUserId);
   const guard = () => {
     const current = deps.context();
@@ -121,6 +125,7 @@ export async function copySharedPieces(input: { shareId: string; shownSnapshot: 
     const now = deps.now();
     const item: Item = {
       id: deps.uuid(), name: piece.name, brand: piece.brand, category: piece.category,
+      ...(piece.sourceKey ? { sourceKey: piece.sourceKey } : {}),
       size: piece.size, color: piece.color, price: piece.price, currency: piece.currency,
       description: piece.description, purchaseUrl: piece.purchaseUrl, imageUrl: "", ...images,
       createdAt: now, updatedAt: now, deletedAt: null,

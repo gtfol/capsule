@@ -1,5 +1,6 @@
 import type { Collection, Item, Outfit, SyncChange, SyncResponse, SyncRow, WardrobeRecord, WishlistItem } from "./types";
 import { assertWishlistLimits } from "./wishlist";
+import { findDuplicatePiece, pieceSourceKey, type SharedImportResult } from "./piece-identity";
 
 // Each account has a separate space. Pending tokens live in the same atomic
 // record as the edit, so an interrupted write cannot lose its sync queue.
@@ -160,7 +161,7 @@ export async function writeRecord(space: string, collection: Collection, record:
 }
 // Import a shared selection and its receipt together. Concurrent tabs and
 // retries cannot duplicate a selection, overwrite a piece, or save half a set.
-export async function importSharedRecords(space: string, collection: "items" | "wishlist", records: Array<Item | WishlistItem>, receipt: string, guard: () => void): Promise<{ count: number; alreadyAdded: boolean }> {
+export async function importSharedRecords(space: string, collection: "items" | "wishlist", records: Array<Item | WishlistItem>, receipt: string, guard: () => void): Promise<SharedImportResult> {
   guard();
   if (!space.startsWith("account:") || !space.slice(8)) throw new Error("Sign in before adding shared pieces.");
   if (!receipt || receipt.length > 256 || records.length < 1 || records.length > 300) throw new Error("This shared selection is invalid.");
@@ -192,6 +193,11 @@ export async function importSharedRecords(space: string, collection: "items" | "
       importedIds = value.ids as string[];
     }
     const nextIds: string[] = [];
+    // Recheck inside the write transaction, including imports from other tabs
+    // and earlier pieces in this selection. Never overwrite an existing item.
+    const rows = await request(store.index("space").getAll(space)) as StoredRecord[];
+    guard();
+    const candidates = rows.filter((row) => row.collection === collection && !row.record.deletedAt).map((row) => row.record as Item);
     let added = 0;
     for (const [index, record] of records.entries()) {
       // A receipt is a map to the copies, not a permanent claim that they
@@ -206,16 +212,19 @@ export async function importSharedRecords(space: string, collection: "items" | "
       const existing = await request(store.get(key));
       guard();
       if (existing) throw new Error("A shared piece could not be added. Try again.");
+      const duplicate = findDuplicatePiece(record, candidates);
+      if (duplicate) { nextIds.push(duplicate.id); continue; }
       await request(store.add({ key, space, collection, id: record.id, record, revision: 0, pendingToken: crypto.randomUUID() } satisfies StoredRecord));
       guard();
       nextIds.push(record.id);
+      candidates.push(record);
       added++;
     }
     await request(meta.put({ key: receiptKey, value: { collection, ids: nextIds } }));
     guard();
     await done;
     if (added) notify(space);
-    return { count: added || records.length, alreadyAdded: added === 0 };
+    return { count: added, skipped: records.length - added, alreadyAdded: added === 0, itemIds: nextIds };
   } catch (error) {
     try { tx.abort(); } catch { /* The transaction may already be complete. */ }
     await done.catch(() => undefined);
@@ -265,7 +274,7 @@ export async function moveWishlistToWardrobe(space: string, id: string, transfor
     const updatedAt = Math.max(now, previous.record.updatedAt + 1, current.updatedAt);
     const { rating: _rating, priceHistory: _history, sources: _sources, link_broken: _broken, currentSourceUrl: _source, ...fields } = current;
     void _rating; void _history; void _sources; void _broken; void _source;
-    const owned: Item = { ...fields, id: ownedId, createdAt: now, updatedAt, deletedAt: null };
+    const owned: Item = { ...fields, sourceKey: pieceSourceKey(current), id: ownedId, createdAt: now, updatedAt, deletedAt: null };
     store.put({ ...previous, record: { ...current, imageData: "", backImageData: "", sideImageData: "", updatedAt, deletedAt: updatedAt }, pendingToken: crypto.randomUUID() } satisfies StoredRecord);
     store.put({ key: keyFor(space, "items", ownedId), space, collection: "items", id: ownedId, record: owned, revision: 0, pendingToken: crypto.randomUUID() } satisfies StoredRecord);
     await done;

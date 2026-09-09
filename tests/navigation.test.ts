@@ -24,7 +24,7 @@ test("missing, empty and invalid navigation values fall back to Wardrobe", () =>
 test("Add URLs preserve their destination and leaving Add clears only its navigation parameter", () => {
   const add = write("/?campaign=one#main", navigationQuery("add", "wishlist"));
   assert.equal(add, "/?campaign=one&view=add&to=wishlist#main");
-  assert.deepEqual(read(new URL(add, "https://capsule.example")), { view: "add", to: "wishlist", import: null });
+  assert.deepEqual(read(new URL(add, "https://capsule.example")), { view: "add", to: "wishlist", import: null, piece: null });
   assert.equal(write(add, navigationQuery("outfits")), "/?campaign=one&view=outfits#main");
   assert.equal(write(add, navigationQuery("wardrobe")), "/?campaign=one#main");
 });
@@ -42,9 +42,16 @@ test("extension links open Add with the chosen destination and intact product UR
   for (const destination of ["wardrobe", "wishlist"]) {
     const handoff = new URL("https://capsule.gtfol.dev/");
     handoff.search = new URLSearchParams({ view: "add", to: destination, import: productUrl }).toString();
-    assert.deepEqual(read(handoff), { view: "add", to: destination, import: productUrl });
+    assert.deepEqual(read(handoff), { view: "add", to: destination, import: productUrl, piece: null });
     const consumed = write(handoff.pathname + handoff.search, navigationQuery(destination as "wardrobe" | "wishlist"));
     assert.equal(read(new URL(consumed, handoff)).import, null);
     assert.equal(read(new URL(consumed, handoff)).view, destination);
   }
+});
+
+test("existing pieces can be opened directly and changing views clears the selection", () => {
+  const url = "/?view=wishlist&piece=existing-piece";
+  assert.equal(read(url).piece, "existing-piece");
+  assert.equal(write(url, navigationQuery("wardrobe")), "/");
+  assert.equal(write(url, navigationQuery("outfits")), "/?view=outfits");
 });

@@ -47,7 +47,7 @@ export function SharedCapsule({ shareId, snapshot, updatedAt, expiresAt }: { sha
     if (intent && typeof intent.selection === "number" && snapshot.kind !== "piece") setSelected(snapshot.pieces[intent.selection]);
   }
   const clearIntent = () => { void setCopyQuery({ addTo: null, piece: null }); };
-  useEffect(() => () => useSyncStore.getState().stop(), []);
+  useEffect(() => { void useSyncStore.getState().initialize(); return () => useSyncStore.getState().stop(); }, []);
   const wholeSelection = snapshot.kind === "piece" ? 0 : "all";
   const collection = snapshot.kind === "wardrobe" || snapshot.kind === "wishlist";
   const pieces = snapshot.pieces.filter((piece) => category === "all" || piece.category === category);

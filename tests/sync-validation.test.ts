@@ -162,3 +162,13 @@ test("request body byte limit is enforced even without Content-Length", async ()
   const value = input();
   assert.deepEqual(await readSyncBody(new Request("https://capsule.example/api/sync", { method: "POST", body: JSON.stringify(value) })), value);
 });
+
+test("sync preserves opaque piece identities while rejecting malformed values", () => {
+  const value = input();
+  Object.assign(value.changes[0].record, { sourceKey: "a".repeat(64) });
+  assert.equal((validateSyncRequest(value).changes[0].record as { sourceKey: string }).sourceKey, "a".repeat(64));
+  for (const sourceKey of ["raw-local-id", "", "a".repeat(65), 1, null]) {
+    Object.assign(value.changes[0].record, { sourceKey });
+    assert.throws(() => validateSyncRequest(value), /source identity/);
+  }
+});

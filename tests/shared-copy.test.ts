@@ -9,7 +9,7 @@ const shown: ShareSnapshot = { version: 1, kind: "wardrobe", title: "Wardrobe", 
 function setup(snapshot = shown) {
   const calls: string[] = [];
   const persisted: Array<Item | WishlistItem> = [];
-  const receipts = new Set<string>();
+  const receipts = new Map<string, string[]>();
   const state = { userId: "alice" as string | null, space: "account:alice" };
   let id = 0;
   const deps: SharedCopyDependencies = {
@@ -19,9 +19,9 @@ function setup(snapshot = shown) {
     cacheImages: async (image) => { calls.push(`photo:${image.name}`); return { imageData: image.imageData, backImageData: image.backImageData, sideImageData: image.sideImageData }; },
     persist: async (space, collection, records, receipt, guard) => {
       guard(); calls.push(`commit:${space}:${collection}`);
-      if (receipts.has(receipt)) return { count: records.length, alreadyAdded: true };
-      receipts.add(receipt); persisted.push(...records);
-      return { count: records.length, alreadyAdded: false };
+      if (receipts.has(receipt)) return { count: 0, skipped: records.length, alreadyAdded: true, itemIds: receipts.get(receipt)! };
+      receipts.set(receipt, records.map((record) => record.id)); persisted.push(...records);
+      return { count: records.length, skipped: 0, alreadyAdded: false, itemIds: records.map((record) => record.id) };
     },
     uuid: () => `new-local-id-${++id}`,
     now: () => 12345,
@@ -71,7 +71,7 @@ test("copy requires the currently visible selected pieces after the fresh server
 test("copies outfit clothing into owned records without the rendered person or owner rating", async () => {
   const snapshot: ShareSnapshot = { ...shown, kind: "outfit", outfitImageData: "never-import-this-rendered-person" };
   const fixture = setup(snapshot);
-  assert.deepEqual(await copySharedPieces(fixture.input, fixture.deps), { count: 2, alreadyAdded: false });
+  assert.deepEqual(await copySharedPieces(fixture.input, fixture.deps), { count: 2, skipped: 0, alreadyAdded: false, itemIds: ["new-local-id-1", "new-local-id-2"] });
   assert.equal(fixture.persisted.length, 2);
   assert.equal(fixture.persisted[0].id, "new-local-id-1");
   assert.equal(fixture.persisted[0].createdAt, 12345);
@@ -113,9 +113,19 @@ test("a failed photo or account switch cancels the whole collection before its a
 test("retry receipts are stable across generated IDs and JSON property order, and isolated by destination", async () => {
   const fixture = setup();
   await copySharedPieces(fixture.input, fixture.deps);
-  assert.deepEqual(await copySharedPieces(fixture.input, fixture.deps), { count: 2, alreadyAdded: true });
+  assert.deepEqual(await copySharedPieces(fixture.input, fixture.deps), { count: 0, skipped: 2, alreadyAdded: true, itemIds: ["new-local-id-1", "new-local-id-2"] });
   assert.equal(fixture.persisted.length, 2);
   const reordered = Object.fromEntries(Object.entries(piece).reverse()) as unknown as SharedPiece;
   assert.equal(await sharedCopyReceipt("share", "wardrobe", [piece]), await sharedCopyReceipt("share", "wardrobe", [reordered]));
   assert.notEqual(await sharedCopyReceipt("share", "wardrobe", [piece]), await sharedCopyReceipt("share", "wishlist", [piece]));
+});
+
+test("copies retain source identity and changed identities require reviewing the fresh snapshot", async () => {
+  const sourceKey = "a".repeat(64);
+  const snapshot = { ...shown, pieces: [{ ...piece, sourceKey }] };
+  const fixture = setup(snapshot);
+  await copySharedPieces(fixture.input, fixture.deps);
+  assert.equal(fixture.persisted[0].sourceKey, sourceKey);
+  const changed = { ...snapshot, pieces: [{ ...piece, sourceKey: "b".repeat(64) }] };
+  assert.equal(sharedSelectionMatches(snapshot, changed, 0), false);
 });

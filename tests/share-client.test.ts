@@ -5,6 +5,7 @@ import { buildShareSnapshot, changeShareExpiry, createShareLink, listShareRecord
 import { openDatabase } from "../src/lib/db";
 import { useWardrobe } from "../src/lib/store";
 import type { Item } from "../src/lib/types";
+import { pieceSourceKey } from "../src/lib/piece-identity";
 
 const photo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==";
 const piece: Item = { id: "local-only-id", name: "Shirt", brand: "Studio", category: "tops", size: "M", color: "Black", price: "40", currency: "USD", description: "Cotton shirt", purchaseUrl: "https://shop.example/shirt", imageUrl: "https://shop.example/front.png", imageData: photo, backImageData: photo, sideImageData: photo, createdAt: 1, updatedAt: 2 };
@@ -17,7 +18,15 @@ test("public snapshots whitelist chosen details and never include local state or
   assert.equal(snapshot.pieces[0].backImageData, photo);
   assert.equal(snapshot.pieces[0].sideImageData, photo);
   assert.equal(snapshot.pieces[0].purchaseUrl, piece.purchaseUrl);
+  assert.equal(snapshot.pieces[0].sourceKey, pieceSourceKey(piece));
   assert.doesNotMatch(JSON.stringify(snapshot), /local-only-id|private-|createdAt|updatedAt|priceHistory|sources/);
+});
+
+test("re-sharing a copied piece retains its source identity", async () => {
+  const copy = { ...piece, id: "new-copy-id", sourceKey: pieceSourceKey(piece) };
+  const shared = await buildShareSnapshot({ kind: "piece", piece: copy }, compressor);
+  assert.equal(shared.pieces[0].sourceKey, pieceSourceKey(piece));
+  assert.doesNotMatch(JSON.stringify(shared), /local-only-id|new-copy-id/);
 });
 
 test("wardrobe and wishlist snapshots include all active pieces with front photos only", async () => {

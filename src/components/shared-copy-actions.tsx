@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
@@ -10,12 +10,20 @@ import { authClient } from "@/lib/auth-client";
 import { useSyncStore } from "@/lib/sync";
 import { useWardrobe } from "@/lib/store";
 import { copySharedPieces, selectedSharedPieces, sharedCopyReturnUrl, type SharedCopyDestination, type SharedCopySelection } from "@/lib/shared-copy";
+import { previewSharedPieces, type SharedImportResult } from "@/lib/piece-identity";
+import { collectionPieceUrl } from "@/lib/navigation";
 import type { ShareSnapshot } from "@/lib/share-types";
 
 type Props = { shareId: string; snapshot: ShareSnapshot; selection: SharedCopySelection; initialDestination?: SharedCopyDestination | null; onIntentClosed?: () => void };
 
 export function SharedCopyActions({ shareId, snapshot, selection, initialDestination, onIntentClosed }: Props) {
-  const space = useWardrobe((state) => state.space);
+  const { space, ready, items, wishlist, error: storageError } = useWardrobe();
+  const user = useSyncStore((state) => state.user);
+  const previews = useMemo(() => {
+    if (!user || !ready || storageError || space !== `account:${user.id}`) return null;
+    const pieces = selectedSharedPieces(snapshot, selection);
+    return { wardrobe: previewSharedPieces(pieces, items), wishlist: previewSharedPieces(pieces, wishlist) };
+  }, [user, ready, storageError, space, snapshot, selection, items, wishlist]);
   const [destination, setDestination] = useState<SharedCopyDestination>(initialDestination ?? "wardrobe");
   const [open, setOpen] = useState(Boolean(initialDestination));
   const [handledIntent, setHandledIntent] = useState(initialDestination);
@@ -30,7 +38,9 @@ export function SharedCopyActions({ shareId, snapshot, selection, initialDestina
   }
   if (!count) return null;
   return <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-    {(["wardrobe", "wishlist"] as const).map((target) => <Popover key={target} open={open && destination === target} onOpenChange={(value) => { if (value) setDestination(target); close(value); }}>
+    {(["wardrobe", "wishlist"] as const).map((target) => previews?.[target].added === 0 && !open
+      ? <Link key={target} href={collectionPieceUrl(target, count === 1 ? previews[target].matches[0]?.id : undefined)} className="py-1 text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground">Already in your {target}</Link>
+      : <Popover key={target} open={open && destination === target} onOpenChange={(value) => { if (value) setDestination(target); close(value); }}>
       <PopoverTrigger asChild><button type="button" className="py-1 text-[12px] text-muted-foreground underline underline-offset-4 hover:text-foreground">Add to my {target}</button></PopoverTrigger>
       {open && destination === target && <CopyConfirmation key={`${space}:${target}`} shareId={shareId} snapshot={snapshot} selection={selection} destination={target} />}
     </Popover>)}
@@ -39,6 +49,8 @@ export function SharedCopyActions({ shareId, snapshot, selection, initialDestina
 
 function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Props, "initialDestination" | "onIntentClosed"> & { destination: SharedCopyDestination }) {
   const sync = useSyncStore();
+  const { items, wishlist, ready, error: storageError } = useWardrobe();
+  const preview = useMemo(() => previewSharedPieces(selectedSharedPieces(snapshot, selection), destination === "wardrobe" ? items : wishlist), [snapshot, selection, destination, items, wishlist]);
   const alive = useRef(false);
   const actionRunning = useRef(false);
   const [loading, setLoading] = useState(true);
@@ -49,10 +61,10 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [result, setResult] = useState<{ count: number; alreadyAdded: boolean } | null>(null);
+  const [result, setResult] = useState<SharedImportResult | null>(null);
   const [reload, setReload] = useState(0);
   const count = selectedSharedPieces(snapshot, selection).length;
-  const noun = count === 1 ? "piece" : "pieces";
+  const noun = preview.added === 1 ? "piece" : "pieces";
   const optionClass = "w-full rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-40";
 
   useEffect(() => {
@@ -102,12 +114,21 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
   }
 
   return <PopoverContent side="bottom" align="start" sideOffset={8} className="w-72 p-3" aria-label={`Add to my ${destination}`}>
-    {loading ? <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground" role="status"><Loader2 size={13} className="animate-spin" aria-hidden="true" />Checking sign-in…</p> : result ? <div className="space-y-3 px-1"><p className="text-[13px]" role="status">{result.alreadyAdded ? `${result.count === 1 ? "This piece is" : "These pieces are"} already in your ${destination}.` : `Added ${result.count} ${result.count === 1 ? "piece" : "pieces"} to your ${destination}.`}</p><Link href={destination === "wardrobe" ? "/" : "/?view=wishlist"} className="inline-block py-1 text-[12px] underline underline-offset-4">Open my {destination}</Link></div> : sync.user ? <div className="space-y-3 px-1">
-      <h2 className="text-[13px] font-normal">Add to my {destination}</h2>
-      <p className="text-xs leading-relaxed text-muted-foreground">{selection === "all" && count > 1 ? "All " : ""}{count} shared {noun} will be saved to your {destination}.{snapshot.kind === "outfit" ? " The rendered outfit image stays in this shared view." : ""}</p>
-      <p className="text-[11px] leading-relaxed text-subtle">You’ll have your own copy. The original stays unchanged.{destination === "wishlist" ? " Ratings and price history start fresh." : ""}</p>
+    {loading || (sync.user && !ready) ? <p className="flex items-center gap-2 px-1 text-xs text-muted-foreground" role="status"><Loader2 size={13} className="animate-spin" aria-hidden="true" />Checking your {destination}…</p> : result ? <div className="space-y-3 px-1">
+      <p className="text-[13px]" role="status">{result.alreadyAdded ? `${count === 1 ? "This piece is" : "These pieces are"} already in your ${destination}.` : `Added ${result.count} ${result.count === 1 ? "piece" : "pieces"} to your ${destination}.`}</p>
+      {!result.alreadyAdded && result.skipped > 0 && <p className="text-xs text-muted-foreground">{result.skipped} already in your {destination}. Skipped.</p>}
+      <Link href={collectionPieceUrl(destination, count === 1 ? result.itemIds[0] : undefined)} className="inline-block py-1 text-[12px] underline underline-offset-4">{count === 1 ? "View piece" : `Open my ${destination}`}</Link>
+    </div> : sync.user ? <div className="space-y-3 px-1">
+      <h2 className="text-[13px] font-normal">{preview.added ? `Add to my ${destination}` : `Already in your ${destination}`}</h2>
+      {preview.added > 0 && <>
+        <p className="text-xs leading-relaxed text-muted-foreground">{preview.added} shared {noun} will be saved to your {destination}.{snapshot.kind === "outfit" ? " The rendered outfit image stays in this shared view." : ""}</p>
+        <p className="text-[11px] leading-relaxed text-subtle">You’ll have your own copy. The original stays unchanged.{destination === "wishlist" ? " Ratings and price history start fresh." : ""}</p>
+      </>}
+      {preview.skipped > 0 && preview.added > 0 && <p className="text-xs leading-relaxed text-muted-foreground">{preview.skipped} already in your {destination}. {preview.skipped === 1 ? "It will be skipped." : "These will be skipped."}</p>}
       <p className="truncate text-[11px] text-subtle" title={sync.user.email}>Signed in as {sync.user.email}</p>
-      <Button type="button" disabled={working} className="w-full" onClick={() => void add()}>{working ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" />Adding…</> : `Add ${count} ${noun}`}</Button>
+      {storageError ? <p className="text-xs" role="alert">Your {destination} could not be checked. Reload the page and try again.</p> : preview.added === 0
+        ? <Link href={collectionPieceUrl(destination, count === 1 ? preview.matches[0]?.id : undefined)} className="inline-block py-1 text-[12px] underline underline-offset-4">{count === 1 ? "View piece" : `Open my ${destination}`}</Link>
+        : <Button type="button" disabled={working} className="w-full" onClick={() => void add()}>{working ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" />Adding…</> : `Add ${preview.added} ${noun}`}</Button>}
     </div> : <div className="flex flex-col gap-1">
       <p className="px-1 text-xs leading-relaxed text-muted-foreground">Sign in to add {count === 1 ? "this piece" : `these ${count} pieces`} to your {destination}.</p>
       {sync.enabled && sync.providers.google && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void google()}>{working ? "Connecting…" : "Continue with Google"}</button>}
