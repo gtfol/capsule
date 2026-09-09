@@ -1,0 +1,44 @@
+README.md
+  h_606d960bac5d85 34-43
+extension/README.md
+  h_606d960bac5d85 1-38
+extension/config.mjs
+  h_606d960bac5d85 1-2
+extension/fonts/OFL.txt
+  h_606d960bac5d85 1-93
+extension/handoff.mjs
+  h_606d960bac5d85 1-94
+extension/manifest.json
+  h_606d960bac5d85 1-24
+extension/popup.css
+  h_606d960bac5d85 1-47
+extension/popup.html
+  h_606d960bac5d85 1-32
+extension/popup.mjs
+  h_606d960bac5d85 1-40
+src/components/add-piece.tsx
+  h_606d960bac5d85 2,11-12,14,24-25,27-30,32,38-51,53,77
+src/components/wardrobe-app.tsx
+  h_606d960bac5d85 25,30-32,57
+src/lib/navigation.ts
+  h_606d960bac5d85 1,11,18
+src/lib/product-import.ts
+  h_606d960bac5d85 1-30
+tests/browser-extension.test.ts
+  h_606d960bac5d85 1-151
+tests/navigation.test.ts
+  h_606d960bac5d85 27,39-50
+tests/product-import.test.ts
+  h_606d960bac5d85 1-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b10997ef4cfceb5fe3e72112d81cb6ed639257ed",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
