@@ -20,6 +20,7 @@ type Props = {
   item: WishlistItem;
   images?: string[];
   isNew?: boolean;
+  active?: boolean;
   onClose: () => void;
   onSave: (item: WishlistItem) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -35,7 +36,7 @@ function hasEdits(item: WishlistItem, initial: WishlistItem) {
   return fields.some((field) => item[field] !== initial[field]);
 }
 
-export function WishlistDetail({ item, images = [], isNew = false, onClose, onSave, onDelete, onMove, onPriceChange }: Props) {
+export function WishlistDetail({ item, images = [], isNew = false, active = true, onClose, onSave, onDelete, onMove, onPriceChange }: Props) {
   const [form, setForm] = useState(item);
   const [error, setError] = useState("");
   const [priceError, setPriceError] = useState("");
@@ -145,7 +146,7 @@ export function WishlistDetail({ item, images = [], isNew = false, onClose, onSa
     finally { setSaving(false); }
   }
 
-  return <><Sheet open onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving || confirmClose) event.preventDefault(); }} onInteractOutside={(event) => { if (saving || confirmClose) event.preventDefault(); }}>
+  return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving || confirmClose) event.preventDefault(); }} onInteractOutside={(event) => { if (saving || confirmClose) event.preventDefault(); }}>
     <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>
     <SheetDescription className="sr-only">Review this piece, your rating, listing links and recorded prices.</SheetDescription>
     {gallery.length > 1 && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="photo-tool" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}><X size={13} /></button>}</div>}
@@ -200,5 +201,5 @@ export function WishlistDetail({ item, images = [], isNew = false, onClose, onSa
       } catch (cause) { setError(cause instanceof Error ? cause.message : "This piece could not be moved. Try again."); setSaving(false); }
     }}>Move to wardrobe<ArrowRight size={13} /></button>}
     </form>
-  </SheetContent></Sheet><UnsavedChangesDialog open={confirmClose} onOpenChange={setConfirmClose} onDiscard={discard} canSave={!busy && !alternative.trim()} isNew={isNew} onSave={() => { setConfirmClose(false); void save(); }} /></>;
+  </SheetContent></Sheet><UnsavedChangesDialog open={active && confirmClose} onOpenChange={setConfirmClose} onDiscard={discard} canSave={!busy && !alternative.trim()} isNew={isNew} onSave={() => { setConfirmClose(false); void save(); }} /></>;
 }
