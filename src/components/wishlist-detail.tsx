@@ -15,6 +15,8 @@ import type { WishlistItem } from "@/lib/types";
 import type { WishlistPriceQuote } from "@/lib/wishlist-editor";
 import { assignPhotoSlot } from "@/lib/photo-slots";
 import { UnsavedChangesDialog } from "./unsaved-changes-dialog";
+import { SharePopover } from "./share-popover";
+import { useWardrobe } from "@/lib/store";
 
 type Props = {
   item: WishlistItem;
@@ -37,6 +39,7 @@ function hasEdits(item: WishlistItem, initial: WishlistItem) {
 }
 
 export function WishlistDetail({ item, images = [], isNew = false, active = true, onClose, onSave, onDelete, onMove, onPriceChange }: Props) {
+  const savedItem = useWardrobe((state) => state.wishlist.find((piece) => piece.id === item.id));
   const [form, setForm] = useState(item);
   const [error, setError] = useState("");
   const [priceError, setPriceError] = useState("");
@@ -66,7 +69,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
   }
 
   async function fetchPhotos() {
-    if (busy || request.current) return;
+    if (busy || request.current || !form.purchaseUrl.trim()) return;
     setPhotoError("");
     if (!navigator.onLine) { setPhotoError("Connect to the internet to fetch product photos."); return; }
     const controller = new AbortController();
@@ -125,11 +128,10 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
     if (busy) return;
     setSaving(true); setError("");
     try {
-      const purchaseUrl = normalizeListingUrl(form.purchaseUrl);
+      const purchaseUrl = form.purchaseUrl.trim() ? normalizeListingUrl(form.purchaseUrl) : "";
       if (!form.name.trim()) throw new Error("Enter a name for this piece.");
       if (form.price && wishlistPriceNumber(form.price) === null) throw new Error("Enter a valid price using digits and a decimal point.");
       if (form.currency && !/^[A-Z]{3}$/.test(form.currency)) throw new Error("Use a three-letter currency code.");
-      if (form.price && !form.currency) throw new Error("Enter a currency for this price.");
       const cached = await cacheProductImages(form, form.backImageUrl || form.backImageData ? { imageUrl: form.backImageUrl ?? "", imageData: form.backImageData } : undefined, form.sideImageUrl || form.sideImageData ? { imageUrl: form.sideImageUrl ?? "", imageData: form.sideImageData } : undefined);
       let edited: WishlistItem = { ...form, ...cached, name: form.name.trim(), purchaseUrl, updatedAt: Date.now() };
       if (isNew) {
@@ -137,7 +139,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
         // price actually observed by the initial fetch.
         const source = edited.sources.find((entry) => entry.url === purchaseUrl);
         if (source) edited = { ...edited, sources: edited.sources.map((entry) => entry === source ? { ...entry, price: form.price, currency: form.currency } : entry) };
-        else edited = { ...edited, sources: [...edited.sources, { url: purchaseUrl, price: "", currency: "", fetched_at: null, link_broken: false }] };
+        else if (purchaseUrl) edited = { ...edited, sources: [...edited.sources, { url: purchaseUrl, price: "", currency: "", fetched_at: null, link_broken: false }] };
         edited = recomputeWishlistPrice(edited);
       }
       await onSave(edited);
@@ -147,9 +149,9 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
   }
 
   return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving || confirmClose) event.preventDefault(); }} onInteractOutside={(event) => { if (saving || confirmClose) event.preventDefault(); }}>
-    <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>
+    <div className="flex items-center justify-between gap-4 pr-9"><SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>{!isNew && savedItem && <SharePopover target={{ kind: "piece", piece: savedItem }} active={active} disabled={hasEdits(form, item) || busy || !!alternative.trim()} disabledReason="Save changes before sharing." />}</div>
     <SheetDescription className="sr-only">Review this piece, your rating, listing links and recorded prices.</SheetDescription>
-    {gallery.length > 1 && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="text-[11px] text-muted-foreground underline underline-offset-4" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}>Remove {imageSide}</button>}</div>}
+    {(gallery.length > 1 || form.backImageData || form.sideImageData) && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="text-[11px] text-muted-foreground underline underline-offset-4" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}>Remove {imageSide}</button>}</div>}
     <div className="detail-image mt-6 flex aspect-[5/4] items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {selectedImage.imageUrl || selectedImage.imageData ? <img src={imageSource(selectedImage)} alt={`${form.name || "Product image"}, ${imageSide}`} className="h-full w-full object-contain" /> : <p className="text-[12px] text-subtle">Choose a {imageSide} image below. Optional.</p>}
@@ -159,7 +161,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
       <img src={imageSource({ imageUrl, imageData: imageUrl === form.imageUrl ? form.imageData : imageUrl === form.backImageUrl ? form.backImageData : imageUrl === form.sideImageUrl ? form.sideImageData : undefined })} alt="" className="h-full w-full object-contain" loading="lazy" />
       {selectedImage.imageUrl === imageUrl && <Check size={10} className="absolute bottom-0 right-0 bg-background" />}
     </button>)}</div>}
-    {!isNew && <div className="photo-toolbar" role="group" aria-label="Photo tools"><button type="button" className="photo-tool" aria-label="Fetch product photos" disabled={busy} onClick={() => void fetchPhotos()}>{fetchingPhotos ? <Loader2 size={16} className="animate-spin" /> : <Images size={16} strokeWidth={1.4} />}<span className="photo-tool-label" aria-hidden="true">Fetch product photos</span></button></div>}
+    {!isNew && <div className="photo-toolbar" role="group" aria-label="Photo tools"><button type="button" className="photo-tool" aria-label="Fetch product photos" disabled={busy || !form.purchaseUrl.trim()} onClick={() => void fetchPhotos()}>{fetchingPhotos ? <Loader2 size={16} className="animate-spin" /> : <Images size={16} strokeWidth={1.4} />}<span className="photo-tool-label" aria-hidden="true">Fetch product photos</span></button></div>}
     {photoError && <p className="mt-3 text-[12px]" role="alert">{photoError}</p>}
 
     <form onSubmit={save} className="mt-7"><fieldset disabled={busy} className="space-y-5">
@@ -172,12 +174,12 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
         {isNew && <><label className="field-label">Price<Input type="number" min="0" step="0.01" value={form.price} onChange={(event) => set("price", event.target.value)} placeholder="—" /></label><label className="field-label">Currency<Input value={form.currency} onChange={(event) => set("currency", event.target.value.toUpperCase())} maxLength={3} pattern="[A-Z]{3}" placeholder="USD" /></label></>}
       </div>
       <div><p className="field-label mb-2" id="wishlist-rating-label">Your rating</p><StarRating value={form.rating} onChange={(value) => set("rating", value)} disabled={busy} label="Your rating" /></div>
-      <label className="field-label">Product link<Input type="url" value={form.purchaseUrl} onChange={(event) => set("purchaseUrl", event.target.value)} required maxLength={2048} /></label>
+      <label className="field-label">Product link (optional)<Input type="url" value={form.purchaseUrl} onChange={(event) => set("purchaseUrl", event.target.value)} maxLength={8000} /></label>
       <label className="field-label">Description<textarea className="field-input min-h-20 resize-y py-2" value={form.description} onChange={(event) => set("description", event.target.value)} maxLength={6000} placeholder="—" /></label>
     </fieldset>
 
     <section className="mt-9 border-t border-border pt-6" aria-label="Price tracking">
-      <div className="flex items-start justify-between gap-4"><div><h2 className="text-[12px] text-muted-foreground">{form.currentSourceUrl ? "Current price" : "Last known price"}</h2><p className="mt-1 text-[17px]">{formatPrice(form.price, form.currency)}</p></div>{!isNew && <Button type="button" variant="ghost" disabled={busy} onClick={() => void checkPrice(form.purchaseUrl)} className="px-0 text-[12px]">{fetching ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={1.5} />}Refetch price</Button>}</div>
+      <div className="flex items-start justify-between gap-4"><div><h2 className="text-[12px] text-muted-foreground">{form.currentSourceUrl ? "Current price" : "Last known price"}</h2><p className="mt-1 text-[17px]">{formatPrice(form.price, form.currency)}</p></div>{!isNew && <Button type="button" variant="ghost" disabled={busy || !form.purchaseUrl.trim()} onClick={() => void checkPrice(form.purchaseUrl)} className="px-0 text-[12px]">{fetching ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} strokeWidth={1.5} />}Refetch price</Button>}</div>
       {!isNew && <div className="mt-6 space-y-4" aria-label="Listing sources">{form.sources.map((source, index) => <div key={source.url} className={`wishlist-source ${source.url === form.currentSourceUrl ? "is-current" : ""}`}>
         <div className="min-w-0"><a className="inline-flex max-w-full items-center gap-1.5 text-[12px]" href={source.url} target="_blank" rel="noopener noreferrer" title={source.url}><span className="truncate">{new URL(source.url).hostname.replace(/^www\./, "")}</span><ArrowUpRight size={12} className="shrink-0" /></a><div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-subtle"><span>{formatPrice(source.price, source.currency)}</span>{source.link_broken && <span className="inline-flex items-center gap-1"><Link2Off size={11} />Link unavailable</span>}</div></div>
         <button type="button" className="photo-tool shrink-0" disabled={busy} onClick={() => void checkPrice(source.url)} aria-label={`Refetch listing ${index + 1}`} title="Refetch price">{fetching === source.url ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} strokeWidth={1.4} />}</button>
@@ -194,7 +196,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
       setSaving(true); setError("");
       try {
         if (!form.name.trim()) throw new Error("Enter a name for this piece.");
-        const purchaseUrl = normalizeListingUrl(form.purchaseUrl);
+        const purchaseUrl = form.purchaseUrl.trim() ? normalizeListingUrl(form.purchaseUrl) : "";
         const cached = await cacheProductImages(form, form.backImageUrl || form.backImageData ? { imageUrl: form.backImageUrl ?? "", imageData: form.backImageData } : undefined, form.sideImageUrl || form.sideImageData ? { imageUrl: form.sideImageUrl ?? "", imageData: form.sideImageData } : undefined);
         await onMove({ ...form, ...cached, purchaseUrl });
         onClose();

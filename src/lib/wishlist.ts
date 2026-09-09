@@ -64,13 +64,13 @@ export function recomputeWishlistPrice(item: WishlistItem): WishlistItem {
 }
 
 export function createWishlistItem(item: Item, fetchedAt: number, initialQuote?: PriceQuote | null): WishlistItem {
-  const purchaseUrl = normalizeListingUrl(item.purchaseUrl);
+  const purchaseUrl = item.purchaseUrl.trim() ? normalizeListingUrl(item.purchaseUrl) : "";
   if (!isWishlistCurrency(item.currency)) throw new Error("Use a three-letter currency code, or leave it blank if unknown.");
   if (item.price && wishlistPriceNumber(item.price) === null) throw new Error("Enter a valid price, or leave it blank if unknown.");
   let wishlist: WishlistItem = {
     ...item, purchaseUrl, rating: null, sources: [], priceHistory: [], link_broken: false, currentSourceUrl: "",
   };
-  const quote = initialQuote === undefined ? (item.price ? { price: item.price, currency: item.currency, source_url: purchaseUrl, fetched_at: fetchedAt } : undefined) : initialQuote;
+  const quote = initialQuote === undefined ? (item.price && purchaseUrl ? { price: item.price, currency: item.currency, source_url: purchaseUrl, fetched_at: fetchedAt } : undefined) : initialQuote;
   if (quote) {
     const quoteUrl = normalizeListingUrl(quote.source_url);
     wishlist = applyPriceFetch(wishlist, quoteUrl, quote);
@@ -78,7 +78,7 @@ export function createWishlistItem(item: Item, fetchedAt: number, initialQuote?:
     // historical quote actually fetched from the page.
     if (quoteUrl === purchaseUrl) wishlist.sources = wishlist.sources.map((source) => ({ ...source, price: item.price, currency: item.currency }));
   }
-  if (!wishlist.sources.some((source) => source.url === purchaseUrl)) {
+  if (purchaseUrl && !wishlist.sources.some((source) => source.url === purchaseUrl)) {
     wishlist.sources.push({ url: purchaseUrl, price: quote ? "" : item.price, currency: item.currency, fetched_at: null, link_broken: false });
   }
   wishlist = recomputeWishlistPrice({ ...wishlist, price: item.price, currency: item.currency });

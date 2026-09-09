@@ -30,3 +30,17 @@ test("editing a link retains its old history and queues a new unpriced source", 
   assert.equal(merged.sources.length, 2);
   assert.equal(mergeWishlistEdits(merged, { ...merged, purchaseUrl: "https://new.example/shirt#top" }).sources.length, 2);
 });
+
+test("linkless shared pieces remain editable and clearing a link preserves prior observations", () => {
+  const initial = piece();
+  const cleared = mergeWishlistEdits(initial, { ...initial, purchaseUrl: "" });
+  assert.equal(cleared.purchaseUrl, "");
+  assert.deepEqual(cleared.sources, initial.sources);
+  assert.deepEqual(cleared.priceHistory, initial.priceHistory);
+  const linkless = createWishlistItem({ ...initial, purchaseUrl: "" }, 1, null);
+  const edited = mergeWishlistEdits(linkless, { ...linkless, name: "Shared shirt", size: "M" });
+  assert.equal(edited.size, "M");
+  assert.equal(edited.name, "Shared shirt");
+  assert.deepEqual(edited.sources, []);
+  assert.deepEqual(edited.priceHistory, []);
+});

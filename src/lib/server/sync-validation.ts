@@ -54,7 +54,7 @@ function wishlistFields(source: Record<string, unknown>, base: Item): WishlistIt
   if (source.rating !== null && (typeof source.rating !== "number" || !Number.isFinite(source.rating) || source.rating < 0.5 || source.rating > 5 || !Number.isInteger(source.rating * 2))) {
     throw new Error("A wishlist rating must be a half-star increment from 0.5 to 5, or empty.");
   }
-  if (!Array.isArray(source.sources) || !source.sources.length || source.sources.length > MAX_WISHLIST_SOURCES) throw new Error("A wishlist item has too many or missing listing sources.");
+  if (!Array.isArray(source.sources) || source.sources.length > MAX_WISHLIST_SOURCES || (source.purchaseUrl && !source.sources.length)) throw new Error("A wishlist item has too many or missing listing sources.");
   const urls = new Set<string>();
   const sources = source.sources.map((entry): WishlistSource => {
     if (!isObject(entry)) throw new Error("A wishlist listing source is invalid.");
@@ -71,11 +71,11 @@ function wishlistFields(source: Record<string, unknown>, base: Item): WishlistIt
     return { price: entry.price, currency: currency(entry.currency), source_url, fetched_at: stamp(entry.fetched_at) };
   });
   const record: WishlistItem = {
-    ...base, price: price(source.price), currency: currency(source.currency), purchaseUrl: listingUrl(source.purchaseUrl),
+    ...base, price: price(source.price), currency: currency(source.currency), purchaseUrl: source.purchaseUrl === "" ? "" : listingUrl(source.purchaseUrl),
     rating: source.rating as number | null, sources, priceHistory,
     link_broken: flag(source.link_broken), currentSourceUrl: source.currentSourceUrl === "" ? "" : listingUrl(source.currentSourceUrl),
   };
-  if (!urls.has(record.purchaseUrl)) throw new Error("The wishlist item's purchase link is missing from its listing sources.");
+  if (record.purchaseUrl && !urls.has(record.purchaseUrl)) throw new Error("The wishlist item's purchase link is missing from its listing sources.");
   const derived = recomputeWishlistPrice(record);
   if (derived.currentSourceUrl !== record.currentSourceUrl || derived.link_broken !== record.link_broken || derived.price !== record.price) throw new Error("A wishlist item's current price or link status is inconsistent with its sources.");
   assertWishlistLimits(record);

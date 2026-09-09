@@ -17,7 +17,7 @@ self.addEventListener("message", (event) => {
 });
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
-  if (event.request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (event.request.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/") || url.pathname.startsWith("/share/")) return;
   if (event.request.mode === "navigate") {
     event.respondWith(fetch(event.request).then(async (response) => { if (response.ok && url.pathname === "/") { const cache = await caches.open(CACHE); await cache.put("/", response.clone()); } return response; }).catch(async () => (await caches.match("/")) || Response.error()));
   } else if (url.pathname.startsWith("/_next/static/") || ["/icon.svg", "/manifest.webmanifest"].includes(url.pathname)) {

@@ -43,6 +43,18 @@ Once purchased, Move to wardrobe transfers the piece, including its current edit
 
 Wishlist records, ratings, history, source status and photos use the existing account-isolated local storage and optional sync. Local metadata saves merge with the latest price records so an open editor does not overwrite another tab's new observations.
 
+## Sharing
+
+Use Share in the bottom navigation to share a wardrobe or wishlist, or the small share icon in a piece or saved outfit's controls. Links default to seven days; choose 30 days or Never. Changing expiration preserves the published snapshot. Update link explicitly publishes the latest saved details and photos while preserving the existing deadline. Anyone with the link can view it without an account.
+
+Collection links include up to 300 pieces with front photos; individual pieces include front, back and side photos when available. Outfit links include the rendered image and its selected owned pieces. Images are compressed into a self-contained snapshot; original local images are unchanged. Account information, original model photos, API keys, sync metadata, and price history are excluded. Public pages are not indexed or stored in the offline app cache.
+
+Visitors can add a shared piece or selection to their own wardrobe or wishlist after signing in and confirming. Signing in alone never imports a selection. Copies receive new IDs and their own editable records; wishlist copies start without the owner's rating or price history. Pieces without a shopping link are supported. Copies are saved atomically in the signed-in account's browser storage and enter its normal sync queue. Retrying the same selection in that browser does not duplicate it. Removing a public link does not remove copies already saved by visitors.
+
+Manage links is available from the collection Share popover, including links to pieces or outfits that have since been deleted. Link management belongs to the browser and wardrobe/account space where the link was created; it does not sync between devices. Keep that browser's site data to retain control of Never links. Remove link immediately revokes future access. Ownership tokens are reserved locally before publication and only their hashes are stored on the server, so interrupted requests can be retried safely.
+
+Existing databases need [db/migrations/20260909_add_shares.sql](db/migrations/20260909_add_shares.sql). Save and run it in the Supabase SQL editor. It creates two private tables with RLS and no browser-role grants; no new environment variables or storage buckets are needed. `/api/share` reports availability. Creation is limited to ten links per IP per hour, with keyed IP digests rather than raw addresses. Expired snapshot bodies are removed in bounded batches during share requests; small expired/revoked ID tombstones prevent old requests from republishing removed links.
+
 ## Optional sync setup
 
 Existing Capsule databases need [db/migrations/20260908_add_wishlist.sql](db/migrations/20260908_add_wishlist.sql) before deploying the Wishlist release. Run it in the Supabase SQL editor; it only allows the new collection in the existing records table and can be run again safely. No new environment variables, browser keys, or storage bucket are needed. Fresh databases use the schema below.

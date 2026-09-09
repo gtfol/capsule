@@ -167,4 +167,5 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
   .outfit-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   .outfit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px; }
 }
+@media (max-width: 480px) { .bottom-nav-inner { column-gap: 6px; padding-left: 12px; padding-right: 12px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
