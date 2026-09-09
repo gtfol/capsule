@@ -1,0 +1,58 @@
+README.md
+  h_606d960bac5d85 66
+package-lock.json
+  h_606d960bac5d85 12
+package.json
+  h_606d960bac5d85 15
+src/components/shared-capsule.tsx
+  h_606d960bac5d85 50
+src/components/shared-copy-actions.tsx
+  h_606d960bac5d85 3,13-14,20-26,41-43,52-53,64,67,117-127,129-131
+src/components/wardrobe-app.tsx
+  h_606d960bac5d85 38,49,53-54,68,70,76
+src/components/wishlist.tsx
+  h_606d960bac5d85 19,24-25,38,41
+src/lib/db.ts
+  h_606d960bac5d85 3,164,196-200,215-216,220,227,277
+src/lib/navigation.ts
+  h_606d960bac5d85 12,19-26
+src/lib/piece-identity.ts
+  h_606d960bac5d85 1-67
+src/lib/server/shares.ts
+  h_606d960bac5d85 5,61
+src/lib/server/sync-validation.ts
+  h_606d960bac5d85 3,115,135-139
+src/lib/share-client.ts
+  h_606d960bac5d85 5,104,106
+src/lib/share-types.ts
+  h_606d960bac5d85 13
+src/lib/shared-copy.ts
+  h_606d960bac5d85 10,50-53,82,106,128
+src/lib/types.ts
+  h_606d960bac5d85 6
+tests/navigation.test.ts
+  h_606d960bac5d85 27,45,51-57
+tests/piece-identity.test.ts
+  h_606d960bac5d85 1-48
+tests/share-client.test.ts
+  h_606d960bac5d85 8,21,25-31
+tests/share-storage.test.ts
+  h_606d960bac5d85 227-235
+tests/shared-copy.test.ts
+  h_606d960bac5d85 12,22-24,74,116,122-131
+tests/shared-import.test.ts
+  h_606d960bac5d85 8,20,34-35,72,78,88,104-168
+tests/sync-validation.test.ts
+  h_606d960bac5d85 165-174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2a722d1668151bae5a84df17f5898dc286fce05d",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
