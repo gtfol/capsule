@@ -4,6 +4,8 @@ A personal wardrobe and wishlist. Add clothes from product links or your own pho
 
 Navigation uses nuqs: Wardrobe is `/`, and Wishlist, Add, and Outfits use `?view=wishlist`, `?view=add`, and `?view=outfits`. Add's wishlist destination is kept in `to=wishlist`. Refresh and browser Back/Forward restore the view; navigating between views keeps open editor drafts until the account changes or the page reloads.
 
+On reload, the selected view appears once the active browser/account data is ready. A centered status appears only after a short delay on slower reads; there is no startup spinner or intermediate empty catalog. The page fades in without moving the sidebar or content, respecting reduced-motion preferences.
+
 ## Run
 
 Node 22.13+ or 24 LTS and npm.
@@ -44,6 +46,8 @@ Handoffs use `/?view=add&to=wardrobe|wishlist&import=<encoded product URL>`. The
 ## Wishlist
 
 The Wishlist tab is a separate local collection. In Add, choose Wishlist and paste a product link, then review its photo, name, brand, details and price. The first available current-price quote is recorded with its source URL, currency and fetch time. Pages without a reliable price can still be saved; manually entering a price does not fabricate a historical fetch.
+
+Wishlist also supports Photos mode with up to three uploads and an optional product link. Both new and saved wishlist pieces use the wardrobe photo editor: assign front/back/side views, upload more photos, fetch a listing's gallery, and remove backgrounds on-device with original/cutout comparison. Photo-only items start without fetched price history. Photo edits are saved together with the piece, protected by the unsaved-changes dialog, and included when moving it to the wardrobe.
 
 Set your own rating from half a star to five stars. Select the same rating again to clear it; arrow keys move in half steps, and Delete or Backspace clears the rating. Cards display the current price, rating and an unavailable-link icon after a failed check. Filter by category and sort by recently added, highest rated or biggest percentage price drop from the first recorded comparable price.
 

@@ -1,19 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ArrowUpRight, Check, Images, Link2Off, Loader2, Plus, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Link2Off, Loader2, Plus, RefreshCw } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { CATEGORIES } from "./item-detail";
 import { StarRating } from "./star-rating";
 import { PriceHistoryChart } from "./price-history-chart";
-import { cacheProductImages, imageSource } from "@/lib/images";
+import { PiecePhotos, usePiecePhotos } from "./piece-photos";
 import { applyPriceFetch, formatPrice, MAX_PRICE_HISTORY, MAX_WISHLIST_SOURCES, normalizeListingUrl, recomputeWishlistPrice, wishlistPriceNumber } from "@/lib/wishlist";
 import { fetchWishlistPrice } from "@/lib/wishlist-client";
 import type { WishlistItem } from "@/lib/types";
 import type { WishlistPriceQuote } from "@/lib/wishlist-editor";
-import { assignPhotoSlot } from "@/lib/photo-slots";
 import { UnsavedChangesDialog } from "./unsaved-changes-dialog";
 import { SharePopover } from "./share-popover";
 import { useWardrobe } from "@/lib/store";
@@ -21,6 +20,7 @@ import { useWardrobe } from "@/lib/store";
 type Props = {
   item: WishlistItem;
   images?: string[];
+  uploadedImages?: string[];
   isNew?: boolean;
   active?: boolean;
   onClose: () => void;
@@ -38,7 +38,7 @@ function hasEdits(item: WishlistItem, initial: WishlistItem) {
   return fields.some((field) => item[field] !== initial[field]);
 }
 
-export function WishlistDetail({ item, images = [], isNew = false, active = true, onClose, onSave, onDelete, onMove, onPriceChange }: Props) {
+export function WishlistDetail({ item, images = [], uploadedImages = [], isNew = false, active = true, onClose, onSave, onDelete, onMove, onPriceChange }: Props) {
   const savedItem = useWardrobe((state) => state.wishlist.find((piece) => piece.id === item.id));
   const [form, setForm] = useState(item);
   const [error, setError] = useState("");
@@ -48,45 +48,15 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
   const [fetching, setFetching] = useState<string | null>(null);
   const [alternative, setAlternative] = useState("");
   const [showAlternative, setShowAlternative] = useState(false);
-  const [imageSide, setImageSide] = useState<"front" | "back" | "side">("front");
-  const [gallery, setGallery] = useState(() => [...new Set([item.imageUrl, item.backImageUrl, item.sideImageUrl, ...images].filter((url): url is string => !!url))]);
-  const [fetchingPhotos, setFetchingPhotos] = useState(false);
-  const [photoError, setPhotoError] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => () => { request.current?.abort(); }, []);
-  const busy = saving || !!fetching || fetchingPhotos;
-  const selectedImage = imageSide === "front" ? { imageUrl: form.imageUrl, imageData: form.imageData } : imageSide === "back" ? { imageUrl: form.backImageUrl ?? "", imageData: form.backImageData } : { imageUrl: form.sideImageUrl ?? "", imageData: form.sideImageData };
+  const photoEditor = usePiecePhotos({ item, images, uploadedImages, purchaseUrl: form.purchaseUrl, disabled: saving || !!fetching });
+  const busy = photoEditor.locked;
+  const dirty = isNew || hasEdits(form, item) || photoEditor.dirty;
   const set = <K extends keyof WishlistItem>(key: K, value: WishlistItem[K]) => setForm((current) => ({ ...current, [key]: value }));
-  const discard = () => { request.current?.abort(); onClose(); };
-  const close = () => { if (saving) return; if (isNew || hasEdits(form, item) || fetching || fetchingPhotos || alternative.trim()) setConfirmClose(true); else discard(); };
-  function selectImage(imageUrl: string) {
-    setForm((current) => {
-      const data = new Map([[current.imageUrl, current.imageData], [current.backImageUrl, current.backImageData], [current.sideImageUrl, current.sideImageData], [item.imageUrl, item.imageData], [item.backImageUrl, item.backImageData], [item.sideImageUrl, item.sideImageData]]);
-      const slots = assignPhotoSlot({ frontId: current.imageUrl, backId: current.backImageUrl || null, sideId: current.sideImageUrl || null }, imageSide, imageUrl);
-      return { ...current, imageUrl: slots.frontId, imageData: data.get(slots.frontId), backImageUrl: slots.backId ?? undefined, backImageData: slots.backId ? data.get(slots.backId) : undefined, sideImageUrl: slots.sideId ?? undefined, sideImageData: slots.sideId ? data.get(slots.sideId) : undefined };
-    });
-  }
-
-  async function fetchPhotos() {
-    if (busy || request.current || !form.purchaseUrl.trim()) return;
-    setPhotoError("");
-    if (!navigator.onLine) { setPhotoError("Connect to the internet to fetch product photos."); return; }
-    const controller = new AbortController();
-    request.current = controller;
-    setFetchingPhotos(true);
-    try {
-      const url = normalizeListingUrl(form.purchaseUrl);
-      const response = await fetch("/api/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(35_000)]) });
-      const data = await response.json();
-      if (controller.signal.aborted) return;
-      if (!response.ok) throw new Error(data.error || "Product photos could not be fetched.");
-      const incoming = [data.item?.imageUrl, ...(Array.isArray(data.images) ? data.images : [])].filter((url): url is string => typeof url === "string" && /^https?:\/\//.test(url)).slice(0, 24);
-      if (!incoming.length) throw new Error("No product photos were found on this page.");
-      setGallery((current) => [...new Set([...current, ...incoming])]);
-    } catch (cause) { if (!controller.signal.aborted) setPhotoError(cause instanceof Error ? cause.message : "Product photos could not be fetched."); }
-    finally { if (request.current === controller) { request.current = null; setFetchingPhotos(false); } }
-  }
+  const discard = () => { request.current?.abort(); photoEditor.cancel(); onClose(); };
+  const close = () => { if (saving) return; if (dirty || busy || alternative.trim()) setConfirmClose(true); else discard(); };
 
   async function checkPrice(rawUrl: string, isAlternative = false) {
     if (busy || request.current) return;
@@ -132,7 +102,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
       if (!form.name.trim()) throw new Error("Enter a name for this piece.");
       if (form.price && wishlistPriceNumber(form.price) === null) throw new Error("Enter a valid price using digits and a decimal point.");
       if (form.currency && !/^[A-Z]{3}$/.test(form.currency)) throw new Error("Use a three-letter currency code.");
-      const cached = await cacheProductImages(form, form.backImageUrl || form.backImageData ? { imageUrl: form.backImageUrl ?? "", imageData: form.backImageData } : undefined, form.sideImageUrl || form.sideImageData ? { imageUrl: form.sideImageUrl ?? "", imageData: form.sideImageData } : undefined);
+      const cached = await photoEditor.save();
       let edited: WishlistItem = { ...form, ...cached, name: form.name.trim(), purchaseUrl, updatedAt: Date.now() };
       if (isNew) {
         // Confirmation can correct the visible quote without rewriting the
@@ -149,20 +119,9 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
   }
 
   return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving || confirmClose) event.preventDefault(); }} onInteractOutside={(event) => { if (saving || confirmClose) event.preventDefault(); }}>
-    <div className="flex items-center justify-between gap-4 pr-9"><SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>{!isNew && savedItem && <SharePopover target={{ kind: "piece", piece: savedItem }} active={active} disabled={hasEdits(form, item) || busy || !!alternative.trim()} disabledReason="Save changes before sharing." />}</div>
+    <div className="flex items-center justify-between gap-4 pr-9"><SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>{!isNew && savedItem && <SharePopover target={{ kind: "piece", piece: savedItem }} active={active} disabled={dirty || busy || !!alternative.trim()} disabledReason="Save changes before sharing." />}</div>
     <SheetDescription className="sr-only">Review this piece, your rating, listing links and recorded prices.</SheetDescription>
-    {(gallery.length > 1 || form.backImageData || form.sideImageData) && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="text-[11px] text-muted-foreground underline underline-offset-4" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}>Remove {imageSide}</button>}</div>}
-    <div className="detail-image mt-6 flex aspect-[5/4] items-center justify-center">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {selectedImage.imageUrl || selectedImage.imageData ? <img src={imageSource(selectedImage)} alt={`${form.name || "Product image"}, ${imageSide}`} className="h-full w-full object-contain" /> : <p className="text-[12px] text-subtle">Choose a {imageSide} image below. Optional.</p>}
-    </div>
-    {gallery.length > 1 && <div className="mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product images">{gallery.map((imageUrl, index) => <button key={imageUrl} type="button" aria-label={`Use image ${index + 1} as ${imageSide}`} aria-pressed={selectedImage.imageUrl === imageUrl} disabled={busy || (imageSide !== "front" && imageUrl === form.imageUrl && !selectedImage.imageUrl)} className={`relative h-14 w-12 shrink-0 border-b ${selectedImage.imageUrl === imageUrl ? "border-foreground" : "border-transparent"}`} onClick={() => selectImage(imageUrl)}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={imageSource({ imageUrl, imageData: imageUrl === form.imageUrl ? form.imageData : imageUrl === form.backImageUrl ? form.backImageData : imageUrl === form.sideImageUrl ? form.sideImageData : undefined })} alt="" className="h-full w-full object-contain" loading="lazy" />
-      {selectedImage.imageUrl === imageUrl && <Check size={10} className="absolute bottom-0 right-0 bg-background" />}
-    </button>)}</div>}
-    {!isNew && <div className="photo-toolbar" role="group" aria-label="Photo tools"><button type="button" className="photo-tool" aria-label="Fetch product photos" disabled={busy || !form.purchaseUrl.trim()} onClick={() => void fetchPhotos()}>{fetchingPhotos ? <Loader2 size={16} className="animate-spin" /> : <Images size={16} strokeWidth={1.4} />}<span className="photo-tool-label" aria-hidden="true">Fetch product photos</span></button></div>}
-    {photoError && <p className="mt-3 text-[12px]" role="alert">{photoError}</p>}
+    <PiecePhotos editor={photoEditor} name={form.name} />
 
     <form onSubmit={save} className="mt-7"><fieldset disabled={busy} className="space-y-5">
       <label className="field-label">Name<Input value={form.name} onChange={(event) => set("name", event.target.value)} required maxLength={300} placeholder="Item name" /></label>
@@ -197,7 +156,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
       try {
         if (!form.name.trim()) throw new Error("Enter a name for this piece.");
         const purchaseUrl = form.purchaseUrl.trim() ? normalizeListingUrl(form.purchaseUrl) : "";
-        const cached = await cacheProductImages(form, form.backImageUrl || form.backImageData ? { imageUrl: form.backImageUrl ?? "", imageData: form.backImageData } : undefined, form.sideImageUrl || form.sideImageData ? { imageUrl: form.sideImageUrl ?? "", imageData: form.sideImageData } : undefined);
+        const cached = await photoEditor.save();
         await onMove({ ...form, ...cached, purchaseUrl });
         onClose();
       } catch (cause) { setError(cause instanceof Error ? cause.message : "This piece could not be moved. Try again."); setSaving(false); }

@@ -48,6 +48,16 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 ::selection { color: var(--surface); background: var(--strong-text); }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--surface); padding: 10px; }
 .skip-link:focus { top: 5px; }
+/* One viewport-centered status spans startup, independent of the catalog grid.
+   Most IndexedDB reads finish before its text appears. No minimum wait. */
+.app-loading { position: fixed; inset: 0; display: grid; place-items: center; background: var(--surface); color: var(--muted-text); font-size: 12px; }
+.app-loading-copy { opacity: 0; animation: app-appear 180ms ease 700ms forwards; }
+.app-ready { animation: app-appear 180ms ease-out both; }
+@keyframes app-appear { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .app-ready { animation: none; }
+  .app-loading-copy { animation-duration: 0s; }
+}
 .catalog-layout { display: grid; grid-template-columns: 160px minmax(0, 1fr); column-gap: 35px; padding: 30px 30px 110px; }
 .catalog-sidebar { padding-top: 1px; }
 .filter-trigger { font-size: 12px; display: flex; align-items: center; gap: 25px; padding: 0; }
