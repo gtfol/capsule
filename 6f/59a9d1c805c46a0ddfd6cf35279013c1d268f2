@@ -1,0 +1,126 @@
+.env.example
+  h_606d960bac5d85 1-18
+.gitignore
+  h_606d960bac5d85 1-11
+.vercelignore
+  h_606d960bac5d85 1-8
+README.md
+  h_606d960bac5d85 1-69
+components.json
+  h_606d960bac5d85 1-9
+db/schema.sql
+  h_606d960bac5d85 1-66
+eslint.config.mjs
+  h_606d960bac5d85 1-4
+next-env.d.ts
+  h_606d960bac5d85 1-7
+next.config.ts
+  h_606d960bac5d85 1-13
+package-lock.json
+  h_606d960bac5d85 1-8444
+package.json
+  h_606d960bac5d85 1-43
+postcss.config.mjs
+  h_606d960bac5d85 1-2
+public/icon.svg
+  h_606d960bac5d85 1
+public/manifest.webmanifest
+  h_606d960bac5d85 1
+public/sw.js
+  h_606d960bac5d85 1-26
+src/app/api/auth/[...all]/route.ts
+  h_606d960bac5d85 1-10
+src/app/api/image/route.ts
+  h_606d960bac5d85 1-34
+src/app/api/import/route.ts
+  h_606d960bac5d85 1-25
+src/app/api/render/route.ts
+  h_606d960bac5d85 1-30
+src/app/api/render/status/route.ts
+  h_606d960bac5d85 1-8
+src/app/api/sync/route.ts
+  h_606d960bac5d85 1-88
+src/app/api/sync/status/route.ts
+  h_606d960bac5d85 1-8
+src/app/globals.css
+  h_606d960bac5d85 1-94
+src/app/layout.tsx
+  h_606d960bac5d85 1-6
+src/app/page.tsx
+  h_606d960bac5d85 1-2
+src/components/add-piece.tsx
+  h_606d960bac5d85 1-31
+src/components/item-detail.tsx
+  h_606d960bac5d85 1-62
+src/components/offline.tsx
+  h_606d960bac5d85 1-13
+src/components/outfits.tsx
+  h_606d960bac5d85 1-83
+src/components/sync-popover.tsx
+  h_606d960bac5d85 1-30
+src/components/ui/button.tsx
+  h_606d960bac5d85 1-6
+src/components/ui/input.tsx
+  h_606d960bac5d85 1-3
+src/components/ui/popover.tsx
+  h_606d960bac5d85 1-7
+src/components/ui/sheet.tsx
+  h_606d960bac5d85 1-9
+src/components/wardrobe-app.tsx
+  h_606d960bac5d85 1-51
+src/lib/auth-client.ts
+  h_606d960bac5d85 1-3
+src/lib/db.ts
+  h_606d960bac5d85 1-214
+src/lib/images.ts
+  h_606d960bac5d85 1-26
+src/lib/server/auth.ts
+  h_606d960bac5d85 1-32
+src/lib/server/db.ts
+  h_606d960bac5d85 1-43
+src/lib/server/product.ts
+  h_606d960bac5d85 1-202
+src/lib/server/render.ts
+  h_606d960bac5d85 1-185
+src/lib/server/safe-fetch.ts
+  h_606d960bac5d85 1-236
+src/lib/server/sync-validation.ts
+  h_606d960bac5d85 1-90
+src/lib/store.ts
+  h_606d960bac5d85 1-82
+src/lib/sync.ts
+  h_606d960bac5d85 1-223
+src/lib/types.ts
+  h_606d960bac5d85 1-56
+src/lib/utils.ts
+  h_606d960bac5d85 1-3
+tests/database-config.test.ts
+  h_606d960bac5d85 1-42
+tests/product.test.ts
+  h_606d960bac5d85 1-128
+tests/render.test.ts
+  h_606d960bac5d85 1-73
+tests/safe-fetch.test.ts
+  h_606d960bac5d85 1-142
+tests/storage.test.ts
+  h_606d960bac5d85 1-111
+tests/sync-lifecycle.test.ts
+  h_606d960bac5d85 1-51
+tests/sync-races.test.ts
+  h_606d960bac5d85 1-72
+tests/sync-validation.test.ts
+  h_606d960bac5d85 1-44
+tsconfig.json
+  h_606d960bac5d85 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "6f59a9d1c805c46a0ddfd6cf35279013c1d268f2",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
