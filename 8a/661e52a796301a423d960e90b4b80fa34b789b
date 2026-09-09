@@ -1,0 +1,32 @@
+README.md
+  h_606d960bac5d85 7-8,50-51
+src/app/globals.css
+  h_606d960bac5d85 51-60
+src/components/add-piece.tsx
+  h_606d960bac5d85 68,77
+src/components/item-detail.tsx
+  h_606d960bac5d85 2-3,10,18-19,23-26,28,31,36,44,46,54,68,70
+src/components/piece-photos.tsx
+  h_606d960bac5d85 1-172
+src/components/wardrobe-app.tsx
+  h_606d960bac5d85 4,21-27,29-35,52,61,65-66
+src/components/wishlist-detail.tsx
+  h_606d960bac5d85 4,11,23,41,54-56,58-59,105,122,124,159
+src/components/wishlist.tsx
+  h_606d960bac5d85 4,20,36-37
+src/lib/photo-editor.ts
+  h_606d960bac5d85 1-37
+tests/photo-editor.test.ts
+  h_606d960bac5d85 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "8a661e52a796301a423d960e90b4b80fa34b789b",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
