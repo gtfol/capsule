@@ -1,0 +1,16 @@
+src/components/share-popover.tsx
+  h_606d960bac5d85 4,7,26,62-63,102,106-111,115,129,131-142,163,176,185,194-195,199-207
+src/components/ui/icon-action.tsx
+  h_606d960bac5d85 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "fca8900663e49e5729d3686a156d818735e3e9c1",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
