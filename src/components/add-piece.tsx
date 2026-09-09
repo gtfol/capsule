@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowRight, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ItemDetail, type ItemDraft } from "@/components/item-detail";
@@ -8,9 +8,10 @@ import { prepareUploadedImage } from "@/lib/images";
 import { WishlistDetail } from "./wishlist-detail";
 import { createWishlistItem } from "@/lib/wishlist";
 import type { WishlistPriceQuote } from "@/lib/wishlist-editor";
-export function AddPiece({ onAdded, destination = "wardrobe", active = true }: { onAdded: () => void; destination?: "wardrobe" | "wishlist"; active?: boolean }) {
+import { fetchProductImport } from "@/lib/product-import";
+export function AddPiece({ onAdded, destination = "wardrobe", active = true, importUrl = null, onImportClosed }: { onAdded: () => void; destination?: "wardrobe" | "wishlist"; active?: boolean; importUrl?: string | null; onImportClosed?: () => void }) {
   const [mode, setMode] = useState<"link" | "photos">("link");
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(importUrl ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -20,27 +21,36 @@ export function AddPiece({ onAdded, destination = "wardrobe", active = true }: {
   const preparation = useRef(0);
   const { saveItem, saveWishlistItem, space } = useWardrobe();
   useEffect(() => () => { request.current?.abort(); preparation.current++; }, []);
-  async function extract(event: React.FormEvent) {
-    event.preventDefault(); setError("");
-    if (!navigator.onLine) { setError("Connect to the internet to fetch a product link."); return; }
-    let normalized: URL;
-    try { normalized = new URL(url.trim()); if (!["https:", "http:"].includes(normalized.protocol)) throw new Error(); }
-    catch { setError("Paste a full product URL, starting with https://."); return; }
-    if (busy) return;
-    setBusy(true);
-    const controller = new AbortController();
+  const extractUrl = useCallback(async (value: string, controller: AbortController) => {
+    request.current?.abort();
     request.current = controller;
+    setError("");
+    setMode("link");
+    setUrl(value);
+    setBusy(true);
     try {
-      const response = await fetch("/api/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: normalized.href }), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(35_000)]) });
-      const data = await response.json();
+      const data = await fetchProductImport(value, { signal: controller.signal, online: navigator.onLine });
       if (controller.signal.aborted) return;
-      if (!response.ok) throw new Error(data.error || "This page could not be imported. Try another product link.");
       const item = destination === "wishlist" ? { ...data.item, price: data.priceQuote?.price ?? "", currency: data.priceQuote?.currency ?? "" } : data.item;
       setDraft({ ...data, item, id: crypto.randomUUID(), fetchedAt: Date.now() });
       setUrl("");
     } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error && cause.name === "TimeoutError" ? "This page took too long to respond. Try again." : cause instanceof Error ? cause.message : "This page could not be imported. Try again."); }
-    finally { if (!controller.signal.aborted) setBusy(false); if (request.current === controller) request.current = null; }
+    finally { if (request.current === controller) { setBusy(false); request.current = null; } }
+  }, [destination]);
+  useEffect(() => {
+    if (!importUrl) return;
+    const controller = new AbortController();
+    // A handoff only opens a review draft. Saving still requires an explicit action.
+    // Synchronize request/loading state when an external product URL arrives.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void extractUrl(importUrl, controller);
+    return () => { controller.abort(); request.current?.abort(); };
+  }, [importUrl, extractUrl]);
+  function extract(event: React.FormEvent) {
+    event.preventDefault();
+    if (!busy) void extractUrl(url, new AbortController());
   }
+  function closeDraft() { setDraft(null); onImportClosed?.(); }
   async function addPhotos(files: File[]) {
     if (busy || !files.length) return;
     setError("");
@@ -64,6 +74,6 @@ export function AddPiece({ onAdded, destination = "wardrobe", active = true }: {
       </div><p className="mt-4 text-[12px] text-subtle">JPG, PNG, WebP or AVIF. Photos are processed in this browser.</p>
     </>}
     {error && <p className="mt-6 text-[13px] leading-relaxed" role="alert">{error}</p>}
-    {draft && (destination === "wishlist" ? <WishlistDetail key={draft.id} active={active} item={createWishlistItem({ ...draft.item, id: draft.id, createdAt: draft.fetchedAt, updatedAt: draft.fetchedAt }, draft.fetchedAt, draft.priceQuote ?? null)} images={draft.images} isNew onClose={() => setDraft(null)} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveWishlistItem(item); onAdded(); }} /> : <ItemDetail key={draft.id} active={active} item={draft.item} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={() => setDraft(null)} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveItem(item); onAdded(); }} />)}
+    {draft && (destination === "wishlist" ? <WishlistDetail key={draft.id} active={active} item={createWishlistItem({ ...draft.item, id: draft.id, createdAt: draft.fetchedAt, updatedAt: draft.fetchedAt }, draft.fetchedAt, draft.priceQuote ?? null)} images={draft.images} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveWishlistItem(item); onAdded(); }} /> : <ItemDetail key={draft.id} active={active} item={draft.item} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveItem(item); onAdded(); }} />)}
   </section>;
 }
