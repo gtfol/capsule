@@ -4,7 +4,7 @@ import { ArrowUpRight, Check, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cacheProductImage, imageSource } from "@/lib/images";
+import { cacheProductImages, imageSource } from "@/lib/images";
 import type { Category, Item } from "@/lib/types";
 export const CATEGORIES: { value: Category; label: string }[] = [{ value: "tops", label: "Tops" }, { value: "jackets", label: "Jackets" }, { value: "bottoms", label: "Bottoms" }, { value: "accessories", label: "Accessories" }, { value: "shoes", label: "Shoes" }];
 export type ItemDraft = Omit<Item, "id" | "createdAt" | "updatedAt">;
@@ -13,8 +13,19 @@ export function ItemDetail({ item, images = [], isNew = false, onClose, onSave, 
   const [form, setForm] = useState<ItemDraft | Item>(item);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [imageSide, setImageSide] = useState<"front" | "back">("front");
   const update = (key: keyof ItemDraft, value: string) => setForm((current) => ({ ...current, [key]: value }));
-  const candidates = [...new Set([item.imageUrl, ...images])].filter(Boolean).slice(0, 24);
+  const candidates = [...new Set([item.imageUrl, item.backImageUrl, ...images])].filter((url): url is string => !!url).slice(0, 24);
+  const selectedImageUrl = imageSide === "front" ? form.imageUrl : form.backImageUrl;
+  const cachedImage = (imageUrl: string) => ({ imageUrl, imageData: imageUrl === item.imageUrl ? item.imageData : imageUrl === item.backImageUrl ? item.backImageData : undefined });
+  function selectImage(url: string) {
+    if (busy) return;
+    setForm((current) => {
+      if (imageSide === "front") return { ...current, imageUrl: url, backImageUrl: current.backImageUrl === url ? current.imageUrl : current.backImageUrl };
+      if (url === current.imageUrl) return current.backImageUrl ? { ...current, imageUrl: current.backImageUrl, backImageUrl: url } : current;
+      return { ...current, backImageUrl: url };
+    });
+  }
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true); setError("");
@@ -23,25 +34,33 @@ export function ItemDetail({ item, images = [], isNew = false, onClose, onSave, 
       if (!["https:", "http:"].includes(purchase.protocol)) throw new Error("Enter a valid purchase link.");
       if (!form.name.trim()) throw new Error("Enter a name for this piece.");
       if (form.price && (!Number.isFinite(Number(form.price)) || Number(form.price) < 0)) throw new Error("Enter a valid price.");
-      const imageData = form.imageData && form.imageUrl === item.imageUrl ? form.imageData : await cacheProductImage(form.imageUrl);
+      const backImageUrl = form.backImageUrl && form.backImageUrl !== form.imageUrl ? form.backImageUrl : undefined;
+      const { imageData, backImageData } = await cacheProductImages(cachedImage(form.imageUrl), backImageUrl ? cachedImage(backImageUrl) : undefined);
       const now = Date.now();
-      await onSave({ ...form, name: form.name.trim(), imageData, id: "id" in item ? item.id : crypto.randomUUID(), createdAt: "createdAt" in item ? item.createdAt : now, updatedAt: now, deletedAt: null } as Item);
+      await onSave({ ...form, name: form.name.trim(), imageData, backImageUrl, backImageData, id: "id" in item ? item.id : crypto.randomUUID(), createdAt: "createdAt" in item ? item.createdAt : now, updatedAt: now, deletedAt: null } as Item);
       onClose();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "This piece could not be saved. Try again."); }
     finally { setBusy(false); }
   }
-  return <Sheet open onOpenChange={(open) => { if (!open && !busy) onClose(); }}><SheetContent onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }} onInteractOutside={(event) => { if (busy) event.preventDefault(); }}>
+  return <Sheet open onOpenChange={(open) => { if (!open && !busy) onClose(); }}><SheetContent data-busy={busy} onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }} onInteractOutside={(event) => { if (busy) event.preventDefault(); }}>
     <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>
     <SheetDescription className="sr-only">Review the product image and edit this piece’s details.</SheetDescription>
-    <div className="detail-image mt-8 flex aspect-[5/4] items-center justify-center bg-white">
+    {candidates.length > 1 && <div className="mt-7 flex items-center justify-between gap-4">
+      <div className="image-side-controls" role="group" aria-label="Image side">
+        <button type="button" aria-pressed={imageSide === "front"} disabled={busy} onClick={() => setImageSide("front")}>Front</button>
+        <button type="button" aria-pressed={imageSide === "back"} disabled={busy} onClick={() => setImageSide("back")}>Back</button>
+      </div>
+      {form.backImageUrl && <button type="button" disabled={busy} className="text-[11px] text-neutral-500 underline underline-offset-4" onClick={() => { setForm((current) => ({ ...current, backImageUrl: undefined, backImageData: undefined })); setImageSide("front"); }}>Remove back</button>}
+    </div>}
+    <div className="detail-image mt-6 flex aspect-[5/4] items-center justify-center bg-white">
       {/* Product images are stored in IndexedDB as data URLs for offline use. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={form.imageUrl === item.imageUrl && item.imageData ? item.imageData : imageSource({ imageUrl: form.imageUrl })} alt={form.name || "Product image"} className="h-full w-full object-contain" />
+      {selectedImageUrl ? <img src={imageSource(cachedImage(selectedImageUrl))} alt={`${form.name || "Product image"}, ${imageSide}`} className="h-full w-full object-contain" /> : <p className="text-[12px] text-neutral-400">Choose a back image below. Optional.</p>}
     </div>
-    {candidates.length > 1 && <div className="mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product images">{candidates.map((url, i) => <button type="button" key={url} aria-label={`Use image ${i + 1}`} aria-pressed={form.imageUrl === url} className={`relative h-14 w-12 shrink-0 border-b ${form.imageUrl === url ? "border-black" : "border-transparent"}`} onClick={() => update("imageUrl", url)}>
+    {candidates.length > 1 && <div className="mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product images">{candidates.map((url, i) => <button type="button" key={url} aria-label={`Use image ${i + 1} as ${imageSide}`} aria-pressed={selectedImageUrl === url} disabled={busy || (imageSide === "back" && url === form.imageUrl && !form.backImageUrl)} className={`relative h-14 w-12 shrink-0 border-b disabled:opacity-40 ${selectedImageUrl === url ? "border-black" : "border-transparent"}`} onClick={() => selectImage(url)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={imageSource({ imageUrl: url })} alt="" className="h-full w-full object-contain" loading="lazy" />
-      {form.imageUrl === url && <Check size={10} className="absolute bottom-0 right-0 bg-white" />}
+      <img src={imageSource(cachedImage(url))} alt="" className="h-full w-full object-contain" loading="lazy" />
+      {selectedImageUrl === url && <Check size={10} className="absolute bottom-0 right-0 bg-white" />}
     </button>)}</div>}
     <form onSubmit={save} className="mt-7 space-y-5">
       <label className="field-label">Name<Input value={form.name} onChange={(event) => update("name", event.target.value)} required maxLength={300} placeholder="Item name" /></label>

@@ -14,6 +14,8 @@ export interface Item {
   purchaseUrl: string;
   imageUrl: string;
   imageData?: string;
+  backImageUrl?: string;
+  backImageData?: string;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number | null;

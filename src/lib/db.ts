@@ -147,7 +147,7 @@ export async function removeRecord(space: string, collection: Collection, id: st
   const previous = await request(store.get(key)) as StoredRecord | undefined;
   if (previous) {
     const now = Math.max(Date.now(), previous.record.updatedAt + 1);
-    store.put({ ...previous, record: { ...previous.record, imageData: "", updatedAt: now, deletedAt: now }, pendingToken: crypto.randomUUID() });
+    store.put({ ...previous, record: { ...previous.record, imageData: "", ...(collection === "items" ? { backImageData: "" } : {}), updatedAt: now, deletedAt: now }, pendingToken: crypto.randomUUID() });
   }
   await done;
   notify(space);

@@ -22,6 +22,7 @@ export function AddPiece({ onAdded }: { onAdded: () => void }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "This page could not be imported. Try another product link.");
       setDraft(data);
+      setUrl("");
     } catch (cause) { setError(cause instanceof Error && cause.name === "TimeoutError" ? "This page took too long to respond. Try again." : cause instanceof Error ? cause.message : "This page could not be imported. Try again."); }
     finally { setBusy(false); }
   }

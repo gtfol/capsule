@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { accountSpace, applySyncResponse, GUEST_SPACE, importGuestOnce, listStored, pendingChanges, readSnapshot, removeRecord, syncCursor, writeRecord, writeReferencePhoto } from "../src/lib/db";
 import type { Item, SyncResponse } from "../src/lib/types";
+import { validateSyncRequest } from "../src/lib/server/sync-validation";
 
 // Browser cross-tab messaging is separate from the storage transaction tests.
 Object.defineProperty(globalThis, "BroadcastChannel", { value: undefined, configurable: true });
@@ -46,6 +47,29 @@ test("an acknowledgement cannot clear an edit made during the request", async ()
   assert.equal(await syncCursor(space), 10);
 });
 
+test("front and back images survive local storage, sync validation, and a remote pull", async () => {
+  const userId = crypto.randomUUID();
+  const space = accountSpace(userId);
+  const shirt: Item = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==" };
+  await writeRecord(space, "items", shirt);
+  const local = (await readSnapshot(space)).items[0];
+  assert.equal(local.imageData, shirt.imageData);
+  assert.equal(local.backImageData, shirt.backImageData);
+  const { changes } = validateSyncRequest({ expectedUserId: userId, cursor: 0, changes: await pendingChanges(space) });
+  const otherUser = crypto.randomUUID();
+  const otherDevice = accountSpace(otherUser);
+  await applySyncResponse(otherDevice, [], response(otherUser, { cursor: 1, rows: [{ collection: "items", record: changes[0].record, revision: 1 }] }));
+  const pulled = (await readSnapshot(otherDevice)).items[0];
+  assert.equal(pulled.imageData, shirt.imageData);
+  assert.equal(pulled.backImageUrl, shirt.backImageUrl);
+  assert.equal(pulled.backImageData, shirt.backImageData);
+  await writeRecord(space, "items", { ...local, backImageUrl: undefined, backImageData: undefined });
+  const cleared = validateSyncRequest(JSON.parse(JSON.stringify({ expectedUserId: userId, cursor: 1, changes: await pendingChanges(space) }))).changes[0];
+  await applySyncResponse(otherDevice, [], response(otherUser, { cursor: 2, rows: [{ collection: "items", record: cleared.record, revision: 2 }] }));
+  assert.equal((await readSnapshot(otherDevice)).items[0].backImageData, undefined);
+  assert.equal((await readSnapshot(otherDevice)).items[0].backImageUrl, undefined);
+});
+
 test("remote pulls preserve dirty local edits and clean records accept newer revisions", async () => {
   const userId = crypto.randomUUID();
   const space = accountSpace(userId);
@@ -63,7 +87,7 @@ test("remote pulls preserve dirty local edits and clean records accept newer rev
 test("conflicting edits preserve a pending local copy and the server's original", async () => {
   const userId = crypto.randomUUID();
   const space = accountSpace(userId);
-  const shirt = item("Local name");
+  const shirt = { ...item("Local name"), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==" };
   await writeRecord(space, "items", shirt);
   const sent = await pendingChanges(space);
   const conflicts = await applySyncResponse(space, sent, response(userId, {
@@ -74,19 +98,21 @@ test("conflicting edits preserve a pending local copy and the server's original"
   assert.equal(snapshot.items.length, 2);
   assert.equal(snapshot.items.find((i) => i.id === shirt.id)?.name, "Remote name");
   assert.equal(snapshot.items.find((i) => i.id !== shirt.id)?.name, "Local name (copy)");
+  assert.equal(snapshot.items.find((i) => i.id !== shirt.id)?.backImageData, shirt.backImageData);
   assert.equal((await pendingChanges(space)).length, 1);
 });
 
 test("deletes stay queued as tombstones until acknowledged", async () => {
   const userId = crypto.randomUUID();
   const space = accountSpace(userId);
-  const shirt = item();
+  const shirt = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==" };
   await writeRecord(space, "items", shirt);
   await removeRecord(space, "items", shirt.id);
   assert.equal((await readSnapshot(space)).items.length, 0);
   const pending = await pendingChanges(space);
   assert.ok(pending[0].record.deletedAt);
   assert.equal(pending[0].record.imageData, "");
+  assert.equal((pending[0].record as Item).backImageData, "");
   await applySyncResponse(space, pending, response(userId, { results: [{ collection: "items", id: shirt.id, status: "ok", revision: 6 }], cursor: 6 }));
   assert.equal((await pendingChanges(space)).length, 0);
   assert.ok((await listStored(space))[0].record.deletedAt);

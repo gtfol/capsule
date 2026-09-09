@@ -1,8 +1,10 @@
 import type { Item, Outfit, SyncChange } from "../types";
 import { CATEGORIES } from "../types";
+import { MAX_IMAGE_CHARS, MAX_ITEM_IMAGE_CHARS } from "../image-limits";
+
+export { MAX_IMAGE_CHARS } from "../image-limits";
 
 export const MAX_SYNC_BYTES = 3_800_000;
-export const MAX_IMAGE_CHARS = 2_800_000;
 const idPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object" && !Array.isArray(value);
 function text(value: unknown, max: number): string {
@@ -53,12 +55,19 @@ export function validateSyncRequest(value: unknown): { expectedUserId: string; c
     let record: Item | Outfit;
     if (change.collection === "items") {
       if (!CATEGORIES.includes(source.category as Item["category"])) throw new Error("Invalid item category.");
+      const imageData = source.imageData === undefined ? undefined : image(source.imageData);
+      const backImageData = source.backImageData === undefined ? undefined : image(source.backImageData);
+      if ((imageData?.length ?? 0) + (backImageData?.length ?? 0) > MAX_ITEM_IMAGE_CHARS) {
+        throw new Error("An item's images are too large.");
+      }
       record = {
         ...base, category: source.category as Item["category"], brand: text(source.brand, 300),
         size: text(source.size, 100), color: text(source.color, 200), price: text(source.price, 100),
         currency: text(source.currency, 20), description: text(source.description, 20_000),
         purchaseUrl: url(source.purchaseUrl), imageUrl: url(source.imageUrl),
-        ...(source.imageData !== undefined ? { imageData: image(source.imageData) } : {}),
+        ...(imageData !== undefined ? { imageData } : {}),
+        ...(source.backImageUrl !== undefined ? { backImageUrl: url(source.backImageUrl) } : {}),
+        ...(backImageData !== undefined ? { backImageData } : {}),
       };
     } else {
       if (!Array.isArray(source.itemIds) || source.itemIds.length > 30) throw new Error("An outfit contains too many pieces.");

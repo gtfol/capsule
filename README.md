@@ -19,6 +19,8 @@ Next.js 16, React 19, Tailwind 4, shadcn/ui (Radix primitives), Zustand, native 
 
 Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Items have editable size, color, and purchase link. Product photos are copied into IndexedDB as compressed JPEGs. No garment upload or sample inventory is included.
 
+Select a front image and an optional back image from the imported gallery. Wardrobe cards fade to the back on hover or keyboard focus; the detail panel lets you switch views on touch devices. Both images are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. Existing pieces with one image continue to work.
+
 Import reads JSON-LD Product/ProductGroup data, OpenGraph, product galleries and public Shopify metadata. Product pages that block automated access or expose no product image return an error; the app does not fabricate an item. Images favor explicitly labeled packshots when available, with alternate images available for selection. It does not remove image backgrounds.
 
 Saved pieces, outfit images, edits and deletions work offline. A production service worker caches the app shell and assets after the first visit; dev mode does not register it. Fetching a new product page and rendering a new outfit require the internet. Browser storage is device-specific and can be removed by clearing site data.
