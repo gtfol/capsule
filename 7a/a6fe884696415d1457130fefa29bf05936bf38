@@ -1,0 +1,28 @@
+README.md
+  h_606d960bac5d85 74,76
+src/app/globals.css
+  h_606d960bac5d85 109-119
+src/components/outfits.tsx
+  h_606d960bac5d85 8,12,42-43,47-48,50,52,68,78,84-85,90
+src/components/render-key-settings.tsx
+  h_606d960bac5d85 1-150
+src/lib/db.ts
+  h_606d960bac5d85 83-105
+src/lib/server/render.ts
+  h_606d960bac5d85 6,132-164,203-204,208
+tests/render-key-storage.test.ts
+  h_606d960bac5d85 1-93
+tests/render.test.ts
+  h_606d960bac5d85 68-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7aa6fe884696415d1457130fefa29bf05936bf38",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
