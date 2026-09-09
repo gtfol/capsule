@@ -5,6 +5,7 @@ import { Copy, Link2Off, List, Loader2, RefreshCw, Save, Share2 } from "lucide-r
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { IconAction } from "@/components/ui/icon-action";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { ShareLinkManager } from "@/components/share-link-manager";
 import { useWardrobe } from "@/lib/store";
 import { useSyncStore } from "@/lib/sync";
@@ -59,6 +60,7 @@ function ShareSession({ space, targetKey, target, appearance }: { space: string;
   const alive = useRef(false);
   const mutationRunning = useRef(false);
   const linkInput = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const [record, setRecord] = useState<ShareRecord | null>(null);
   const [expiry, setExpiry] = useState<ShareExpiry>(DEFAULT_SHARE_EXPIRY);
   const [enabled, setEnabled] = useState(false);
@@ -179,10 +181,9 @@ function ShareSession({ space, targetKey, target, appearance }: { space: string;
   const panelClass = `w-[min(340px,calc(100vw-32px))] ${appearance === "nav" ? "p-3" : "p-5"}`;
   if (managing) return <PopoverContent align={appearance === "nav" ? "center" : "end"} side={appearance === "nav" ? "top" : "bottom"} sideOffset={8} className={panelClass} aria-label="Manage share links"><ShareLinkManager space={space} onBack={() => { setManaging(false); setLoading(true); setError(""); setStatus(""); setCopied(false); setCompleted(null); setReload((value) => value + 1); }} /></PopoverContent>;
 
-  return <PopoverContent align={appearance === "nav" ? "center" : "end"} side={appearance === "nav" ? "top" : "bottom"} sideOffset={8} className={panelClass} aria-labelledby={titleId} aria-describedby={descriptionId}>
-    <h2 id={titleId} className="text-[13px] font-normal">Share {targetLabel(target)}</h2>
-    <p id={descriptionId} className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Anyone with the link can view it.{ownerName ? ` Your name, ${ownerName}, appears on the shared page.` : ""}</p>
-    <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{snapshotDescription(target)} Changes appear only when you update the link.</p>
+  return <PopoverContent ref={panel} tabIndex={-1} align={appearance === "nav" ? "center" : "end"} side={appearance === "nav" ? "top" : "bottom"} sideOffset={8} className={panelClass} aria-labelledby={titleId} aria-describedby={descriptionId} onOpenAutoFocus={(event) => { event.preventDefault(); panel.current?.focus(); }}>
+    <div className="flex items-center gap-1"><h2 id={titleId} className="text-[13px] font-normal">Share {targetLabel(target)}</h2><InfoTooltip label="About this share link">{snapshotDescription(target)}{ownerName ? ` Your name, ${ownerName}, appears on the shared page.` : ""} Changes appear only when you update the link.</InfoTooltip></div>
+    <p id={descriptionId} className="mt-3 text-[12px] leading-relaxed text-muted-foreground">{target.kind === "wardrobe" || target.kind === "wishlist" ? `Anyone with the link can view your full ${target.kind}.` : "Anyone with the link can view it."}</p>
     {loading ? <p role="status" className="mt-5 flex items-center gap-2 text-[12px] text-muted-foreground"><Loader2 size={13} className="animate-spin" aria-hidden="true" />Checking share link…</p> : <>
       {!enabled && !error && <p role="status" className="mt-5 text-[12px] text-muted-foreground">Sharing is not available right now.</p>}
       {confirmed && <div className="mt-5">
@@ -192,18 +193,15 @@ function ShareSession({ space, targetKey, target, appearance }: { space: string;
       {enabled && <>
         {record?.pending && <p className="mt-5 text-[12px] leading-relaxed text-muted-foreground">Link creation has not been confirmed. Retry to finish, or remove it.</p>}
         <div className="mt-5 flex items-center justify-between gap-4"><label htmlFor={expiryId} className="text-[12px] text-muted-foreground">Expires</label><select id={expiryId} value={expiry} disabled={!!busy} onChange={(event) => { setExpiry(event.target.value as ShareExpiry); setStatus(""); }} className="max-w-40 border-b border-border bg-background px-1 py-1 text-[12px] font-normal outline-none focus-visible:border-foreground disabled:opacity-40"><option value="7d">After 7 days</option><option value="30d">After 30 days</option><option value="never">Never</option></select></div>
-        {expiry === "never" && <p className="mt-2 text-[11px] leading-relaxed text-subtle">Available until you remove the link.</p>}
-        <p className="mt-3 text-[11px] leading-relaxed text-subtle">Manage this link from this browser.</p>
         {!canPublish && <p className="mt-4 text-[11px] text-subtle">Add a piece before {confirmed ? "updating" : "creating"} this link.</p>}
         {!confirmed && <Button type="button" className="mt-5 w-full" disabled={!!busy || !canPublish} onClick={() => void mutate("create")}>{busy === "create" ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" />Creating link…</> : record?.pending ? "Retry creating link" : "Create link"}</Button>}
-        {changed && <p className="mt-4 text-[11px] text-subtle">Saved changes are ready to share.</p>}
       </>}
     </>}
     {error && <div className="mt-4"><p role="alert" className="text-[12px] leading-relaxed">{error}</p>{!enabled && !loading && <button type="button" className="mt-3 text-[12px] underline underline-offset-4" onClick={() => { setLoading(true); setError(""); setReload((value) => value + 1); }}>Try again</button>}</div>}
     {status && <p role="status" className={completed || copied ? "sr-only" : "mt-4 text-[11px] leading-relaxed text-muted-foreground"}>{status}</p>}
-    {((!loading && enabled && record) || target.kind === "wardrobe" || target.kind === "wishlist") && <div role="group" aria-label="Share link actions" className="mt-8 flex items-center justify-end gap-2">
+    {((!loading && enabled && record) || target.kind === "wardrobe" || target.kind === "wishlist") && <div role="group" aria-label="Share link actions" className="mt-2 flex items-center justify-end gap-2">
       {!loading && enabled && <>
-        {confirmed && <IconAction label={completed === "update" ? "Link updated" : "Update link"} icon={RefreshCw} loading={busy === "update"} complete={completed === "update"} disabled={!!busy || !canPublish} onClick={() => void mutate("update")} />}
+        {confirmed && <IconAction label={completed === "update" ? "Link updated" : changed ? "Update link with saved changes" : "Update link"} icon={RefreshCw} loading={busy === "update"} complete={completed === "update"} disabled={!!busy || !canPublish} onClick={() => void mutate("update")} />}
         {confirmed && expiry !== confirmed.expiry && <IconAction label="Save expiry" icon={Save} loading={busy === "expiry"} disabled={!!busy} onClick={() => void mutate("expiry")} />}
         {record && <IconAction label="Remove link" icon={Link2Off} loading={busy === "remove"} disabled={!!busy} onClick={() => void mutate("remove")} />}
       </>}

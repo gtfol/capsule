@@ -2,29 +2,30 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 import type { RenderCredential } from "@/lib/render-credential";
 
-type Props = { userId: string | null; sessionKey?: string; disabled?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
+type Props = { userId: string | null; sessionKey?: string; disabled?: boolean; active?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
 export function RenderKeySettings(props: Props) {
   return props.userId ? <AccountKeySettings key={props.userId} {...props} userId={props.userId} /> : <GuestKeySettings {...props} />;
 }
 const inputProps = { type: "text", className: "render-key-input", autoComplete: "off", autoCorrect: "off", autoCapitalize: "none", spellCheck: false, maxLength: 503 } as const;
 const actionClass = "min-h-9 text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-40";
-function GuestKeySettings({ disabled, sessionKey = "", onCredentialChange }: Props) {
+function GuestKeySettings({ disabled, active, sessionKey = "", onCredentialChange }: Props) {
   const id = useId();
   const draft = sessionKey;
+  const note = "Used for this session only. Sign in through Sync to save a key to your account.";
   return <section aria-labelledby={`${id}-title`}>
-    <h2 id={`${id}-title`} className="text-[12px]">OpenAI API key</h2>
-    <p id={`${id}-note`} className="mt-2 text-[11px] leading-relaxed text-subtle">Used for this session only. Sign in through Sync to save a key to your account.</p>
+    <div className="flex items-center gap-1"><h2 id={`${id}-title`} className="text-[12px]">OpenAI API key</h2><InfoTooltip active={active} label="About your OpenAI API key">{note}</InfoTooltip></div>
+    <p id={`${id}-note`} className="sr-only">{note}</p>
     <div className="relative mt-2">
       <Input {...inputProps} aria-label="OpenAI API key" aria-describedby={`${id}-note`} placeholder="Paste your API key" disabled={disabled} value={draft} onChange={(event) => { const key = event.target.value; onCredentialChange(key.trim() ? { type: "session", apiKey: key } : null); }} onKeyDown={(event) => { if (event.key === "Enter") event.preventDefault(); }} />
       <span className="render-key-fallback" aria-hidden="true">{"•".repeat(Math.min(draft.length, 24))}</span>
     </div>
-    <p className="mt-2 text-[11px] leading-relaxed text-subtle">Rendering is billed to your OpenAI account.</p>
   </section>;
 }
 
-function AccountKeySettings({ userId, disabled = false, onCredentialChange }: Props & { userId: string }) {
+function AccountKeySettings({ userId, disabled = false, active, onCredentialChange }: Props & { userId: string }) {
   const id = useId();
   const [saved, setSaved] = useState(false);
   const [ready, setReady] = useState(false);
@@ -92,9 +93,10 @@ function AccountKeySettings({ userId, disabled = false, onCredentialChange }: Pr
     callback.current(saved ? { type: "saved", userId } : null);
   }
   const locked = disabled || Boolean(pending);
+  const note = saved ? "Saved securely to your account and reused for future outfits." : "Save your key securely to your account to reuse it for future outfits.";
   return <section aria-labelledby={`${id}-title`} aria-busy={(!ready && !error) || Boolean(pending)}>
-    <div className="flex items-center justify-between gap-3"><h2 id={`${id}-title`} className="text-[12px]">OpenAI API key</h2>{saved && <span className="text-[11px] text-subtle" role="status">Saved</span>}</div>
-    <p id={`${id}-note`} className="mt-2 text-[11px] leading-relaxed text-subtle">{saved ? "Saved securely to your account. Rendering is billed to your OpenAI account." : "Save your key securely to your account to reuse it for future outfits."}</p>
+    <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1"><h2 id={`${id}-title`} className="text-[12px]">OpenAI API key</h2><InfoTooltip active={active} label="About your OpenAI API key">{note}</InfoTooltip></div>{saved && <span className="text-[11px] text-subtle" role="status">Saved</span>}</div>
+    <p id={`${id}-note`} className="sr-only">{note}</p>
     {!ready || !available ? <div className="mt-3 text-[11px] text-subtle">{!error && <p role="status">Checking saved key…</p>}{error && <button type="button" className={actionClass} disabled={disabled} onClick={() => { setError(""); setDraft(""); setEditing(false); setAttempt((value) => value + 1); }}>Retry</button>}</div> : saved && !editing ? <div className="mt-2 flex min-h-9 items-center justify-between gap-4">
       <span className="select-none text-[13px] tracking-[0.12em]" aria-label="API key saved">••••••••••••</span>
       <div className="flex items-center gap-4"><button ref={changeButton} type="button" className={actionClass} disabled={locked} onClick={() => { focusNext.current = "input"; setDraft(""); setError(""); setInvalid(false); setEditing(true); callback.current(null); }}>Change</button><button type="button" className={actionClass} disabled={locked} onClick={() => { void mutate(true); }}>{pending === "remove" ? "Removing…" : "Remove"}</button></div>

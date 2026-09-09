@@ -141,25 +141,32 @@ const providerLimits: Readonly<Record<string, string>> = {
   rate_limit_exceeded: "OpenAI’s temporary request limit was reached. Wait a little, then try again.",
 };
 
-async function providerLimitMessage(response: Response): Promise<string | undefined> {
+const providerCodes = new Set([...Object.keys(providerLimits), "unsupported_parameter", "unknown_parameter", "invalid_parameter", "invalid_value", "invalid_request_error", "model_not_found", "content_policy_violation", "server_error"]);
+const providerTypes = new Set([...Object.keys(providerLimits), "invalid_request_error", "authentication_error", "permission_error", "server_error"]);
+const settingsParameters = new Set(["model", "input_fidelity", "size", "quality", "n", "output_format", "output_compression", "background"]);
+const providerParameters = new Set([...settingsParameters, "image", "image[]", "mask", "prompt"]);
+type ProviderError = { code?: string; type?: string; param?: string };
+
+async function readProviderError(response: Response): Promise<ProviderError> {
   try {
     if (Number(response.headers.get("content-length")) > MAX_PROVIDER_ERROR_BYTES) {
       await response.body?.cancel();
-      return undefined;
+      return {};
     }
     const data = await readLimitedJson(response.body, MAX_PROVIDER_ERROR_BYTES);
-    if (!data || typeof data !== "object" || Array.isArray(data) || !("error" in data)) return undefined;
+    if (!data || typeof data !== "object" || Array.isArray(data) || !("error" in data)) return {};
     const error = data.error;
-    if (!error || typeof error !== "object" || Array.isArray(error)) return undefined;
+    if (!error || typeof error !== "object" || Array.isArray(error)) return {};
     const fields = error as Record<string, unknown>;
-    // Specific codes distinguish exhausted credits from spend/usage ceilings.
-    // Provider prose may contain credentials or other caller data; ignore it.
-    for (const field of ["code", "type"] as const) {
-      const value = fields[field];
-      if (typeof value === "string" && Object.hasOwn(providerLimits, value)) return providerLimits[value];
-    }
+    // Provider prose can contain caller data. Only known identifiers may reach
+    // our messages or logs; never include the provider's message or request body.
+    return {
+      ...(typeof fields.code === "string" && providerCodes.has(fields.code) ? { code: fields.code } : {}),
+      ...(typeof fields.type === "string" && providerTypes.has(fields.type) ? { type: fields.type } : {}),
+      ...(typeof fields.param === "string" && providerParameters.has(fields.param) ? { param: fields.param } : {}),
+    };
   } catch { /* A malformed or oversized error must not mask its HTTP status. */ }
-  return undefined;
+  return {};
 }
 
 export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = fetch) {
@@ -171,7 +178,9 @@ export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = f
   form.set("n", "1");
   form.set("size", "1024x1536");
   form.set("quality", "medium");
-  form.set("input_fidelity", "high");
+  // GPT Image 2 handles every input at high fidelity and rejects this setting.
+  // Only send it to the older models that support explicitly selecting it.
+  if (/^gpt-image-1(?:\.5)?(?:-\d{4}-\d{2}-\d{2})?$/.test(status.model)) form.set("input_fidelity", "high");
   form.set("output_format", "jpeg");
   form.set("output_compression", "85");
   form.set("prompt", [
@@ -200,12 +209,27 @@ export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = f
     throw new RenderError("The image service did not respond. Try again shortly.", 502);
   }
   if (!response.ok) {
-    const limitMessage = await providerLimitMessage(response);
+    const error = await readProviderError(response);
+    const requestId = response.headers.get("x-request-id");
+    console.warn("capsule.render.provider_error", {
+      status: response.status,
+      ...error,
+      ...(requestId && /^req_[A-Za-z0-9_-]{1,100}$/.test(requestId) ? { requestId } : {}),
+    });
+    const limitMessage = providerLimits[error.code ?? ""] ?? providerLimits[error.type ?? ""];
     if (limitMessage) throw new RenderError(limitMessage, 429);
     if (response.status === 401 || response.status === 403) {
       throw new RenderError("Check your API key and image-model access.", 401);
     }
     if (response.status === 429) throw new RenderError("OpenAI returned a limit error. Check your API usage and billing, or try again later.", 429);
+    if (error.code === "model_not_found") throw new RenderError("The configured image model is unavailable to your OpenAI project. Check its model access.", 403);
+    if (error.code === "content_policy_violation") throw new RenderError("OpenAI declined this render under its content policy.", 400);
+    if (response.status === 400 || response.status === 422) {
+      if (settingsParameters.has(error.param ?? "")) throw new RenderError("OpenAI rejected Capsule’s render settings. Please report this error.", 500);
+      if (error.param === "image" || error.param === "image[]" || error.param === "mask") throw new RenderError("OpenAI could not process one of the photos. Try another photo.", 400);
+      throw new RenderError("OpenAI rejected this render request. Please report this error.", 400);
+    }
+    if (response.status >= 500) throw new RenderError("OpenAI could not complete this render. Try again shortly.", 502);
     throw new RenderError("The image service could not complete this render.", 502);
   }
   try {
