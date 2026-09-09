@@ -61,13 +61,11 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 .product-image { width: 100%; aspect-ratio: 4 / 5; position: relative; background: var(--surface); margin-bottom: 17px; }
 .product-image img { position: absolute; inset: 0; height: 100%; width: 100%; object-fit: contain; transition: opacity 220ms ease; }
 .product-image-front { opacity: 1; }
-.product-image-back { opacity: 0; }
+.product-image-back { opacity: 0; background: var(--surface); }
 .product-image[data-front-unavailable=true] .product-image-front { opacity: 0; }
 .product-image[data-front-unavailable=true][data-back-ready=true] .product-image-back { opacity: 1; }
-.product-card:focus-visible .product-image[data-back-ready=true] .product-image-front { opacity: 0; }
 .product-card:focus-visible .product-image[data-back-ready=true] .product-image-back { opacity: 1; }
 @media (hover: hover) {
-  .product-card:hover .product-image[data-back-ready=true] .product-image-front { opacity: 0; }
   .product-card:hover .product-image[data-back-ready=true] .product-image-back { opacity: 1; }
 }
 .product-image[data-unavailable]::after { content: attr(data-unavailable); position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; color: var(--subtle-text); }
