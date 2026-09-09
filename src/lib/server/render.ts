@@ -58,8 +58,8 @@ export function parseRenderInput(value: unknown): RenderInput {
     throw new RenderError("The render request is invalid.");
   }
   const body = value as Record<string, unknown>;
-  // A caller-supplied key is required even when the deployment has an OpenAI key.
-  // Never turn this public, account-free endpoint into a server-paid proxy.
+  // Require a user-owned key: supplied for a guest session, or resolved on the
+  // server for an authenticated account. Never use a deployment OpenAI key.
   const apiKey = typeof body.apiKey === "string" ? body.apiKey.trim() : "";
   if (!/^sk-[A-Za-z0-9_-]{16,500}$/.test(apiKey)) {
     throw new RenderError("Enter your OpenAI API key to render.", 401);

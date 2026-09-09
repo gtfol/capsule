@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, ArrowUpRight, Check, Images, Link2Off, Loader2, Plus, RefreshCw, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Images, Link2Off, Loader2, Plus, RefreshCw } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./ui/sheet";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -149,7 +149,7 @@ export function WishlistDetail({ item, images = [], isNew = false, active = true
   return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving || confirmClose) event.preventDefault(); }} onInteractOutside={(event) => { if (saving || confirmClose) event.preventDefault(); }}>
     <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wishlist" : "Wishlist details"}</SheetTitle>
     <SheetDescription className="sr-only">Review this piece, your rating, listing links and recorded prices.</SheetDescription>
-    {gallery.length > 1 && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="photo-tool" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}><X size={13} /></button>}</div>}
+    {gallery.length > 1 && <div className="mt-7 flex items-center justify-between gap-4"><div className="image-side-controls" role="group" aria-label="Image view">{(["front", "back", "side"] as const).map((side) => <button type="button" key={side} aria-pressed={imageSide === side} disabled={busy} onClick={() => setImageSide(side)}>{side === "front" ? "Front" : side === "back" ? "Back" : "Side"}</button>)}</div>{imageSide !== "front" && (selectedImage.imageUrl || selectedImage.imageData) && <button className="text-[11px] text-muted-foreground underline underline-offset-4" type="button" aria-label={`Remove ${imageSide} image`} disabled={busy} onClick={() => setForm((current) => imageSide === "back" ? { ...current, backImageUrl: undefined, backImageData: undefined } : { ...current, sideImageUrl: undefined, sideImageData: undefined })}>Remove {imageSide}</button>}</div>}
     <div className="detail-image mt-6 flex aspect-[5/4] items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {selectedImage.imageUrl || selectedImage.imageData ? <img src={imageSource(selectedImage)} alt={`${form.name || "Product image"}, ${imageSide}`} className="h-full w-full object-contain" /> : <p className="text-[12px] text-subtle">Choose a {imageSide} image below. Optional.</p>}

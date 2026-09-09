@@ -106,6 +106,13 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 .field-input:focus { border-color: var(--strong-text); }
 .field-input::placeholder { color: var(--placeholder-text); }
 .field-input:disabled { opacity: 0.5; }
+.model-photo-prompt { opacity: 0; transition: opacity 180ms ease; }
+.model-photo-trigger:hover .model-photo-prompt,
+.model-photo-trigger:focus-visible .model-photo-prompt,
+.model-photo-trigger[data-state=open] .model-photo-prompt,
+.model-photo-trigger:disabled .model-photo-prompt { opacity: 1; }
+@media (hover: none) { .model-photo-prompt { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .model-photo-prompt { transition: none; } }
 /* Text inputs avoid password-save prompts. Hide text before enabling the mask
    so older browsers never expose a key when this nonstandard property is absent. */
 .render-key-input { color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink); forced-color-adjust: none; }

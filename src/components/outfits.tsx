@@ -4,19 +4,19 @@ import { ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ModelPhotoPicker } from "@/components/model-photo-picker";
-import { ModelPhotoPlaceholder } from "@/components/model-photo-placeholder";
 import { RenderKeySettings } from "@/components/render-key-settings";
 import { useWardrobe } from "@/lib/store";
 import { compressImage, imageSource } from "@/lib/images";
 import type { Outfit } from "@/lib/types";
-import { readRenderApiKey, writeRecord, writeReferencePhoto } from "@/lib/db";
+import { writeRecord, writeReferencePhoto } from "@/lib/db";
+import { renderCredentialPayload, type RenderCredential } from "@/lib/render-credential";
 type RenderConfig = { enabled: boolean; requiresApiKey: boolean; provider: string; model: string };
 export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: boolean }) {
   const { items, outfits, referencePhoto, setReferencePhoto, saveOutfit, deleteOutfit, space } = useWardrobe();
   const [creating, setCreating] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const [config, setConfig] = useState<RenderConfig | null>(null);
-  const [apiKey, setApiKey] = useState("");
+  const [credential, setCredential] = useState<RenderCredential | null>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [error, setError] = useState("");
@@ -44,10 +44,9 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
     if (!navigator.onLine) { setError("Connect to the internet to render an outfit."); return; }
     setBusy(true); setError("");
     try {
-      const savedKey = config.requiresApiKey ? await readRenderApiKey(space) : "";
-      if (config.requiresApiKey && !savedKey) { setApiKey(""); throw new Error("Save your OpenAI API key before rendering."); }
+      const credentialBody = renderCredentialPayload(credential, space);
       const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, imageData: await compressImage(imageSource(item), 900, 0.78) })));
-      const body = JSON.stringify({ apiKey: savedKey, referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces });
+      const body = JSON.stringify({ ...credentialBody, referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces });
       if (new TextEncoder().encode(body).length > 3_900_000) throw new Error("These images are too large to render together. Select fewer pieces.");
       if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Select your pieces again.");
       const response = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body, signal: AbortSignal.timeout(125_000) });
@@ -70,7 +69,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={referencePhoto} alt="Your saved model photo" className="reference-image" />
       <p className="mt-3 text-[11px] text-subtle" role="status">Saved for future outfits</p>
-    </div> : <ModelPhotoPlaceholder className="mt-4" />}
+    </div> : null}
     <ModelPhotoPicker key={space} active={active} hasPhoto={Boolean(referencePhoto)} busy={busy || photoBusy} onSelect={selectPhoto} className="mt-4" />
     <p className="mt-3 text-[11px] leading-relaxed text-subtle">Saved in this browser and reused for future outfits. Sent to OpenAI only when you select Render outfit.</p>
   </aside>;
@@ -81,8 +80,8 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
         <img src={imageSource(item)} alt={item.name} loading="lazy" />{selection.includes(item.id) && <span className="selected-mark p-1"><Check size={13} /></span>}<span className="mt-3 block truncate text-[11px]">{item.name}</span><span className="mt-1 block truncate text-[10px] text-subtle">{item.brand || "\u00a0"}</span>
       </button>)}</div></div>
       <div className="space-y-6">{modelPhotoPanel}
-      {config?.requiresApiKey && <RenderKeySettings key={space} space={space} disabled={busy} onKeyChange={setApiKey} />}
-      <div>{config?.model && <p className="mb-3 text-[11px] text-subtle">Model: {config.model}</p>}<Button type="button" onClick={() => { void render(); }} className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !apiKey.trim())}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
+      {config?.requiresApiKey && <RenderKeySettings key={space} userId={space.startsWith("account:") ? space.slice(8) : null} sessionKey={credential?.type === "session" ? credential.apiKey : ""} disabled={busy} onCredentialChange={setCredential} />}
+      <div>{config?.model && <p className="mb-3 text-[11px] text-subtle">Model: {config.model}</p>}<Button type="button" onClick={() => { void render(); }} className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !credential)}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
       {error && <p className="text-[12px] leading-relaxed" role="alert">{error}</p>}{unsaved && <div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={unsaved.imageData} alt="Rendered outfit awaiting save" className="w-full" /><Button type="button" variant="outline" className="mt-3 w-full" onClick={async () => { try { await saveOutfit(unsaved); setDetail(unsaved); setUnsaved(null); setCreating(false); setError(""); } catch { setError("The image could not be saved. Free some browser storage and retry."); } }}>Retry saving image</Button><div className="mt-3 flex justify-between text-[11px]"><a href={unsaved.imageData} download={`capsule-${unsaved.id}.jpg`} className="underline underline-offset-4">Download image</a><button type="button" className="text-muted-foreground" onClick={() => setUnsaved(null)}>Discard</button></div></div>}

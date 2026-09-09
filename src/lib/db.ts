@@ -80,22 +80,16 @@ async function metaValue<T>(key: string): Promise<T | undefined> {
   const value = await request(db.transaction("meta", "readonly").objectStore("meta").get(key)) as Meta | undefined;
   return value?.value as T | undefined;
 }
-// Rendering credentials stay in this browser and account space. Keep them
-// outside snapshots, wardrobe records, guest import, and sync notifications.
-export async function readRenderApiKey(space: string): Promise<string | null> {
-  const value = await metaValue<unknown>(metaKey(space, "render-api-key"));
-  return typeof value === "string" && value ? value : null;
-}
-export async function writeRenderApiKey(space: string, key: string | null): Promise<void> {
-  const value = key?.trim() || null;
+// Remove keys saved by the unreleased browser-storage preview. Never read,
+// reuse, upload, or migrate these plaintext credentials into an account.
+export async function clearLegacyRenderKeys(): Promise<void> {
   const db = await openDatabase();
   const tx = db.transaction("meta", "readwrite");
   const done = completed(tx);
-  const meta = tx.objectStore("meta");
+  const store = tx.objectStore("meta");
   try {
-    const name = metaKey(space, "render-api-key");
-    if (value === null) meta.delete(name);
-    else meta.put({ key: name, value } satisfies Meta);
+    const keys = await request(store.getAllKeys());
+    for (const key of keys) if (typeof key === "string" && key.endsWith("|render-api-key")) store.delete(key);
     await done;
   } catch (error) {
     try { tx.abort(); } catch { /* The transaction may already be complete. */ }

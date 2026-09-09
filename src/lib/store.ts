@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { activateSpace, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord, writeReferencePhoto } from "./db";
+import { activateSpace, clearLegacyRenderKeys, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord, writeReferencePhoto } from "./db";
 import type { Item, Outfit, WishlistItem } from "./types";
 
 interface WardrobeState {
@@ -49,6 +49,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
       if (initialization) return initialization;
       initialization = (async () => {
         try {
+          await clearLegacyRenderKeys();
           const space = await currentSpace();
           set({ space });
           if (!subscribed) {
