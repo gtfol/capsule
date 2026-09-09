@@ -1,0 +1,18 @@
+src/components/model-photo-picker.tsx
+  h_606d960bac5d85 5,7,129-130
+src/components/outfits.tsx
+  h_606d960bac5d85 3,6,69,76
+src/components/render-key-settings.tsx
+  h_606d960bac5d85 4,7,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c606ac5ba2bf4fdad1d85e19e2195056c094f20b",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
