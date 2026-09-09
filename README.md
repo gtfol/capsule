@@ -31,6 +31,16 @@ Saved pieces, outfit images, edits and deletions work offline. A production serv
 
 The sun/moon icon in the bottom bar switches between light and dark, matching Freewrite. Capsule follows the device setting until you choose a theme, then remembers that choice in this browser. Closing an edited piece with X, Escape or an outside click opens a restrained Save changes / Discard changes / Keep editing dialog. Background-removal setup says “Preparing background removal…” before processing. Transparent cutouts use a plain white or black surface to match the theme, including the preview and wardrobe grid.
 
+## Browser extension
+
+The [Chrome and Brave extension](extension/README.md) adds two actions to the browser toolbar: Add to wardrobe and Save to wishlist. It opens the current product link in a new Capsule tab, fetches its details, and presents the existing review panel. Nothing is saved until you confirm. It uses the local wardrobe and optional sync account in that browser profile.
+
+Load the `extension/` directory unpacked using the linked instructions; no extension build step is needed. It is not yet published in the Chrome Web Store. The app handoff in this release must be deployed before using the extension's production destination. For local or Vercel preview testing, use a separate copy and set its `config.mjs` destination to that app URL.
+
+Only `activeTab` permission is requested, after you invoke the extension. There is no background scraping, page injection, credential storage, or broad website access. Fonts, scripts, and icons are bundled locally. Shop titles stay in the popup; the selected URL is passed to Capsule's existing importer. Retailers that block that importer have the same limitation here.
+
+Handoffs use `/?view=add&to=wardrobe|wishlist&import=<encoded product URL>`. They preserve product variant parameters, open a review draft, and replace the handoff history entry when saved, dismissed, or navigated away from. Leaving Add cancels an in-flight import. Invalid or failed links remain editable for retry. Existing import validation, local storage, and optional sync are shared with the URL-paste flow; no database migration or new environment variables are required.
+
 ## Wishlist
 
 The Wishlist tab is a separate local collection. In Add, choose Wishlist and paste a product link, then review its photo, name, brand, details and price. The first available current-price quote is recorded with its source URL, currency and fetch time. Pages without a reliable price can still be saved; manually entering a price does not fabricate a historical fetch.

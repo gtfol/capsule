@@ -1,0 +1,47 @@
+@font-face {
+  font-family: Lato;
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fonts/lato-regular-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+:root {
+  color-scheme: light dark;
+  --surface: #fff;
+  --ink: #111;
+  --muted: #888;
+  --line: #e5e5e5;
+  --hover: #fafafa;
+  font-family: Lato, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #000;
+    --ink: #eee;
+    --muted: #999;
+    --line: #2c2c2c;
+    --hover: #111;
+  }
+}
+* { box-sizing: border-box; }
+body { width: 320px; margin: 0; background: var(--surface); color: var(--ink); }
+main { padding: 26px; }
+h1, p { margin: 0; font-size: inherit; font-weight: 400; }
+h1 { font-size: 14px; }
+.page { margin-top: 26px; }
+.domain { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.title { margin-top: 6px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.status { margin-top: 24px; color: var(--muted); font-size: 12px; }
+.status:empty { display: none; }
+.actions { display: flex; flex-direction: column; margin-top: 26px; gap: 8px; }
+button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 12px 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; transition: opacity 120ms; }
+button:hover:enabled { background: var(--hover); }
+button:focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; }
+button:disabled { cursor: default; opacity: .35; }
+button svg { width: 15px; height: 15px; flex: none; }
+.note { margin-top: 22px; color: var(--muted); font-size: 11px; }
+@media (prefers-reduced-motion: reduce) { button { transition: none; } }
