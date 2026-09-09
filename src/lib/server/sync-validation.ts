@@ -1,5 +1,6 @@
 import type { Item, Outfit, PriceHistoryEntry, SyncChange, WishlistItem, WishlistSource } from "../types";
 import { CATEGORIES } from "../types";
+import { SOURCE_KEY_PATTERN } from "../piece-identity";
 import { MAX_IMAGE_CHARS, MAX_ITEM_IMAGE_CHARS } from "../image-limits";
 import { assertWishlistLimits, isWishlistCurrency, MAX_PRICE_HISTORY, MAX_WISHLIST_SOURCES, normalizeListingUrl, recomputeWishlistPrice, wishlistPriceNumber } from "../wishlist";
 
@@ -111,6 +112,7 @@ export function validateSyncRequest(value: unknown): { expectedUserId: string; c
       }
       record = {
         ...base, category: source.category as Item["category"], brand: text(source.brand, 300),
+        ...(source.sourceKey !== undefined ? { sourceKey: sourceKey(source.sourceKey) } : {}),
         size: text(source.size, 100), color: text(source.color, 200), price: text(source.price, 100),
         currency: text(source.currency, 20), description: text(source.description, 20_000),
         purchaseUrl: url(source.purchaseUrl), imageUrl: url(source.imageUrl),
@@ -128,6 +130,11 @@ export function validateSyncRequest(value: unknown): { expectedUserId: string; c
     return { collection: change.collection, record, baseRevision: stamp(change.baseRevision), token: uuid(change.token) };
   });
   return { expectedUserId, cursor, changes };
+}
+
+function sourceKey(value: unknown): string {
+  if (typeof value !== "string" || !SOURCE_KEY_PATTERN.test(value)) throw new Error("A piece has an invalid source identity.");
+  return value;
 }
 
 export async function readSyncBody(request: Request): Promise<unknown> {

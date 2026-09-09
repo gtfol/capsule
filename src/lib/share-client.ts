@@ -2,6 +2,7 @@
 import { openDatabase } from "./db";
 import { compressImage, imageSource } from "./images";
 import { useWardrobe } from "./store";
+import { pieceSourceKey } from "./piece-identity";
 import type { Item, Outfit, WishlistItem } from "./types";
 import type { ShareExpiry, ShareSnapshot, SharedPiece } from "./share-types";
 
@@ -100,8 +101,9 @@ async function remember(space: string, key: string, previous: ShareRecord, next:
 
 function sharedPiece(piece: Item): SharedPiece {
   const rating = "rating" in piece ? (piece as WishlistItem).rating : undefined;
-  // Deliberate public whitelist: no IDs, sync fields, history, credentials, or model photo.
+  // Deliberate public whitelist: no raw IDs, sync fields, history, credentials, or model photo.
   return {
+    sourceKey: pieceSourceKey(piece),
     name: piece.name, brand: piece.brand, category: piece.category, size: piece.size, color: piece.color,
     price: piece.price, currency: piece.currency, description: piece.description, purchaseUrl: piece.purchaseUrl,
     imageData: "", ...(rating !== undefined ? { rating } : {}),
