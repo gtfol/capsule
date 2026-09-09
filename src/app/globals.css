@@ -106,6 +106,17 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 .field-input:focus { border-color: var(--strong-text); }
 .field-input::placeholder { color: var(--placeholder-text); }
 .field-input:disabled { opacity: 0.5; }
+/* Text inputs avoid password-save prompts. Hide text before enabling the mask
+   so older browsers never expose a key when this nonstandard property is absent. */
+.render-key-input { color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink); forced-color-adjust: none; }
+.render-key-input::placeholder { -webkit-text-fill-color: var(--placeholder-text); }
+.render-key-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: var(--line); }
+.render-key-fallback { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; color: var(--ink); pointer-events: none; white-space: nowrap; }
+@supports (-webkit-text-security: disc) {
+  .render-key-input { color: var(--ink); -webkit-text-fill-color: var(--ink); -webkit-text-security: disc; }
+  .render-key-input::selection { color: var(--ink); -webkit-text-fill-color: var(--ink); }
+  .render-key-fallback { display: none; }
+}
 .detail-sheet { border-left: 1px solid var(--hairline); box-shadow: -4px 0 32px #00000008; animation: slide-in 180ms ease-out; }
 .detail-sheet[data-busy=true] .sheet-close { pointer-events: none; }
 .image-side-controls { display: flex; align-items: center; gap: 22px; }

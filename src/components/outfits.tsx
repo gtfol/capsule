@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Check, Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ModelPhotoPicker } from "@/components/model-photo-picker";
 import { ModelPhotoPlaceholder } from "@/components/model-photo-placeholder";
+import { RenderKeySettings } from "@/components/render-key-settings";
 import { useWardrobe } from "@/lib/store";
 import { compressImage, imageSource } from "@/lib/images";
 import type { Outfit } from "@/lib/types";
-import { writeRecord, writeReferencePhoto } from "@/lib/db";
+import { readRenderApiKey, writeRecord, writeReferencePhoto } from "@/lib/db";
 type RenderConfig = { enabled: boolean; requiresApiKey: boolean; provider: string; model: string };
 export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: boolean }) {
   const { items, outfits, referencePhoto, setReferencePhoto, saveOutfit, deleteOutfit, space } = useWardrobe();
@@ -39,15 +39,17 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
     catch (cause) { setError(cause instanceof Error ? cause.message : "Your model photo could not be saved."); throw cause; }
     finally { setPhotoBusy(false); }
   }
-  async function render(event: React.FormEvent) {
-    event.preventDefault();
-    if (!referencePhoto || !selectedItems.length || unsaved) return;
+  async function render() {
+    if (busy || photoBusy || !config?.enabled || !referencePhoto || !selectedItems.length || unsaved) return;
     if (!navigator.onLine) { setError("Connect to the internet to render an outfit."); return; }
     setBusy(true); setError("");
     try {
+      const savedKey = config.requiresApiKey ? await readRenderApiKey(space) : "";
+      if (config.requiresApiKey && !savedKey) { setApiKey(""); throw new Error("Save your OpenAI API key before rendering."); }
       const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, imageData: await compressImage(imageSource(item), 900, 0.78) })));
-      const body = JSON.stringify({ apiKey: apiKey.trim(), referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces });
+      const body = JSON.stringify({ apiKey: savedKey, referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces });
       if (new TextEncoder().encode(body).length > 3_900_000) throw new Error("These images are too large to render together. Select fewer pieces.");
+      if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Select your pieces again.");
       const response = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body, signal: AbortSignal.timeout(125_000) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "This outfit could not be rendered. Try again.");
@@ -63,7 +65,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
   const builder = creating || outfits.length === 0;
   const modelPhotoPanel = <aside aria-label="Your model photo" className="self-start">
     <div className="flex items-center justify-between"><h2 className="text-[12px]">Your model photo</h2>{referencePhoto && <button type="button" className="text-[11px] text-subtle" disabled={busy || photoBusy} onClick={() => { void setReferencePhoto(null).catch(() => setError("Your model photo could not be removed.")); }}>Remove</button>}</div>
-    <p className="mt-2 text-[11px] leading-relaxed text-subtle">A full-body photo, facing the camera.</p>
+    <p className="mt-2 text-[11px] leading-relaxed text-subtle">A full-body photo or mirror selfie, facing the camera and visible from head to toe.</p>
     {referencePhoto ? <div className="mt-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={referencePhoto} alt="Your saved model photo" className="reference-image" />
@@ -73,19 +75,19 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
     <p className="mt-3 text-[11px] leading-relaxed text-subtle">Saved in this browser and reused for future outfits. Sent to OpenAI only when you select Render outfit.</p>
   </aside>;
   return <section className="outfits-view" aria-labelledby="outfits-heading"><div className="outfits-head"><h1 id="outfits-heading" className="text-[14px] leading-5">Outfits <span className="ml-3 text-[11px] font-normal text-subtle">{String(outfits.length).padStart(2, "0")}</span></h1>{items.length > 0 && outfits.length > 0 && <Button variant="ghost" disabled={busy} onClick={() => setCreating(!creating)} className="text-[12px]">{creating ? "Back to outfits" : <><Plus size={13} />Create outfit</>}</Button>}</div>
-    {!items.length && !outfits.length ? <div className="outfit-workspace"><div className="empty-state"><p className="font-normal">No pieces yet.</p><p className="mt-2 text-[12px] text-subtle">Add pieces to your wardrobe to create an outfit.</p><button className="mt-7 inline-flex items-center gap-3 border-b border-foreground pb-1 text-[12px]" onClick={onAdd}>Add to wardrobe<ArrowRight size={13} /></button></div>{modelPhotoPanel}</div> : builder ? <form onSubmit={render} className="outfit-workspace">
+    {!items.length && !outfits.length ? <div className="outfit-workspace"><div className="empty-state"><p className="font-normal">No pieces yet.</p><p className="mt-2 text-[12px] text-subtle">Add pieces to your wardrobe to create an outfit.</p><button className="mt-7 inline-flex items-center gap-3 border-b border-foreground pb-1 text-[12px]" onClick={onAdd}>Add to wardrobe<ArrowRight size={13} /></button></div>{modelPhotoPanel}</div> : builder ? <div className="outfit-workspace">
       <div><div className="flex items-center justify-between"><h2 className="text-[12px]">Choose pieces</h2><span className="text-[11px] text-subtle">{selectedItems.length} / 6</span></div><div className="outfit-picker">{items.map((item) => <button key={item.id} type="button" className="outfit-piece" aria-label={`Select ${item.name}`} aria-pressed={selection.includes(item.id)} disabled={busy || (!selection.includes(item.id) && selection.length >= 6)} onClick={() => toggle(item.id)}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={imageSource(item)} alt={item.name} loading="lazy" />{selection.includes(item.id) && <span className="selected-mark p-1"><Check size={13} /></span>}<span className="mt-3 block truncate text-[11px]">{item.name}</span><span className="mt-1 block truncate text-[10px] text-subtle">{item.brand || "\u00a0"}</span>
       </button>)}</div></div>
       <div className="space-y-6">{modelPhotoPanel}
-      {config?.requiresApiKey && <label className="field-label">OpenAI API key<Input type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} autoComplete="off" spellCheck={false} placeholder="sk-…" disabled={busy} /><span className="mt-2 block text-[11px] leading-relaxed text-subtle">Used for this session only. Rendering is billed to your OpenAI account.</span></label>}
-      <div><Button type="submit" className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !apiKey.trim())}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
+      {config?.requiresApiKey && <RenderKeySettings key={space} space={space} disabled={busy} onKeyChange={setApiKey} />}
+      <div>{config?.model && <p className="mb-3 text-[11px] text-subtle">Model: {config.model}</p>}<Button type="button" onClick={() => { void render(); }} className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !apiKey.trim())}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
       {error && <p className="text-[12px] leading-relaxed" role="alert">{error}</p>}{unsaved && <div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={unsaved.imageData} alt="Rendered outfit awaiting save" className="w-full" /><Button type="button" variant="outline" className="mt-3 w-full" onClick={async () => { try { await saveOutfit(unsaved); setDetail(unsaved); setUnsaved(null); setCreating(false); setError(""); } catch { setError("The image could not be saved. Free some browser storage and retry."); } }}>Retry saving image</Button><div className="mt-3 flex justify-between text-[11px]"><a href={unsaved.imageData} download={`capsule-${unsaved.id}.jpg`} className="underline underline-offset-4">Download image</a><button type="button" className="text-muted-foreground" onClick={() => setUnsaved(null)}>Discard</button></div></div>}
       </div>
-    </form> : <div className="outfit-workspace"><div className="outfit-grid !mt-0">{outfits.toSorted((a, b) => b.createdAt - a.createdAt).map((outfit) => <button key={outfit.id} onClick={() => setDetail(outfit)} className="text-left" aria-label={`View ${outfit.name}`}>
+    </div> : <div className="outfit-workspace"><div className="outfit-grid !mt-0">{outfits.toSorted((a, b) => b.createdAt - a.createdAt).map((outfit) => <button key={outfit.id} onClick={() => setDetail(outfit)} className="text-left" aria-label={`View ${outfit.name}`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={outfit.imageData} alt={outfit.name} loading="lazy" /><span className="mt-4 block text-[12px]">{outfit.name}</span><span className="mt-1 block text-[11px] text-subtle">{new Date(outfit.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></button>)}</div>{modelPhotoPanel}</div>}
     {(!builder || (!items.length && !outfits.length)) && error && <p role="alert" className="mt-6 text-[12px]">{error}</p>}
