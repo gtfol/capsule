@@ -1,0 +1,32 @@
+package-lock.json
+  h_606d960bac5d85 16,2022-2044,2234,2354-2388,2457-2521
+package.json
+  h_606d960bac5d85 19
+src/components/add-piece.tsx
+  h_606d960bac5d85 5,68,70,75
+src/components/outfits.tsx
+  h_606d960bac5d85 5,68,84-85
+src/components/render-key-settings.tsx
+  h_606d960bac5d85 5,8,14,17,19-20,28,96,98-99
+src/components/share-link-manager.tsx
+  h_606d960bac5d85 4,6-7,20,22,52,58,64,72,74,86,88-93,96
+src/components/share-popover.tsx
+  h_606d960bac5d85 8,63,184-186,204
+src/components/shared-capsule.tsx
+  h_606d960bac5d85 61,73
+src/components/ui/icon-action.tsx
+  h_606d960bac5d85 4,8,10-12,14-16
+src/components/ui/info-tooltip.tsx
+  h_606d960bac5d85 1-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4afa3c203e72546d803b320ee035fb66e990a4b0",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
