@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ModelPhotoPicker } from "@/components/model-photo-picker";
 import { RenderKeySettings } from "@/components/render-key-settings";
+import { SharePopover } from "@/components/share-popover";
 import { useWardrobe } from "@/lib/store";
 import { compressImage, imageSource } from "@/lib/images";
 import type { Outfit } from "@/lib/types";
@@ -91,7 +92,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       <img src={outfit.imageData} alt={outfit.name} loading="lazy" /><span className="mt-4 block text-[12px]">{outfit.name}</span><span className="mt-1 block text-[11px] text-subtle">{new Date(outfit.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span></button>)}</div>{modelPhotoPanel}</div>}
     {(!builder || (!items.length && !outfits.length)) && error && <p role="alert" className="mt-6 text-[12px]">{error}</p>}
     {removed && <div className="mt-8 flex items-center gap-5 text-[12px]" role="status"><span>Outfit removed.</span><button className="underline underline-offset-4" onClick={async () => { try { await saveOutfit({ ...removed, updatedAt: Date.now(), deletedAt: null }); setRemoved(null); } catch { setError("Could not restore this outfit."); } }}>Undo</button><button aria-label="Dismiss" onClick={() => setRemoved(null)}><X size={12} /></button></div>}
-    {detail && <Sheet open={active} onOpenChange={(open) => { if (!open) setDetail(null); }}><SheetContent><SheetTitle className="text-[14px] leading-5">{detail.name}</SheetTitle><SheetDescription className="sr-only">Rendered outfit and its wardrobe pieces.</SheetDescription>
+    {detail && <Sheet open={active} onOpenChange={(open) => { if (!open) setDetail(null); }}><SheetContent><div className="flex items-center justify-between gap-4 pr-9"><SheetTitle className="text-[14px] leading-5">{detail.name}</SheetTitle><SharePopover target={{ kind: "outfit", outfit: detail, pieces: items.filter((piece) => detail.itemIds.includes(piece.id)) }} active={active} /></div><SheetDescription className="sr-only">Rendered outfit and its wardrobe pieces.</SheetDescription>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={detail.imageData} alt={detail.name} className="mt-8 w-full" /><div className="mt-6 flex flex-wrap gap-3">{detail.itemIds.map((id) => { const item = items.find((piece) => piece.id === id); return item ? <div className="w-14" key={id} title={item.name}>
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -6,9 +6,9 @@ export interface WishlistPriceQuote { price: string; currency: string; source_ur
 // Merge editable fields onto the latest stored record. An open editor must not
 // overwrite price observations arriving from another tab or a sync response.
 export function mergeWishlistEdits(current: WishlistItem, edited: WishlistItem): WishlistItem {
-  const purchaseUrl = normalizeListingUrl(edited.purchaseUrl);
+  const purchaseUrl = edited.purchaseUrl.trim() ? normalizeListingUrl(edited.purchaseUrl) : "";
   const sources = [...current.sources];
-  if (!sources.some((source) => source.url === purchaseUrl)) {
+  if (purchaseUrl && !sources.some((source) => source.url === purchaseUrl)) {
     if (sources.length >= MAX_WISHLIST_SOURCES) throw new Error(`A piece can have up to ${MAX_WISHLIST_SOURCES} listing links.`);
     sources.push({ url: purchaseUrl, price: "", currency: "", fetched_at: null, link_broken: false });
   }

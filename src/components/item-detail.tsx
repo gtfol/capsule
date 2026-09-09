@@ -5,6 +5,8 @@ import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { UnsavedChangesDialog } from "@/components/unsaved-changes-dialog";
+import { SharePopover } from "@/components/share-popover";
+import { useWardrobe } from "@/lib/store";
 import { cacheProductImages, imageSource, prepareUploadedImage } from "@/lib/images";
 import { removeBackground } from "@/lib/background-removal";
 import { assignPhotoSlot, type PhotoSide, type PhotoSlots } from "@/lib/photo-slots";
@@ -36,6 +38,7 @@ function initialPhotos(item: ItemDraft | Item, images: string[], uploadedImages:
 const chosenImage = (choice: PhotoChoice) => ({ imageUrl: choice.imageUrl, imageData: choice.useCutout ? choice.cutout : choice.imageData });
 
 export function ItemDetail({ item, images = [], uploadedImages = [], isNew = false, active = true, onClose, onSave, onDelete }: Props) {
+  const savedItem = useWardrobe((state) => "id" in item ? state.items.find((piece) => piece.id === item.id) : undefined);
   const [initialState] = useState(() => ({ form: item, photos: initialPhotos(item, images, uploadedImages) }));
   const [form, setForm] = useState<ItemDraft | Item>(initialState.form);
   const [saving, setSaving] = useState(false);
@@ -173,7 +176,7 @@ export function ItemDetail({ item, images = [], uploadedImages = [], isNew = fal
     finally { setSaving(false); }
   }
   return <><Sheet open={active} onOpenChange={(open) => { if (!open) close(); }}><SheetContent data-busy={saving} onEscapeKeyDown={(event) => { if (saving) event.preventDefault(); }} onInteractOutside={(event) => { if (saving) event.preventDefault(); }}>
-    <SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>
+    <div className="flex items-center justify-between gap-4 pr-9"><SheetTitle className="text-[14px] leading-5">{isNew ? "Add to wardrobe" : "Piece details"}</SheetTitle>{!isNew && savedItem && <SharePopover target={{ kind: "piece", piece: savedItem }} active={active} disabled={dirty || busy} disabledReason="Save changes before sharing." />}</div>
     <SheetDescription className="sr-only">Review the product image and edit this piece’s details.</SheetDescription>
     {photos.choices.length > 1 && <div className="mt-7 flex items-center justify-between gap-4">
       <div className="image-side-controls" role="group" aria-label="Image side">

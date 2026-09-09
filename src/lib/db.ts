@@ -158,6 +158,70 @@ export async function writeRecord(space: string, collection: Collection, record:
   await done;
   notify(space);
 }
+// Import a shared selection and its receipt together. Concurrent tabs and
+// retries cannot duplicate a selection, overwrite a piece, or save half a set.
+export async function importSharedRecords(space: string, collection: "items" | "wishlist", records: Array<Item | WishlistItem>, receipt: string, guard: () => void): Promise<{ count: number; alreadyAdded: boolean }> {
+  guard();
+  if (!space.startsWith("account:") || !space.slice(8)) throw new Error("Sign in before adding shared pieces.");
+  if (!receipt || receipt.length > 256 || records.length < 1 || records.length > 300) throw new Error("This shared selection is invalid.");
+  const ids = new Set<string>();
+  for (const record of records) {
+    if (!record.id || ids.has(record.id) || record.deletedAt) throw new Error("This shared selection contains an invalid piece.");
+    ids.add(record.id);
+    if (collection === "wishlist") assertWishlistLimits(record as WishlistItem);
+  }
+  const db = await openDatabase();
+  guard();
+  const tx = db.transaction(["records", "meta"], "readwrite");
+  const done = completed(tx);
+  const meta = tx.objectStore("meta");
+  const store = tx.objectStore("records");
+  const receiptKey = metaKey(space, `share-copy|${receipt}`);
+  try {
+    const active = await request(meta.get("active-space")) as Meta | undefined;
+    guard();
+    if (active?.value !== space) throw new Error("Your active wardrobe changed. Try again.");
+    const previous = await request(meta.get(receiptKey)) as Meta | undefined;
+    guard();
+    let importedIds: string[] = [];
+    if (previous) {
+      const value = previous.value as { collection?: unknown; ids?: unknown } | null;
+      if (!value || value.collection !== collection || !Array.isArray(value.ids) || value.ids.length !== records.length || !value.ids.every((id) => typeof id === "string" && id.length > 0)) {
+        throw new Error("This selection’s previous copies could not be checked. Try sharing a new link.");
+      }
+      importedIds = value.ids as string[];
+    }
+    const nextIds: string[] = [];
+    let added = 0;
+    for (const [index, record] of records.entries()) {
+      // A receipt is a map to the copies, not a permanent claim that they
+      // still exist. Preserve edited survivors and restore only missing
+      // pieces under fresh IDs after deletion or a wishlist-to-wardrobe move.
+      if (importedIds[index]) {
+        const imported = await request(store.get(keyFor(space, collection, importedIds[index]))) as StoredRecord | undefined;
+        guard();
+        if (imported && !imported.record.deletedAt) { nextIds.push(imported.id); continue; }
+      }
+      const key = keyFor(space, collection, record.id);
+      const existing = await request(store.get(key));
+      guard();
+      if (existing) throw new Error("A shared piece could not be added. Try again.");
+      await request(store.add({ key, space, collection, id: record.id, record, revision: 0, pendingToken: crypto.randomUUID() } satisfies StoredRecord));
+      guard();
+      nextIds.push(record.id);
+      added++;
+    }
+    await request(meta.put({ key: receiptKey, value: { collection, ids: nextIds } }));
+    guard();
+    await done;
+    if (added) notify(space);
+    return { count: added || records.length, alreadyAdded: added === 0 };
+  } catch (error) {
+    try { tx.abort(); } catch { /* The transaction may already be complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
 // Price requests can finish after edits in another tab. Apply their result to
 // the latest stored item atomically, and never recreate a deleted item.
 export async function updateWishlistRecord(space: string, id: string, transform: (current: WishlistItem) => WishlistItem): Promise<WishlistItem | null> {
