@@ -16,7 +16,7 @@ const response = (userId: string, patch: Partial<SyncResponse> = {}): SyncRespon
 
 test("an empty space stays empty and writes persist with their pending token", async () => {
   const space = accountSpace(crypto.randomUUID());
-  assert.deepEqual(await readSnapshot(space), { items: [], outfits: [], referencePhoto: null });
+  assert.deepEqual(await readSnapshot(space), { items: [], outfits: [], wishlist: [], referencePhoto: null });
   const shirt = item();
   await writeRecord(space, "items", shirt);
   assert.equal((await readSnapshot(space)).items[0].name, shirt.name);
@@ -47,14 +47,15 @@ test("an acknowledgement cannot clear an edit made during the request", async ()
   assert.equal(await syncCursor(space), 10);
 });
 
-test("front and back images survive local storage, sync validation, and a remote pull", async () => {
+test("front, back, and side images survive local storage, sync validation, and a remote pull", async () => {
   const userId = crypto.randomUUID();
   const space = accountSpace(userId);
-  const shirt: Item = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==" };
+  const shirt: Item = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==", sideImageUrl: "https://example.com/shirt-side.jpg", sideImageData: "data:image/webp;base64,Yw==" };
   await writeRecord(space, "items", shirt);
   const local = (await readSnapshot(space)).items[0];
   assert.equal(local.imageData, shirt.imageData);
   assert.equal(local.backImageData, shirt.backImageData);
+  assert.equal(local.sideImageData, shirt.sideImageData);
   const { changes } = validateSyncRequest({ expectedUserId: userId, cursor: 0, changes: await pendingChanges(space) });
   const otherUser = crypto.randomUUID();
   const otherDevice = accountSpace(otherUser);
@@ -63,11 +64,19 @@ test("front and back images survive local storage, sync validation, and a remote
   assert.equal(pulled.imageData, shirt.imageData);
   assert.equal(pulled.backImageUrl, shirt.backImageUrl);
   assert.equal(pulled.backImageData, shirt.backImageData);
+  assert.equal(pulled.sideImageUrl, shirt.sideImageUrl);
+  assert.equal(pulled.sideImageData, shirt.sideImageData);
   await writeRecord(space, "items", { ...local, backImageUrl: undefined, backImageData: undefined });
   const cleared = validateSyncRequest(JSON.parse(JSON.stringify({ expectedUserId: userId, cursor: 1, changes: await pendingChanges(space) }))).changes[0];
   await applySyncResponse(otherDevice, [], response(otherUser, { cursor: 2, rows: [{ collection: "items", record: cleared.record, revision: 2 }] }));
   assert.equal((await readSnapshot(otherDevice)).items[0].backImageData, undefined);
   assert.equal((await readSnapshot(otherDevice)).items[0].backImageUrl, undefined);
+  assert.equal((await readSnapshot(otherDevice)).items[0].sideImageData, shirt.sideImageData);
+  await writeRecord(space, "items", { ...local, sideImageUrl: "", sideImageData: "" });
+  const clearedSide = validateSyncRequest({ expectedUserId: userId, cursor: 2, changes: await pendingChanges(space) }).changes[0];
+  await applySyncResponse(otherDevice, [], response(otherUser, { cursor: 3, rows: [{ collection: "items", record: clearedSide.record, revision: 3 }] }));
+  assert.equal((await readSnapshot(otherDevice)).items[0].sideImageData, "");
+  assert.equal((await readSnapshot(otherDevice)).items[0].sideImageUrl, "");
 });
 
 test("remote pulls preserve dirty local edits and clean records accept newer revisions", async () => {
@@ -105,7 +114,7 @@ test("conflicting edits preserve a pending local copy and the server's original"
 test("deletes stay queued as tombstones until acknowledged", async () => {
   const userId = crypto.randomUUID();
   const space = accountSpace(userId);
-  const shirt = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==" };
+  const shirt = { ...item(), backImageUrl: "https://example.com/shirt-back.jpg", backImageData: "data:image/webp;base64,Yg==", sideImageUrl: "https://example.com/shirt-side.jpg", sideImageData: "data:image/webp;base64,Yw==" };
   await writeRecord(space, "items", shirt);
   await removeRecord(space, "items", shirt.id);
   assert.equal((await readSnapshot(space)).items.length, 0);
@@ -113,6 +122,7 @@ test("deletes stay queued as tombstones until acknowledged", async () => {
   assert.ok(pending[0].record.deletedAt);
   assert.equal(pending[0].record.imageData, "");
   assert.equal((pending[0].record as Item).backImageData, "");
+  assert.equal((pending[0].record as Item).sideImageData, "");
   await applySyncResponse(space, pending, response(userId, { results: [{ collection: "items", id: shirt.id, status: "ok", revision: 6 }], cursor: 6 }));
   assert.equal((await pendingChanges(space)).length, 0);
   assert.ok((await listStored(space))[0].record.deletedAt);

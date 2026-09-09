@@ -1,12 +1,13 @@
 "use client";
 
 import { create } from "zustand";
-import { activateSpace, currentSpace, GUEST_SPACE, readSnapshot, removeRecord, subscribeToLocalChanges, writeRecord, writeReferencePhoto } from "./db";
-import type { Item, Outfit } from "./types";
+import { activateSpace, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord, writeReferencePhoto } from "./db";
+import type { Item, Outfit, WishlistItem } from "./types";
 
 interface WardrobeState {
   items: Item[];
   outfits: Outfit[];
+  wishlist: WishlistItem[];
   referencePhoto: string | null;
   ready: boolean;
   error: string | null;
@@ -18,6 +19,10 @@ interface WardrobeState {
   deleteItem: (id: string) => Promise<void>;
   saveOutfit: (outfit: Outfit) => Promise<void>;
   deleteOutfit: (id: string) => Promise<void>;
+  saveWishlistItem: (item: WishlistItem) => Promise<void>;
+  deleteWishlistItem: (id: string, expectedSpace?: string) => Promise<WishlistItem | null>;
+  updateWishlistItem: (id: string, transform: (current: WishlistItem) => WishlistItem, expectedSpace?: string) => Promise<WishlistItem | null>;
+  moveWishlistToWardrobe: (id: string, expectedSpace?: string, transform?: (current: WishlistItem) => WishlistItem) => Promise<Item | null>;
   setReferencePhoto: (data: string | null) => Promise<void>;
 }
 let initialization: Promise<void> | null = null;
@@ -39,7 +44,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
     }
   }
   return {
-    items: [], outfits: [], referencePhoto: null, ready: false, error: null, space: GUEST_SPACE,
+    items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null, space: GUEST_SPACE,
     initialize: () => {
       if (initialization) return initialization;
       initialization = (async () => {
@@ -69,7 +74,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
     },
     switchSpace: async (space) => {
       revision++;
-      set({ space, items: [], outfits: [], referencePhoto: null, ready: false, error: null });
+      set({ space, items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null });
       await activateSpace(space);
       await get().reload();
     },
@@ -77,6 +82,54 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
     deleteItem: (id) => change((space) => removeRecord(space, "items", id)),
     saveOutfit: (outfit) => change((space) => writeRecord(space, "outfits", outfit)),
     deleteOutfit: (id) => change((space) => removeRecord(space, "outfits", id)),
+    saveWishlistItem: (item) => change((space) => writeRecord(space, "wishlist", item)),
+    deleteWishlistItem: async (id, expectedSpace) => {
+      if (!get().ready) await get().initialize();
+      const space = get().space;
+      if (expectedSpace !== undefined && space !== expectedSpace) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+      try {
+        const removed = await deleteWishlistRecord(space, id, () => {
+          if (get().space !== space) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+        });
+        if (get().space === space) { await get().reload(); set({ error: null }); }
+        return removed;
+      } catch (error) {
+        if (get().space === space) set({ error: message(error) });
+        throw error;
+      }
+    },
+    updateWishlistItem: async (id, transform, expectedSpace) => {
+      if (!get().ready) await get().initialize();
+      const space = get().space;
+      if (expectedSpace !== undefined && space !== expectedSpace) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+      try {
+        const updated = await updateWishlistRecord(space, id, (current) => {
+          if (get().space !== space) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+          return transform(current);
+        });
+        if (get().space === space) { await get().reload(); set({ error: null }); }
+        return updated;
+      } catch (error) {
+        if (get().space === space) set({ error: message(error) });
+        throw error;
+      }
+    },
+    moveWishlistToWardrobe: async (id, expectedSpace, transform) => {
+      if (!get().ready) await get().initialize();
+      const space = get().space;
+      if (expectedSpace !== undefined && space !== expectedSpace) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+      try {
+        const owned = await moveWishlistToWardrobe(space, id, (current) => {
+          if (get().space !== space) throw new Error("The active account changed. Reopen this wishlist item to continue.");
+          return transform ? transform(current) : current;
+        });
+        if (get().space === space) { await get().reload(); set({ error: null }); }
+        return owned;
+      } catch (error) {
+        if (get().space === space) set({ error: message(error) });
+        throw error;
+      }
+    },
     setReferencePhoto: (data) => change((space) => writeReferencePhoto(space, data)),
   };
 });

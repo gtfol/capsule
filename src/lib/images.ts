@@ -38,19 +38,21 @@ async function loadProductImage(image: ProductImage): Promise<string> {
   return compressImage(await response.blob());
 }
 
-export async function cacheProductImages(front: ProductImage, back?: ProductImage): Promise<{ imageData: string; backImageData?: string }> {
-  const originals = await Promise.all([loadProductImage(front), ...(back ? [loadProductImage(back)] : [])]);
-  let images: string[] = originals;
-  // Existing cached images stay untouched unless the pair exceeds the shared
+export async function cacheProductImages(front: ProductImage, back?: ProductImage, side?: ProductImage): Promise<{ imageData: string; backImageData?: string; sideImageData?: string }> {
+  // Preserve the slots: a side image does not become a back image when the
+  // optional back view is absent.
+  const originals = await Promise.all([front, back, side].map((image) => image ? loadProductImage(image) : undefined));
+  let images = originals;
+  // Existing cached images stay untouched unless the views exceed the shared
   // budget. Resize from the originals on each pass, avoiding repeated JPEG loss.
   for (const [dimension, quality] of [[1200, 0.82], [960, 0.76], [720, 0.7]]) {
-    if (images.reduce((total, data) => total + data.length, 0) <= MAX_ITEM_IMAGE_CHARS) break;
-    images = await Promise.all(originals.map((data) => compressImage(data, dimension, quality, /^data:image\/(png|webp);/i.test(data))));
+    if (images.reduce((total, data) => total + (data?.length ?? 0), 0) <= MAX_ITEM_IMAGE_CHARS) break;
+    images = await Promise.all(originals.map((data) => data ? compressImage(data, dimension, quality, /^data:image\/(png|webp|avif);/i.test(data)) : undefined));
   }
-  if (images.reduce((total, data) => total + data.length, 0) > MAX_ITEM_IMAGE_CHARS) {
+  if (images.reduce((total, data) => total + (data?.length ?? 0), 0) > MAX_ITEM_IMAGE_CHARS) {
     throw new Error("These images are too large to save. Choose another product image.");
   }
-  return { imageData: images[0], ...(back ? { backImageData: images[1] } : {}) };
+  return { imageData: images[0]!, ...(back ? { backImageData: images[1] } : {}), ...(side ? { sideImageData: images[2] } : {}) };
 }
 
 export async function cacheProductImage(url: string): Promise<string> {

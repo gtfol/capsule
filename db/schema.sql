@@ -49,7 +49,7 @@ create index if not exists verification_identifier on "verification" ("identifie
 create sequence if not exists capsule_sync_revision;
 create table if not exists capsule_records (
   user_id text not null references "user" (id) on delete cascade,
-  collection text not null check (collection in ('items', 'outfits')),
+  collection text not null check (collection in ('items', 'outfits', 'wishlist')),
   id uuid not null,
   record jsonb not null,
   revision bigint not null default nextval('capsule_sync_revision'),
