@@ -120,6 +120,7 @@ function RenderKeySettingsForSpace({ space, disabled = false, onKeyChange }: Ren
       <h2 id={`${id}-title`} className="text-[12px]">OpenAI API key</h2>
       {saved && <span className="text-[11px] text-subtle" role="status">Saved</span>}
     </div>
+    <p id={`${id}-note`} className="mt-2 text-[11px] leading-relaxed text-subtle">{saved ? "Saved in this browser. Never synced. Rendering is billed to your OpenAI account." : "Save your key in this browser to reuse it for future outfits."}</p>
     {!ready ? <div className="mt-3 text-[11px] text-subtle">
       {!error && <p role="status">Checking browser storage…</p>}
       {error && <button type="button" className={actionClass} disabled={disabled} onClick={() => { setError(""); setAttempt((value) => value + 1); }}>Retry</button>}
@@ -144,7 +145,6 @@ function RenderKeySettingsForSpace({ space, disabled = false, onKeyChange }: Ren
         {saved && <button type="button" className={actionClass} disabled={locked} onClick={cancel}>Cancel</button>}
       </div>
     </div>}
-    <p id={`${id}-note`} className="mt-2 text-[11px] leading-relaxed text-subtle">{saved ? "Saved in this browser. Never synced. Rendering is billed to your OpenAI account." : "Save your key in this browser to reuse it for future outfits."}</p>
     {error && <p id={`${id}-error`} className="mt-3 text-[12px] leading-relaxed" role="alert">{error}</p>}
   </section>;
 }
