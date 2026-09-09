@@ -1,4 +1,5 @@
-import type { Collection, Item, Outfit, SyncChange, SyncResponse, SyncRow, WardrobeRecord } from "./types";
+import type { Collection, Item, Outfit, SyncChange, SyncResponse, SyncRow, WardrobeRecord, WishlistItem } from "./types";
+import { assertWishlistLimits } from "./wishlist";
 
 // Each account has a separate space. Pending tokens live in the same atomic
 // record as the edit, so an interrupted write cannot lose its sync queue.
@@ -15,7 +16,7 @@ export interface StoredRecord {
   pendingToken: string | null;
 }
 interface Meta { key: string; value: unknown; }
-export interface Snapshot { items: Item[]; outfits: Outfit[]; referencePhoto: string | null; }
+export interface Snapshot { items: Item[]; outfits: Outfit[]; wishlist: WishlistItem[]; referencePhoto: string | null; }
 let databasePromise: Promise<IDBDatabase> | null = null;
 let channel: BroadcastChannel | null = null;
 type ChangeSource = "local" | "remote";
@@ -123,10 +124,12 @@ export async function readSnapshot(space: string): Promise<Snapshot> {
   return {
     items: alive.filter((r) => r.collection === "items").map((r) => r.record as Item).sort(byDate),
     outfits: alive.filter((r) => r.collection === "outfits").map((r) => r.record as Outfit).sort(byDate),
+    wishlist: alive.filter((r) => r.collection === "wishlist").map((r) => r.record as WishlistItem).sort(byDate),
     referencePhoto: referencePhoto ?? null,
   };
 }
 export async function writeRecord(space: string, collection: Collection, record: WardrobeRecord): Promise<void> {
+  if (collection === "wishlist") assertWishlistLimits(record as WishlistItem);
   const db = await openDatabase();
   const tx = db.transaction("records", "readwrite");
   const done = completed(tx);
@@ -138,6 +141,84 @@ export async function writeRecord(space: string, collection: Collection, record:
   await done;
   notify(space);
 }
+// Price requests can finish after edits in another tab. Apply their result to
+// the latest stored item atomically, and never recreate a deleted item.
+export async function updateWishlistRecord(space: string, id: string, transform: (current: WishlistItem) => WishlistItem): Promise<WishlistItem | null> {
+  const db = await openDatabase();
+  const tx = db.transaction("records", "readwrite");
+  const done = completed(tx);
+  const store = tx.objectStore("records");
+  try {
+    const previous = await request(store.get(keyFor(space, "wishlist", id))) as StoredRecord | undefined;
+    if (!previous || previous.record.deletedAt) { await done; return null; }
+    const changed = transform(previous.record as WishlistItem);
+    if (changed.id !== id || changed.deletedAt) throw new Error("The wishlist item changed while it was being saved.");
+    const record = { ...changed, updatedAt: Math.max(Date.now(), previous.record.updatedAt + 1, changed.updatedAt) };
+    assertWishlistLimits(record);
+    store.put({ ...previous, record, pendingToken: crypto.randomUUID() });
+    await done;
+    notify(space);
+    return record;
+  } catch (error) {
+    // A synchronous transform failure must abort rather than leave a rejected
+    // transaction promise unhandled.
+    try { tx.abort(); } catch { /* The transaction may already be complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
+export async function moveWishlistToWardrobe(space: string, id: string, transform?: (current: WishlistItem) => WishlistItem): Promise<Item | null> {
+  const db = await openDatabase();
+  const tx = db.transaction("records", "readwrite");
+  const done = completed(tx);
+  const store = tx.objectStore("records");
+  try {
+    const previous = await request(store.get(keyFor(space, "wishlist", id))) as StoredRecord | undefined;
+    if (!previous || previous.record.deletedAt) { await done; return null; }
+    const current = transform ? transform(previous.record as WishlistItem) : previous.record as WishlistItem;
+    if (current.id !== id || current.deletedAt) throw new Error("The wishlist item changed while it was being moved.");
+    assertWishlistLimits(current);
+    let ownedId = id;
+    while (await request(store.get(keyFor(space, "items", ownedId)))) ownedId = crypto.randomUUID();
+    const now = Date.now();
+    const updatedAt = Math.max(now, previous.record.updatedAt + 1, current.updatedAt);
+    const { rating: _rating, priceHistory: _history, sources: _sources, link_broken: _broken, currentSourceUrl: _source, ...fields } = current;
+    void _rating; void _history; void _sources; void _broken; void _source;
+    const owned: Item = { ...fields, id: ownedId, createdAt: now, updatedAt, deletedAt: null };
+    store.put({ ...previous, record: { ...current, imageData: "", backImageData: "", sideImageData: "", updatedAt, deletedAt: updatedAt }, pendingToken: crypto.randomUUID() } satisfies StoredRecord);
+    store.put({ key: keyFor(space, "items", ownedId), space, collection: "items", id: ownedId, record: owned, revision: 0, pendingToken: crypto.randomUUID() } satisfies StoredRecord);
+    await done;
+    notify(space);
+    return owned;
+  } catch (error) {
+    try { tx.abort(); } catch { /* The transaction may already be complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
+// Capture Undo's exact record in the same transaction that writes its
+// tombstone, so a stale tab cannot discard newer quotes or edited photos.
+export async function deleteWishlistRecord(space: string, id: string, beforeDelete?: () => void): Promise<WishlistItem | null> {
+  const db = await openDatabase();
+  const tx = db.transaction("records", "readwrite");
+  const done = completed(tx);
+  const store = tx.objectStore("records");
+  try {
+    const previous = await request(store.get(keyFor(space, "wishlist", id))) as StoredRecord | undefined;
+    if (!previous || previous.record.deletedAt) { await done; return null; }
+    beforeDelete?.();
+    const removed = previous.record as WishlistItem;
+    const now = Math.max(Date.now(), removed.updatedAt + 1);
+    store.put({ ...previous, record: { ...removed, imageData: "", backImageData: "", sideImageData: "", updatedAt: now, deletedAt: now }, pendingToken: crypto.randomUUID() } satisfies StoredRecord);
+    await done;
+    notify(space);
+    return removed;
+  } catch (error) {
+    try { tx.abort(); } catch { /* The transaction may already be complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
+}
 export async function removeRecord(space: string, collection: Collection, id: string): Promise<void> {
   const db = await openDatabase();
   const tx = db.transaction("records", "readwrite");
@@ -147,7 +228,7 @@ export async function removeRecord(space: string, collection: Collection, id: st
   const previous = await request(store.get(key)) as StoredRecord | undefined;
   if (previous) {
     const now = Math.max(Date.now(), previous.record.updatedAt + 1);
-    store.put({ ...previous, record: { ...previous.record, imageData: "", ...(collection === "items" ? { backImageData: "" } : {}), updatedAt: now, deletedAt: now }, pendingToken: crypto.randomUUID() });
+    store.put({ ...previous, record: { ...previous.record, imageData: "", ...(collection !== "outfits" ? { backImageData: "", sideImageData: "" } : {}), updatedAt: now, deletedAt: now }, pendingToken: crypto.randomUUID() });
   }
   await done;
   notify(space);

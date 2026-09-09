@@ -14,10 +14,11 @@ export type ProductDraft = {
   size: string;
   color: string;
 };
-export type ProductImport = { item: ProductDraft; images: string[] };
+export type ProductPriceQuote = { price: string; currency: string; source_url: string; fetched_at: number };
+export type ProductImport = { item: ProductDraft; images: string[]; priceQuote?: ProductPriceQuote };
 
 export class ProductImportError extends Error {
-  constructor(message: string, public readonly code: "BLOCKED_SITE" | "NO_IMAGE" | "NOT_FOUND" | "INVALID_PAGE", public readonly status: number = 422) {
+  constructor(message: string, public readonly code: "BLOCKED_SITE" | "NO_IMAGE" | "NOT_FOUND" | "INVALID_PAGE" | "NO_PRICE", public readonly status: number = 422) {
     super(message);
     this.name = "ProductImportError";
   }
@@ -81,8 +82,118 @@ function pageMatches(value: unknown, pageUrl: string): boolean {
   } catch { return false; }
 }
 
+/** Prices are amounts, never arbitrary text with digits stripped out of it. */
+export function parseProductPrice(value: unknown): string | undefined {
+  if (typeof value === "number") return Number.isFinite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER ? String(value) : undefined;
+  if (typeof value !== "string") return undefined;
+  let price = value.trim();
+  if (!price || price.length > 40) return undefined;
+  if (/^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(price)) price = price.replaceAll(",", "");
+  else if (/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(price)) price = price.replaceAll(".", "").replace(",", ".");
+  else if (/^\d{1,3}(?:[ '\u00a0\u202f]\d{3})+(?:[.,]\d{1,2})?$/.test(price)) price = price.replace(/[ '\u00a0\u202f]/g, "").replace(",", ".");
+  else if (/^\d+,\d{1,2}$/.test(price)) price = price.replace(",", ".");
+  if (!/^\d+(?:\.\d+)?$/.test(price)) return undefined;
+  const amount = Number(price);
+  return Number.isFinite(amount) && amount >= 0 && amount <= Number.MAX_SAFE_INTEGER ? price.replace(/^0+(?=\d)/, "") : undefined;
+}
+
+const priceCurrency = (value: unknown): string | undefined => {
+  const currency = scalar(value).toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : undefined;
+};
+
+const variantSelectors = ["variant", "sku", "pid", "product_id", "size", "color", "colour"];
+const hasVariantSelector = (url: URL) => variantSelectors.some((key) => url.searchParams.has(key));
+
+function exactPageMatches(value: unknown, pageUrl: string): boolean {
+  if (!pageMatches(value, pageUrl)) return false;
+  const candidate = new URL(scalar(value), pageUrl);
+  const page = new URL(pageUrl);
+  // Tracking parameters must not decide which size/color variant is priced.
+  return variantSelectors.every((key) => candidate.searchParams.get(key) === page.searchParams.get(key));
+}
+
+/** A price-only extraction does not require a photo or a product name. */
+export function extractProductPrice(html: string, pageUrl: string, shopifyData?: unknown, sourceUrl = pageUrl, fetchedAt = Date.now()): ProductPriceQuote | undefined {
+  const $ = cheerio.load(html);
+  const productScopes = $("[itemscope][itemtype*='Product']");
+  const meta = (...names: string[]) => {
+    for (const name of names) {
+      const value = $(`meta[property='${name}'], meta[name='${name}'], meta[itemprop='${name}']`).filter((_, element) => {
+        const scope = $(element).closest("[itemscope][itemtype*='Product']");
+        if (scope.length) {
+          const listing = scope.attr("itemid") || scope.find("[itemprop='url']").first().attr("href");
+          return listing ? exactPageMatches(listing, pageUrl) : productScopes.length === 1;
+        }
+        return name.includes(":") || $(element).parents("head").length > 0;
+      }).first().attr("content");
+      if (value?.trim()) return value.trim();
+    }
+    return "";
+  };
+  const nodes = jsonNodes($);
+  const references = new Map<string, Data>();
+  for (const node of nodes) {
+    const id = scalar(node["@id"]);
+    if (id && Object.keys(node).length > Object.keys(references.get(id) ?? {}).length) references.set(id, node);
+  }
+  const resolve = (value: unknown): Data => ({ ...references.get(scalar(object(value)["@id"])), ...object(value) });
+  const products = nodes.filter((node) => hasType(node, "Product") || hasType(node, "ProductGroup"));
+  const mainEntities = nodes.filter((node) => hasType(node, "WebPage") && (!node.url || pageMatches(node.url, pageUrl)))
+    .flatMap((node) => list(node.mainEntity).map(resolve));
+  const matchingProducts = products.filter((product) => pageMatches(product.url ?? product["@id"], pageUrl));
+  const uniqueProducts = products.filter((product) => !product.isVariantOf && !product.url && !product["@id"]);
+  const uniqueGroups = uniqueProducts.filter((product) => hasType(product, "ProductGroup"));
+  let product = mainEntities.find((node) => hasType(node, "Product") || hasType(node, "ProductGroup"))
+    ?? matchingProducts.find((node) => exactPageMatches(node.url ?? node["@id"], pageUrl))
+    ?? matchingProducts.find((node) => !hasVariantSelector(new URL(scalar(node.url ?? node["@id"]), pageUrl)))
+    ?? (uniqueGroups.length === 1 ? uniqueGroups[0] : undefined)
+    ?? (uniqueProducts.length === 1 ? uniqueProducts[0] : undefined);
+  if (product && hasType(product, "ProductGroup")) {
+    const variants = list(product.hasVariant).map(resolve);
+    const matching = variants.find((variant) => exactPageMatches(variant.url, pageUrl));
+    if (matching) product = { ...product, ...matching };
+    else if (variants.length === 1) product = { ...product, ...variants[0] };
+  }
+  const pageCurrency = meta("product:price:currency", "og:price:currency", "priceCurrency");
+  const quote = (amount: unknown, currencyValue: unknown): ProductPriceQuote | undefined => {
+    const price = parseProductPrice(amount);
+    const currency = priceCurrency(currencyValue);
+    return price !== undefined && currency ? { price, currency, source_url: validatePublicUrl(sourceUrl).href, fetched_at: fetchedAt } : undefined;
+  };
+  const currentSpecification = (entry: Data) => !/ListPrice|MSRP|StrikethroughPrice|RegularPrice|InvoicePrice/i.test(scalar(entry.priceType));
+  const fromOffer = (offer: Data): ProductPriceQuote | undefined => {
+    if (!currentSpecification(offer)) return undefined;
+    const direct = quote(offer.price ?? (hasType(offer, "AggregateOffer") ? offer.lowPrice : undefined), offer.priceCurrency || pageCurrency);
+    if (direct) return direct;
+    for (const specification of list(offer.priceSpecification).map(resolve).filter(currentSpecification)) {
+      const result = quote(specification.price, specification.priceCurrency || offer.priceCurrency || pageCurrency);
+      if (result) return result;
+    }
+    return undefined;
+  };
+  const offers = list(product?.offers).map(resolve);
+  const matchingOffers = offers.filter((offer) => exactPageMatches(offer.url, pageUrl));
+  // A base product page commonly publishes one explicit default-variant offer
+  // (e.g. Shopify stores). Accept that offer, or equal-priced variants, without
+  // confusing it with a different variant explicitly requested by the user.
+  const defaultOffers = offers.filter((offer) => !offer.url || !hasVariantSelector(new URL(pageUrl)) && pageMatches(offer.url, pageUrl));
+  const selectedOffers = matchingOffers.length ? matchingOffers : defaultOffers;
+  const candidates = selectedOffers.map(fromOffer).filter((entry): entry is ProductPriceQuote => !!entry);
+  // Conflicting variant offers have no single current price unless the page
+  // identifies the selected variant or supplies its own current-price metadata.
+  if (candidates.length && candidates.length === selectedOffers.length && candidates.every((entry) => entry.currency === candidates[0].currency && Number(entry.price) === Number(candidates[0].price))) return candidates[0];
+  const metadataQuote = quote(meta("product:price:amount", "og:price:amount", "price"), pageCurrency);
+  if (metadataQuote) return metadataQuote;
+  const shopify = object(object(shopifyData).product ?? shopifyData);
+  const variants = list(shopify.variants).map(object);
+  const selectedId = new URL(pageUrl).searchParams.get("variant");
+  const variant = selectedId ? variants.find((entry) => scalar(entry.id) === selectedId) : variants[0];
+  return quote(variant?.price, shopify.currency || pageCurrency);
+}
+
 /** Pure extraction is exported so retailer markup can be regression-tested without network requests. */
-export function extractProduct(html: string, pageUrl: string, shopifyData?: unknown): ProductImport {
+export function extractProduct(html: string, pageUrl: string, shopifyData?: unknown, sourceUrl = pageUrl): ProductImport {
   const $ = cheerio.load(html);
   const meta = (...names: string[]) => {
     for (const name of names) {
@@ -164,6 +275,7 @@ export function extractProduct(html: string, pageUrl: string, shopifyData?: unkn
     throw new ProductImportError("No product photo was found on this page. Try the product’s direct link or another store.", "NO_IMAGE");
   }
   if (!name) throw new ProductImportError("The product details could not be read from this page. Try another product link.", "INVALID_PAGE");
+  const priceQuote = extractProductPrice(html, pageUrl, shopifyData, sourceUrl);
   return {
     item: {
       name, brand, price, currency, description,
@@ -174,29 +286,57 @@ export function extractProduct(html: string, pageUrl: string, shopifyData?: unkn
       color: "",
     },
     images,
+    ...(priceQuote ? { priceQuote } : {}),
   };
 }
 
-export async function importProduct(input: string): Promise<ProductImport> {
+async function fetchProductPage(input: string, fetcher: typeof safeFetch) {
   const url = validatePublicUrl(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
-  const page = await safeFetch(url, { maxBytes: 5 * 1024 * 1024, timeoutMs: 16000 });
+  const page = await fetcher(url, { maxBytes: 5 * 1024 * 1024, timeoutMs: 16000 });
   if ([401, 403, 429, 503].includes(page.status)) throw new ProductImportError("This store blocks automatic imports. Try the product link from another store.", "BLOCKED_SITE");
   if (page.status === 404 || page.status === 410) throw new ProductImportError("This product page is no longer available. Check the link or try another store.", "NOT_FOUND", 404);
   if (page.status < 200 || page.status >= 300) throw new ProductImportError("This store could not return the product page. Try again later.", "INVALID_PAGE", 502);
   if (page.contentType && !["text/html", "application/xhtml+xml"].includes(page.contentType)) throw new ProductImportError("This link does not point to a product page. Paste the store’s product URL.", "INVALID_PAGE");
+  return { page, sourceUrl: url.href };
+}
+
+export async function importProduct(input: string, fetcher: typeof safeFetch = safeFetch): Promise<ProductImport> {
+  const { page, sourceUrl } = await fetchProductPage(input, fetcher);
   const html = page.body.toString("utf8");
   let extracted: ProductImport | undefined;
   let extractionError: unknown;
-  try { extracted = extractProduct(html, page.url); } catch (error) { extractionError = error; }
+  try { extracted = extractProduct(html, page.url, undefined, sourceUrl); } catch (error) { extractionError = error; }
   const productPath = new URL(page.url).pathname.match(/\/products\/([^/]+)\/?$/);
   // Fetch the complete product gallery even when HTML already contains metadata.
   if (productPath) {
     try {
       const jsonUrl = new URL(`/products/${productPath[1]}.json`, page.url);
-      const response = await safeFetch(jsonUrl, { maxBytes: 1024 * 1024, timeoutMs: 6500, accept: "application/json" });
-      if (response.status === 200 && response.contentType === "application/json") extracted = extractProduct(html, page.url, JSON.parse(response.body.toString("utf8")));
+      const response = await fetcher(jsonUrl, { maxBytes: 1024 * 1024, timeoutMs: 6500, accept: "application/json" });
+      if (response.status === 200 && response.contentType === "application/json") extracted = extractProduct(html, page.url, JSON.parse(response.body.toString("utf8")), sourceUrl);
     } catch { /* Preserve usable page data or the original actionable import error. */ }
   }
   if (extracted) return extracted;
   throw extractionError ?? new ProductImportError("This product could not be imported. Try another store’s link.", "INVALID_PAGE");
+}
+
+export async function fetchProductPrice(input: string, fetcher: typeof safeFetch = safeFetch): Promise<ProductPriceQuote> {
+  const { page, sourceUrl } = await fetchProductPage(input, fetcher);
+  const html = page.body.toString("utf8");
+  const quote = extractProductPrice(html, page.url, undefined, sourceUrl);
+  if (quote) return quote;
+  if (/access denied|just a moment|verify you are human|security check|attention required|robot or human|captcha|unusual traffic/i.test(cheerio.load(html)("title, h1, h2").text())) {
+    throw new ProductImportError("This store blocks automatic price checks. Try another listing link.", "BLOCKED_SITE");
+  }
+  const productPath = new URL(page.url).pathname.match(/\/products\/([^/]+)\/?$/);
+  if (productPath) {
+    try {
+      const jsonUrl = new URL(`/products/${productPath[1]}.json`, page.url);
+      const response = await fetcher(jsonUrl, { maxBytes: 1024 * 1024, timeoutMs: 6500, accept: "application/json" });
+      if (response.status === 200 && response.contentType === "application/json") {
+        const fallback = extractProductPrice(html, page.url, JSON.parse(response.body.toString("utf8")), sourceUrl);
+        if (fallback) return fallback;
+      }
+    } catch { /* A store may not provide public Shopify JSON. */ }
+  }
+  throw new ProductImportError("No current price and currency were found on this page. Try another listing link.", "NO_PRICE");
 }

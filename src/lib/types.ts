@@ -16,6 +16,8 @@ export interface Item {
   imageData?: string;
   backImageUrl?: string;
   backImageData?: string;
+  sideImageUrl?: string;
+  sideImageData?: string;
   createdAt: number;
   updatedAt: number;
   deletedAt?: number | null;
@@ -31,8 +33,31 @@ export interface Outfit {
   deletedAt?: number | null;
 }
 
-export type Collection = "items" | "outfits";
-export type WardrobeRecord = Item | Outfit;
+export interface PriceHistoryEntry {
+  price: number;
+  currency: string;
+  source_url: string;
+  fetched_at: number;
+}
+
+export interface WishlistSource {
+  url: string;
+  price: string;
+  currency: string;
+  fetched_at: number | null;
+  link_broken: boolean;
+}
+
+export interface WishlistItem extends Item {
+  rating: number | null;
+  priceHistory: PriceHistoryEntry[];
+  sources: WishlistSource[];
+  link_broken: boolean;
+  currentSourceUrl: string;
+}
+
+export type Collection = "items" | "outfits" | "wishlist";
+export type WardrobeRecord = Item | Outfit | WishlistItem;
 export interface SyncChange {
   collection: Collection;
   record: WardrobeRecord;

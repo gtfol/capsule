@@ -1,6 +1,6 @@
 # capsule
 
-A personal wardrobe. Add clothes from product links or your own photos, keep a visual inventory, and render selected pieces on your reference photo. No advice, ratings, or recommendations.
+A personal wardrobe and wishlist. Add clothes from product links or your own photos, keep a visual inventory, and render owned pieces on your reference photo. No advice or recommendations. Wishlist ratings are set only by you.
 
 ## Run
 
@@ -17,9 +17,9 @@ Next.js 16, React 19, Tailwind 4, shadcn/ui (Radix primitives), Zustand, native 
 
 ## Product links and local storage
 
-Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Or select Photos and choose or drop one or two JPG, PNG, WebP or AVIF images, up to 20 MB each. Add a name and any other details; purchase links are optional. Images are compressed and saved in IndexedDB. The wardrobe starts empty.
+Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Or select Photos and choose or drop up to three JPG, PNG, WebP or AVIF images, up to 20 MB each. Add a name and any other details; purchase links are optional. Images are compressed and saved in IndexedDB. The wardrobe starts empty.
 
-Select a front image and an optional back image from the imported gallery or your uploaded photos. Wardrobe cards fade to the back on hover or keyboard focus; the detail panel lets you switch views on touch devices. Both images are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. When editing a saved piece, the photo toolbar can add uploads or fetch the gallery from its purchase link without replacing its details or selected photos. Existing pieces with one image continue to work.
+Select a front image and optional back and side images from the imported gallery or your uploaded photos. Wardrobe cards fade to the back on hover or keyboard focus, using the side view when there is no back image; the detail panel lets you switch views on touch devices. All selected views are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. When editing a saved piece, the photo toolbar can add uploads or fetch the gallery from its purchase link without replacing its details or selected photos. Existing pieces with one image continue to work.
 
 Import reads JSON-LD Product/ProductGroup data, OpenGraph, product galleries and public Shopify metadata. Product pages that block automated access or expose no product image return an error; the app does not fabricate an item. Images favor explicitly labeled packshots when available, with alternate images available for selection.
 
@@ -27,9 +27,23 @@ The Remove background icon processes the selected photo on this device in a dedi
 
 Saved pieces, outfit images, edits and deletions work offline. A production service worker caches the app shell and assets after the first visit; dev mode does not register it. Fetching a new product page and rendering a new outfit require the internet. Browser storage is device-specific and can be removed by clearing site data.
 
-The sun/moon icon in the bottom bar switches between light and dark, matching Freewrite. Capsule follows the device setting until you choose a theme, then remembers that choice in this browser. Transparent cutouts use a plain white or black surface to match the theme, including the preview and wardrobe grid.
+The sun/moon icon in the bottom bar switches between light and dark, matching Freewrite. Capsule follows the device setting until you choose a theme, then remembers that choice in this browser. Closing an edited piece with X, Escape or an outside click opens a restrained Save changes / Discard changes / Keep editing dialog. Background-removal setup says “Preparing background removal…” before processing. Transparent cutouts use a plain white or black surface to match the theme, including the preview and wardrobe grid.
+
+## Wishlist
+
+The Wishlist tab is a separate local collection. In Add, choose Wishlist and paste a product link, then review its photo, name, brand, details and price. The first available current-price quote is recorded with its source URL, currency and fetch time. Pages without a reliable price can still be saved; manually entering a price does not fabricate a historical fetch.
+
+Set your own rating from half a star to five stars. Select the same rating again to clear it; arrow keys move in half steps, and Delete or Backspace clears the rating. Cards display the current price, rating and an unavailable-link icon after a failed check. Filter by category and sort by recently added, highest rated or biggest percentage price drop from the first recorded comparable price.
+
+In the detail panel, Refetch price checks the current product link. Add alternative link fetches another listing for the same piece; each listing can be checked individually. Every successful check appends an observation to the same history. The interactive dot chart shows each observation, with a compact price/date/source readout on hover, tap or keyboard selection. Overlapping observations can be cycled and source markers distinguish listing URLs; a table exposes the full history. Currencies are displayed separately; the current price is the lowest healthy source in the piece's comparison currency. There is no currency conversion. Failed listings keep their previous history and are excluded from the current minimum until a successful check; if all sources fail, the last known price remains visible.
+
+Once purchased, Move to wardrobe transfers the piece, including its current edits and photos, in one IndexedDB transaction. The wishlist entry is removed and both changes enter the optional sync queue. Wishlist pieces are never available in the outfit picker until moved. There are no automatic or scheduled price fetches. A piece can hold 20 source links and 1,000 price observations, subject to the sync payload limit; history is never silently truncated.
+
+Wishlist records, ratings, history, source status and photos use the existing account-isolated local storage and optional sync. Local metadata saves merge with the latest price records so an open editor does not overwrite another tab's new observations.
 
 ## Optional sync setup
+
+Existing Capsule databases need [db/migrations/20260908_add_wishlist.sql](db/migrations/20260908_add_wishlist.sql) before deploying the Wishlist release. Run it in the Supabase SQL editor; it only allows the new collection in the existing records table and can be run again safely. No new environment variables, browser keys, or storage bucket are needed. Fresh databases use the schema below.
 
 1. Create a separate Supabase project for Capsule.
 2. Run [db/schema.sql](db/schema.sql) in the Supabase SQL editor. Better Auth uses its own user/session/account tables; Supabase Auth is not used. RLS keeps these tables out of the public Supabase data API.
@@ -72,4 +86,4 @@ npm test
 npm run build
 ```
 
-Tests cover metadata extraction, public-host validation and DNS pinning, redirect and decompression limits, offline writes and tombstones, sync conflicts and account isolation, offline reconnection, request validation, rendering credentials and mocked image-service responses.
+Tests cover metadata and price extraction, public-host validation and DNS pinning, redirect and decompression limits, offline writes and tombstones, sync conflicts and account isolation, offline reconnection, request validation, rendering credentials and mocked image-service responses. Wishlist tests cover currency separation, price-history ordering, source failures and recovery, local/synced ratings, concurrent updates, and atomic moves to the wardrobe including rollback.
