@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { IconAction } from "@/components/ui/icon-action";
 import type { RenderCredential } from "@/lib/render-credential";
 
 type Props = { userId: string | null; sessionKey?: string; disabled?: boolean; active?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
@@ -99,7 +101,7 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
     <p id={`${id}-note`} className="sr-only">{note}</p>
     {!ready || !available ? <div className="mt-3 text-[11px] text-subtle">{!error && <p role="status">Checking saved key…</p>}{error && <button type="button" className={actionClass} disabled={disabled} onClick={() => { setError(""); setDraft(""); setEditing(false); setAttempt((value) => value + 1); }}>Retry</button>}</div> : saved && !editing ? <div className="mt-2 flex min-h-9 items-center justify-between gap-4">
       <span className="select-none text-[13px] tracking-[0.12em]" aria-label="API key saved">••••••••••••</span>
-      <div className="flex items-center gap-4"><button ref={changeButton} type="button" className={actionClass} disabled={locked} onClick={() => { focusNext.current = "input"; setDraft(""); setError(""); setInvalid(false); setEditing(true); callback.current(null); }}>Change</button><button type="button" className={actionClass} disabled={locked} onClick={() => { void mutate(true); }}>{pending === "remove" ? "Removing…" : "Remove"}</button></div>
+      <div role="group" aria-label="API key actions" className="-mr-2 flex items-center gap-1"><IconAction ref={changeButton} label="Change API key" tooltip="Change key" icon={Pencil} disabled={locked} onClick={() => { focusNext.current = "input"; setDraft(""); setError(""); setInvalid(false); setEditing(true); callback.current(null); }} /><IconAction label="Remove API key" tooltip="Remove key" icon={Trash2} loading={pending === "remove"} disabled={locked} onClick={() => { void mutate(true); }} /></div>
     </div> : <div className="mt-2">
       <div className="relative"><Input {...inputProps} ref={input} aria-label={saved ? "Replacement OpenAI API key" : "OpenAI API key"} value={draft} placeholder="Paste your API key" disabled={locked} aria-invalid={invalid || undefined} aria-describedby={`${id}-note${error ? ` ${id}-error` : ""}`} onChange={(event) => { setDraft(event.target.value); setError(""); setInvalid(false); }} onKeyDown={(event) => { if (event.nativeEvent.isComposing) return; if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); void mutate(false); } if (event.key === "Escape" && saved) { event.preventDefault(); cancel(); } }} /><span className="render-key-fallback" aria-hidden="true">{"•".repeat(Math.min(draft.length, 24))}</span></div>
       <div className="mt-1 flex items-center gap-5"><button type="button" className={`${actionClass} !text-foreground underline underline-offset-4`} disabled={locked || !draft.trim()} onClick={() => { void mutate(false); }}>{pending === "save" ? "Saving…" : "Save key"}</button>{saved && <button type="button" className={actionClass} disabled={locked} onClick={cancel}>Cancel</button>}</div>

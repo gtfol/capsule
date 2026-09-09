@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { Camera, FolderOpen, Images, Loader2, X } from "lucide-react";
+import { Camera, FolderOpen, Images, Loader2, Pencil, X } from "lucide-react";
 import { Button } from "./ui/button";
+import { IconAction } from "./ui/icon-action";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { cameraErrorMessage, captureCameraPhoto, requestCameraStream } from "@/lib/camera";
 import { cn } from "@/lib/utils";
@@ -125,8 +126,8 @@ function PhotoPicker({ hasPhoto, busy, onSelect, className }: Omit<Props, "activ
 
   const optionClass = "flex w-full items-center gap-3 rounded-sm px-2 py-2.5 text-left text-[12px] text-foreground hover:bg-muted focus-visible:outline-foreground";
   return <>
-    <Popover open={menuOpen} onOpenChange={setMenuOpen}><PopoverTrigger asChild><button ref={trigger} type="button" disabled={locked} aria-label={hasPhoto ? "Change photo" : "Add photo"} className={cn(hasPhoto ? "inline-flex items-center gap-2 py-2 text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-40" : "model-photo-trigger relative block w-full disabled:opacity-40", className)}>{hasPhoto ? <>{selecting && <Loader2 size={13} className="animate-spin" />}Change photo</> : <><ModelPhotoPlaceholder /><span className="model-photo-prompt absolute inset-0 flex items-center justify-center gap-2 bg-background/50 text-[12px] text-foreground"><PopoverAnchor asChild><span className="inline-flex items-center gap-2">{selecting ? <><Loader2 size={13} className="animate-spin" />Saving photo…</> : "Add photo"}</span></PopoverAnchor></span></>}</button></PopoverTrigger>
-      <PopoverContent align={hasPhoto ? "start" : "center"} sideOffset={8} className="w-48 p-2" onCloseAutoFocus={(event) => { if (cameraOpen) event.preventDefault(); }}>
+    <Popover open={menuOpen} onOpenChange={setMenuOpen}><PopoverTrigger asChild>{hasPhoto ? <IconAction ref={trigger} label="Change model photo" tooltip="Change photo" icon={Pencil} loading={selecting} disabled={locked} className={className} /> : <button ref={trigger} type="button" disabled={locked} aria-label="Add photo" className={cn("model-photo-trigger relative block w-full disabled:opacity-40", className)}><ModelPhotoPlaceholder /><span className="model-photo-prompt absolute inset-0 flex items-center justify-center gap-2 bg-background/50 text-[12px] text-foreground"><PopoverAnchor asChild><span className="inline-flex items-center gap-2">{selecting ? <><Loader2 size={13} className="animate-spin" />Saving photo…</> : "Add photo"}</span></PopoverAnchor></span></button>}</PopoverTrigger>
+      <PopoverContent align={hasPhoto ? "end" : "center"} sideOffset={8} className="w-48 p-2" onCloseAutoFocus={(event) => { if (cameraOpen) event.preventDefault(); }}>
         <button type="button" className={optionClass} disabled={locked} onClick={() => void openCamera()}><Camera size={15} strokeWidth={1.5} />Take a photo</button>
         <button type="button" className={optionClass} disabled={locked} onClick={() => chooseInput(libraryInput.current)}><Images size={15} strokeWidth={1.5} />Photo library</button>
         <button type="button" className={optionClass} disabled={locked} onClick={() => chooseInput(fileInput.current)}><FolderOpen size={15} strokeWidth={1.5} />Choose file</button>
