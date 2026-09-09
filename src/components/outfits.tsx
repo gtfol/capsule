@@ -22,6 +22,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
   const [credential, setCredential] = useState<RenderCredential | null>(null);
   const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
+  const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const [detail, setDetail] = useState<Outfit | null>(null);
   const [unsaved, setUnsaved] = useState<Outfit | null>(null);
@@ -48,8 +49,9 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
     setBusy(true); setError("");
     try {
       const credentialBody = renderCredentialPayload(credential, space);
-      const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, imageData: await compressImage(imageSource(item), 900, 0.78) })));
-      const body = JSON.stringify({ ...credentialBody, referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces });
+      const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, category: item.category, imageData: await compressImage(imageSource(item), 900, 0.78) })));
+      const styling = notes.trim();
+      const body = JSON.stringify({ ...credentialBody, referencePhoto: await compressImage(referencePhoto, 1200, 0.8), items: pieces, ...(styling ? { notes: styling } : {}) });
       if (new TextEncoder().encode(body).length > 3_900_000) throw new Error("These images are too large to render together. Select fewer pieces.");
       if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Select your pieces again.");
       const response = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body, signal: AbortSignal.timeout(125_000) });
@@ -60,7 +62,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       const outfit: Outfit = { id: crypto.randomUUID(), name: `Outfit ${String(outfits.length + 1).padStart(2, "0")}`, itemIds: selectedItems.map((item) => item.id), imageData, createdAt: now, updatedAt: now, deletedAt: null };
       setUnsaved(outfit);
       await writeRecord(space, "outfits", outfit);
-      setUnsaved(null); setCreating(false); setSelection([]); setDetail(outfit);
+      setUnsaved(null); setCreating(false); setSelection([]); setNotes(""); setDetail(outfit);
     } catch (cause) { setError(cause instanceof Error && cause.name === "TimeoutError" ? "Rendering took too long. Try again." : cause instanceof Error ? cause.message : "This outfit could not be rendered."); }
     finally { setBusy(false); }
   }
@@ -83,6 +85,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       </button>)}</div></div>
       <div className="space-y-6">{modelPhotoPanel}
       {config?.requiresApiKey && <RenderKeySettings key={space} active={active} userId={space.startsWith("account:") ? space.slice(8) : null} sessionKey={credential?.type === "session" ? credential.apiKey : ""} disabled={busy} onCredentialChange={setCredential} />}
+      <div><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1"><label htmlFor="outfit-styling-notes" className="text-[12px]">Styling notes</label>{active && <InfoTooltip label="About styling notes">Optional. How to wear the selected pieces, such as tucked in, sleeves rolled, or sunglasses on. Sent to OpenAI with your render.</InfoTooltip>}</div><span className="text-[11px] text-subtle">{notes.length} / 300</span></div><textarea id="outfit-styling-notes" className="field-input mt-1 min-h-12 resize-y py-2" value={notes} onChange={(event) => { setError(""); setNotes(event.target.value); }} maxLength={300} placeholder="—" disabled={busy} /></div>
       <div>{config?.model && <p className="mb-3 text-[11px] text-subtle">Model: {config.model}</p>}<Button type="button" onClick={() => { void render(); }} className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !credential)}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : config.requiresApiKey ? "Rendering is billed to your OpenAI account." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
       {error && <p className="text-[12px] leading-relaxed" role="alert">{error}</p>}{unsaved && <div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
