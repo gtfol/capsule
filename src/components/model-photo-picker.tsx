@@ -140,7 +140,7 @@ function PhotoPicker({ hasPhoto, busy, onSelect, className }: Omit<Props, "activ
       <Dialog.Content className="fixed left-1/2 top-1/2 z-[90] w-[calc(100%_-_32px)] max-w-[460px] -translate-x-1/2 -translate-y-1/2 border border-border bg-background p-6 text-foreground shadow-sm outline-none" onCloseAutoFocus={(event) => { event.preventDefault(); trigger.current?.focus(); }} onEscapeKeyDown={(event) => { if (locked) event.preventDefault(); }} onInteractOutside={(event) => { if (locked) event.preventDefault(); }}>
         <Dialog.Title className="pr-8 text-[14px] font-normal">Take a photo</Dialog.Title>
         <Dialog.Description className="sr-only">Capture a photo, review it, then choose Use photo. Nothing is saved until you choose it.</Dialog.Description>
-        <button type="button" className="absolute right-4 top-4 p-2 text-muted-foreground hover:text-foreground disabled:opacity-40" aria-label="Close camera" disabled={locked} onClick={closeCamera}><X size={16} strokeWidth={1.5} /></button>
+        <button type="button" className="absolute right-4 top-4 p-2 text-muted-foreground hover:text-foreground disabled:opacity-40" aria-label="Close camera" disabled={locked} onClick={closeCamera}><X size={14} strokeWidth={1.5} /></button>
         <div className="relative mt-5 flex aspect-[4/5] max-h-[55dvh] w-full items-center justify-center overflow-hidden bg-black">
           {photo ? <>
             {/* eslint-disable-next-line @next/next/no-img-element */}

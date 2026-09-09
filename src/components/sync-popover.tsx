@@ -18,7 +18,7 @@ export function SyncPopover() {
   async function emailAuth(event: React.FormEvent) { event.preventDefault(); setWorking(true); setError(""); try { const result = register ? await authClient.signUp.email({ email, password, name: name.trim() || email.split("@")[0] }) : await authClient.signIn.email({ email, password }); if (result.error) throw new Error(result.error.message || "Sign-in failed."); setPassword(""); await sync.refreshSession(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in failed."); } finally { setWorking(false); } }
   const optionClass = "w-full rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-40";
   return <Popover>
-    <PopoverTrigger asChild><button type="button" className="nav-button flex items-center justify-center" aria-label="Sync" title="Sync">{sync.status === "syncing" ? <Loader2 size={16} className="animate-spin" /> : sync.user ? <Cloud size={16} /> : <CloudOff size={16} />}</button></PopoverTrigger>
+    <PopoverTrigger asChild><button type="button" className="nav-button flex items-center justify-center" aria-label="Sync" title="Sync">{sync.status === "syncing" ? <Loader2 size={14} className="animate-spin" /> : sync.user ? <Cloud size={14} /> : <CloudOff size={14} />}</button></PopoverTrigger>
     <PopoverContent side="top" align="end" className="w-72 p-3">
       {sync.status === "loading" ? <p role="status" className="px-1 text-xs text-muted-foreground">Checking sync…</p> : sync.user ? <div className="flex flex-col gap-1">
         {sync.user.name && <p className="truncate px-1 text-sm">{sync.user.name}</p>}
