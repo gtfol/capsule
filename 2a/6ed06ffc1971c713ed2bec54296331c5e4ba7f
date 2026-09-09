@@ -1,0 +1,52 @@
+.env.example
+  h_606d960bac5d85 15-18
+README.md
+  h_606d960bac5d85 74,76-84
+db/migrations/20260909_add_render_keys.sql
+  h_606d960bac5d85 1-23
+db/schema.sql
+  h_606d960bac5d85 67-84
+src/app/api/render/key/route.ts
+  h_606d960bac5d85 1-8
+src/app/api/render/route.ts
+  h_606d960bac5d85 2-3,20,24
+src/app/globals.css
+  h_606d960bac5d85 109-115
+src/components/model-photo-picker.tsx
+  h_606d960bac5d85 7,10,128-129
+src/components/outfits.tsx
+  h_606d960bac5d85 11-12,19,47,49,72,83-84
+src/components/render-key-settings.tsx
+  h_606d960bac5d85 5,7-24,27,31,38,40,44,46-61,67-68,70-71,73,75-81,83-85,87,91-92,95-98,100,102-103
+src/components/ui/popover.tsx
+  h_606d960bac5d85 7
+src/components/wishlist-detail.tsx
+  h_606d960bac5d85 4,152
+src/lib/db.ts
+  h_606d960bac5d85 83-85,89,91-92
+src/lib/render-credential.ts
+  h_606d960bac5d85 1-7
+src/lib/server/render-key-api.ts
+  h_606d960bac5d85 1-80
+src/lib/server/render-key-storage.ts
+  h_606d960bac5d85 1-67
+src/lib/server/render.ts
+  h_606d960bac5d85 61-62
+src/lib/store.ts
+  h_606d960bac5d85 4,52
+tests/render-key-api.test.ts
+  h_606d960bac5d85 1-101
+tests/render-key-storage.test.ts
+  h_606d960bac5d85 4-6,9-10,12-24,27-32,35-56,59-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2a6ed06ffc1971c713ed2bec54296331c5e4ba7f",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
