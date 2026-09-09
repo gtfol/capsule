@@ -48,7 +48,7 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 ::selection { color: var(--surface); background: var(--strong-text); }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--surface); padding: 10px; }
 .skip-link:focus { top: 5px; }
-.catalog-layout { display: grid; grid-template-columns: 160px minmax(0, 1fr); column-gap: 35px; padding: 38px 30px 110px; }
+.catalog-layout { display: grid; grid-template-columns: 160px minmax(0, 1fr); column-gap: 35px; padding: 30px 30px 110px; }
 .catalog-sidebar { padding-top: 1px; }
 .filter-trigger { font-size: 12px; display: flex; align-items: center; gap: 25px; padding: 0; }
 .category-list { margin-top: 34px; display: flex; align-items: flex-start; flex-direction: column; gap: 17px; }
@@ -61,13 +61,11 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 .product-image { width: 100%; aspect-ratio: 4 / 5; position: relative; background: var(--surface); margin-bottom: 17px; }
 .product-image img { position: absolute; inset: 0; height: 100%; width: 100%; object-fit: contain; transition: opacity 220ms ease; }
 .product-image-front { opacity: 1; }
-.product-image-back { opacity: 0; }
+.product-image-back { opacity: 0; background: var(--surface); }
 .product-image[data-front-unavailable=true] .product-image-front { opacity: 0; }
 .product-image[data-front-unavailable=true][data-back-ready=true] .product-image-back { opacity: 1; }
-.product-card:focus-visible .product-image[data-back-ready=true] .product-image-front { opacity: 0; }
 .product-card:focus-visible .product-image[data-back-ready=true] .product-image-back { opacity: 1; }
 @media (hover: hover) {
-  .product-card:hover .product-image[data-back-ready=true] .product-image-front { opacity: 0; }
   .product-card:hover .product-image[data-back-ready=true] .product-image-back { opacity: 1; }
 }
 .product-image[data-unavailable]::after { content: attr(data-unavailable); position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; color: var(--subtle-text); }
@@ -118,7 +116,7 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 .notice[data-dismissing=true] { animation: notice-out 180ms ease-in forwards; pointer-events: none; }
 @keyframes notice-in { from { opacity: 0; transform: translate(-50%, 6px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes notice-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, 6px); } }
-.outfits-view { padding-top: 38px; }
+.outfits-view { padding-top: 30px; }
 .outfits-head { display: flex; align-items: center; justify-content: space-between; }
 .outfit-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 70px; margin-top: 45px; }
 .outfit-picker { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 26px; margin-top: 20px; }
@@ -134,7 +132,7 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 @media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 30px 25px; } .catalog-layout { grid-template-columns: 135px minmax(0, 1fr); gap: 25px; } .outfit-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); } .outfit-workspace { gap: 40px; } }
 @media (max-width: 900px) { .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .outfit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .catalog-layout { display: block; padding: 27px 20px 100px; }
+  .catalog-layout { display: block; padding: 30px 20px 100px; }
   .filter-trigger { gap: 13px; }
   .category-list { flex-direction: row; gap: 22px; overflow-x: auto; margin: 24px -20px 31px; padding: 0 20px 6px; scrollbar-width: none; }
   .category-list::-webkit-scrollbar { display: none; }
@@ -150,6 +148,5 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
   .outfit-workspace { grid-template-columns: 1fr; gap: 36px; margin-top: 32px; }
   .outfit-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   .outfit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 25px; }
-  .outfits-view { padding-top: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
