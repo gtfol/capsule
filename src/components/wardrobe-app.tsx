@@ -29,11 +29,9 @@ function WardrobeSurface() {
   const [selected, setSelected] = useState<Item | null>(null);
   const [removed, setRemoved] = useState<Item | null>(null);
   const [notice, setNotice] = useState<{ id: string; message: string } | null>(null);
-  const [online, setOnline] = useState(true);
-  const { items, wishlist, ready, error, initialize, saveItem, deleteItem, space } = useWardrobe();
-  useEffect(() => { void initialize(); void useSyncStore.getState().initialize(); const update = () => setOnline(navigator.onLine); update(); window.addEventListener("online", update); window.addEventListener("offline", update); return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); useSyncStore.getState().stop(); }; }, [initialize]);
+  const { items, ready, error, initialize, saveItem, deleteItem, space } = useWardrobe();
+  useEffect(() => { void initialize(); void useSyncStore.getState().initialize(); return () => { useSyncStore.getState().stop(); }; }, [initialize]);
   const filtered = useMemo(() => items.filter((item) => category === "all" || item.category === category).toSorted((a, b) => sort === "newest" ? b.createdAt - a.createdAt : sort === "oldest" ? a.createdAt - b.createdAt : sort === "name" ? a.name.localeCompare(b.name) : a.brand.localeCompare(b.brand)), [items, category, sort]);
-  const count = view === "wishlist" ? wishlist.length : items.length;
   const categoryName = category === "all" ? "All" : CATEGORIES.find((entry) => entry.value === category)?.label;
   const showNotice = (message: string) => setNotice({ id: crypto.randomUUID(), message });
   async function remove(item: Item) { await deleteItem(item.id); setRemoved(item); setNotice(null); }
@@ -42,7 +40,6 @@ function WardrobeSurface() {
     setRemoved((current) => current === removed ? null : current);
   }
   return <div className="min-h-dvh bg-background text-foreground"><a className="skip-link" href="#main">Skip to wardrobe</a>
-    <header className="top-bar"><button onClick={() => setView("wardrobe")} className="wordmark" aria-label="Capsule wardrobe">capsule</button><div className="flex items-center gap-5 text-[12px]"><span className="text-subtle">{online ? "" : "Offline"}</span><span aria-live="polite">{ready ? `${count} ${count === 1 ? "piece" : "pieces"}` : "— pieces"}</span></div></header>
     <main id="main" className={view === "wardrobe" || view === "wishlist" ? "catalog-layout" : "main-view"}>
       {view === "wardrobe" && <><aside className="catalog-sidebar" aria-label="Wardrobe filters"><Popover><PopoverTrigger asChild><button className="filter-trigger"><span>Filter &amp; Sort</span><Plus size={12} strokeWidth={1.5} /></button></PopoverTrigger><PopoverContent align="start" side="bottom" className="w-48 p-4"><p className="mb-3 text-[11px] text-subtle">SORT BY</p>{SORTS.map((option) => <button className="flex w-full items-center justify-between py-2 text-left text-[12px]" key={option.value} aria-pressed={sort === option.value} onClick={() => setSort(option.value)}>{option.label}{sort === option.value && <Check size={12} />}</button>)}</PopoverContent></Popover>
         <div className="category-list" role="tablist" aria-label="Categories"><button role="tab" aria-selected={category === "all"} onClick={() => setCategory("all")} className={category === "all" ? "category active" : "category"}>ALL</button>{CATEGORIES.map((entry) => <button key={entry.value} role="tab" aria-selected={category === entry.value} onClick={() => setCategory(entry.value)} className={category === entry.value ? "category active" : "category"}>{entry.label.toUpperCase()}</button>)}</div>

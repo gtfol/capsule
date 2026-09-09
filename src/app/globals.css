@@ -48,8 +48,6 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 ::selection { color: var(--surface); background: var(--strong-text); }
 .skip-link { position: fixed; top: -100px; left: 20px; z-index: 100; background: var(--surface); padding: 10px; }
 .skip-link:focus { top: 5px; }
-.top-bar { height: 65px; padding: 0 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--hairline); }
-.wordmark { font-size: 18px; line-height: 1; }
 .catalog-layout { display: grid; grid-template-columns: 160px minmax(0, 1fr); column-gap: 35px; padding: 38px 30px 110px; }
 .catalog-sidebar { padding-top: 1px; }
 .filter-trigger { font-size: 12px; display: flex; align-items: center; gap: 25px; padding: 0; }
@@ -136,7 +134,6 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 @media (max-width: 1200px) { .product-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 30px 25px; } .catalog-layout { grid-template-columns: 135px minmax(0, 1fr); gap: 25px; } .outfit-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); } .outfit-workspace { gap: 40px; } }
 @media (max-width: 900px) { .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .outfit-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .top-bar { height: 57px; padding: 0 20px; }
   .catalog-layout { display: block; padding: 27px 20px 100px; }
   .filter-trigger { gap: 13px; }
   .category-list { flex-direction: row; gap: 22px; overflow-x: auto; margin: 24px -20px 31px; padding: 0 20px 6px; scrollbar-width: none; }
