@@ -30,6 +30,7 @@ export interface ShareSnapshot {
   version: 1;
   kind: ShareKind;
   title: string;
+  ownerName?: string; // Public display name captured when the link is published.
   pieces: SharedPiece[];
   outfitImageData?: string;
 }

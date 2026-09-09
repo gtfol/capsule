@@ -2,6 +2,8 @@
 import { openDatabase } from "./db";
 import { compressImage, imageSource } from "./images";
 import { useWardrobe } from "./store";
+import { useSyncStore } from "./sync";
+import { shareOwnerName } from "./share-owner";
 import { pieceSourceKey } from "./piece-identity";
 import type { Item, Outfit, WishlistItem } from "./types";
 import type { ShareExpiry, ShareSnapshot, SharedPiece } from "./share-types";
@@ -26,8 +28,12 @@ const BODY_BUDGET = 3_800_000;
 const recordKey = (space: string, key: string) => `${space}|share-link|${key}`;
 export const shareTargetKey = (target: ShareTarget) => target.kind === "piece" ? `piece:${target.piece.id}` : target.kind === "outfit" ? `outfit:${target.outfit.id}` : target.kind;
 const piecesOf = (target: ShareTarget) => target.kind === "piece" ? [target.piece] : target.pieces;
-export function shareTargetVersion(target: ShareTarget): string {
-  return JSON.stringify([target.kind, ...(target.kind === "outfit" ? [target.outfit.id, target.outfit.updatedAt] : []), ...piecesOf(target).map((piece) => `${piece.id}:${piece.updatedAt}`).sort()]);
+export function currentShareOwnerName(): string | undefined {
+  const user = useSyncStore.getState().user;
+  return user && useWardrobe.getState().space === `account:${user.id}` ? shareOwnerName(user.name) : undefined;
+}
+export function shareTargetVersion(target: ShareTarget, ownerName: string | null = currentShareOwnerName() ?? null): string {
+  return JSON.stringify([target.kind, ...(target.kind === "outfit" ? [target.outfit.id, target.outfit.updatedAt] : []), ...piecesOf(target).map((piece) => `${piece.id}:${piece.updatedAt}`).sort(), ...(ownerName ? [{ ownerName }] : [])]);
 }
 export const shareUrl = (id: string) => `${window.location.origin}/share/${id}`;
 function assertSpace(space: string) {
@@ -115,8 +121,10 @@ export async function buildShareSnapshot(target: ShareTarget, compressor: ImageC
   const pieces = piecesOf(target).filter((piece) => !piece.deletedAt);
   if (pieces.length > 300) throw new Error("A collection link can include up to 300 pieces. Share individual pieces instead.");
   if (!pieces.length && target.kind !== "outfit") throw new Error("Add a piece before creating a share link.");
+  const ownerName = currentShareOwnerName();
   const snapshot: ShareSnapshot = {
     version: 1, kind: target.kind,
+    ...(ownerName ? { ownerName } : {}),
     title: target.kind === "wardrobe" ? "Wardrobe" : target.kind === "wishlist" ? "Wishlist" : target.kind === "piece" ? target.piece.name : target.outfit.name,
     pieces: pieces.map(sharedPiece),
   };
@@ -179,12 +187,13 @@ export async function createShareLink(space: string, target: ShareTarget, expiry
   if (!navigator.onLine) throw new Error("Connect to the internet to create a share link.");
   const snapshot = await buildShareSnapshot(target);
   assertSpace(space);
+  const sourceVersion = shareTargetVersion(target, snapshot.ownerName ?? null);
   const key = shareTargetKey(target);
   // Only a confirmed server 410 may retire an ownership record. A cached
   // deadline may be stale after another tab or an interrupted expiry change.
   const record = (await editRecord(space, key, (current) => current ?? {
     id: randomToken(16), token: randomToken(32), expiry, expiresAt: expiry === "never" ? null : Date.now() + (expiry === "7d" ? 7 : 30) * 86_400_000,
-    updatedAt: Date.now(), sourceVersion: shareTargetVersion(target), pending: true, title: snapshot.title, kind: snapshot.kind,
+    updatedAt: Date.now(), sourceVersion, pending: true, title: snapshot.title, kind: snapshot.kind,
   }))!;
   if (!record.pending) return record;
   // Ownership is durable before publication. Unknown network outcomes retain the token for retry/removal.
@@ -198,10 +207,11 @@ export async function updateShareLink(space: string, target: ShareTarget, record
   assertSpace(space);
   const snapshot = await buildShareSnapshot(target);
   assertSpace(space);
+  const sourceVersion = shareTargetVersion(target, snapshot.ownerName ?? null);
   const remote = await shareRequest(`/api/share/${record.id}`, "PUT", record.token, { snapshot });
   if (!remote) throw new Error("This link was removed or expired. Reopen Share to create a new one.");
   assertSpace(space);
-  const next = confirmed({ ...record, sourceVersion: shareTargetVersion(target), title: snapshot.title, kind: snapshot.kind }, remote);
+  const next = confirmed({ ...record, sourceVersion, title: snapshot.title, kind: snapshot.kind }, remote);
   return (await remember(space, shareTargetKey(target), record, next))!;
 }
 export async function changeShareExpiry(space: string, key: string, record: ShareRecord, expiry: ShareExpiry): Promise<ShareRecord> {

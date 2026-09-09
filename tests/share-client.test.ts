@@ -4,6 +4,8 @@ import { indexedDB, IDBKeyRange } from "fake-indexeddb";
 import { buildShareSnapshot, changeShareExpiry, createShareLink, listShareRecords, readShareRecord, refreshShareRecord, removeShareLink, shareTargetKey, shareTargetVersion, updateShareLink, type ShareRecord, type ShareTarget } from "../src/lib/share-client";
 import { openDatabase } from "../src/lib/db";
 import { useWardrobe } from "../src/lib/store";
+import { useSyncStore } from "../src/lib/sync";
+import { sharedHeading } from "../src/lib/share-owner";
 import type { Item } from "../src/lib/types";
 import { pieceSourceKey } from "../src/lib/piece-identity";
 
@@ -20,6 +22,42 @@ test("public snapshots whitelist chosen details and never include local state or
   assert.equal(snapshot.pieces[0].purchaseUrl, piece.purchaseUrl);
   assert.equal(snapshot.pieces[0].sourceKey, pieceSourceKey(piece));
   assert.doesNotMatch(JSON.stringify(snapshot), /local-only-id|private-|createdAt|updatedAt|priceHistory|sources/);
+});
+
+test("shares publish only the active account display name and retain a snapshot after account changes", async () => {
+  const previousUser = useSyncStore.getState().user;
+  const previousSpace = useWardrobe.getState().space;
+  const user = { id: "private-account", email: "private-email@example.test", name: "  Allen  " };
+  try {
+    useSyncStore.setState({ user });
+    useWardrobe.setState({ space: `account:${user.id}` });
+    const target: ShareTarget = { kind: "wardrobe", pieces: [piece] };
+    const version = shareTargetVersion(target);
+    const snapshot = await buildShareSnapshot(target, compressor);
+    assert.equal(snapshot.ownerName, "Allen");
+    assert.equal(sharedHeading(snapshot), "Allen’s wardrobe");
+    assert.doesNotMatch(JSON.stringify(snapshot), /private-account|private-email|email/);
+    for (const kind of ["wishlist", "piece", "outfit"] as const) {
+      const view = { ...snapshot, kind, title: "My piece or outfit" };
+      assert.equal(sharedHeading(view), kind === "wishlist" ? "Allen’s wishlist" : view.title);
+    }
+    useSyncStore.setState({ user: { ...user, name: "Alex" } });
+    assert.notEqual(shareTargetVersion(target), version);
+    assert.equal(snapshot.ownerName, "Allen", "an account change must not rename an already-published snapshot");
+    assert.equal((await buildShareSnapshot(target, compressor)).ownerName, "Alex");
+    for (const space of ["guest", "account:someone-else"]) {
+      useWardrobe.setState({ space });
+      const anonymous = await buildShareSnapshot(target, compressor);
+      assert.equal(anonymous.ownerName, undefined);
+      assert.equal(sharedHeading(anonymous), "Wardrobe");
+    }
+    useWardrobe.setState({ space: `account:${user.id}` });
+    useSyncStore.setState({ user: { ...user, name: "" } });
+    assert.equal((await buildShareSnapshot(target, compressor)).ownerName, undefined, "never fall back to an email address");
+  } finally {
+    useSyncStore.setState({ user: previousUser });
+    useWardrobe.setState({ space: previousSpace });
+  }
 });
 
 test("re-sharing a copied piece retains its source identity", async () => {

@@ -233,3 +233,15 @@ test("share snapshots accept bounded opaque identities and legacy pieces without
     assert.throws(() => validateShareSnapshot({ ...snapshot, pieces: [{ ...snapshot.pieces[0], sourceKey }] }), /invalid/);
   }
 });
+
+test("share snapshots allow a display name without exposing the rest of an account", () => {
+  const named = { ...snapshot, ownerName: "Allen" };
+  assert.deepEqual(validateShareSnapshot(named), named);
+  assert.equal(validateShareSnapshot(snapshot).ownerName, undefined);
+  for (const ownerName of ["", "  ", "x".repeat(101), { name: "Allen", email: "private@example.test" }, null]) {
+    assert.throws(() => validateShareSnapshot({ ...snapshot, ownerName }), /invalid/);
+  }
+  for (const extra of [{ ownerId: "private-account" }, { ownerEmail: "private@example.test" }, { owner: { name: "Allen" } }]) {
+    assert.throws(() => validateShareSnapshot({ ...named, ...extra }), /invalid/);
+  }
+});
