@@ -12,7 +12,7 @@ export interface Item {
   currency: string;
   description: string;
   purchaseUrl: string;
-  imageUrl: string;
+  imageUrl: string; // Empty for a locally uploaded photo; imageData contains its pixels.
   imageData?: string;
   backImageUrl?: string;
   backImageData?: string;

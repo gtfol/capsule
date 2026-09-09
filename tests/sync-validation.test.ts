@@ -39,6 +39,14 @@ test("sync preserves legacy items without adding back image fields", () => {
   assert.ok(!("backImageUrl" in parsed));
   assert.ok(!("backImageData" in parsed));
 });
+test("uploaded pieces and transparent cutouts sync without product or image URLs", () => {
+  const value = input();
+  Object.assign(value.changes[0].record, {
+    purchaseUrl: "", imageUrl: "", backImageUrl: "",
+    imageData: "data:image/webp;base64,YQ==", backImageData: "data:image/png;base64,Yg==",
+  });
+  assert.deepEqual(validateSyncRequest(value).changes[0].record, { ...value.changes[0].record, deletedAt: null });
+});
 test("sync preserves an explicit back image removal", () => {
   const value = input();
   Object.assign(value.changes[0].record, { backImageUrl: "", backImageData: "" });

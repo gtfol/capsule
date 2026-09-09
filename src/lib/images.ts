@@ -3,26 +3,36 @@ import { MAX_ITEM_IMAGE_CHARS } from "./image-limits";
 
 interface ProductImage { imageUrl: string; imageData?: string; }
 
-export function imageSource(image: { imageData?: string; imageUrl: string }) { return image.imageData || `/api/image?url=${encodeURIComponent(image.imageUrl)}`; }
-export async function compressImage(source: Blob | string, maxDimension = 1400, quality = 0.86): Promise<string> {
+export const MAX_PHOTO_BYTES = 20_000_000;
+export function imageSource(image: { imageData?: string; imageUrl: string }) { return image.imageData || (image.imageUrl ? `/api/image?url=${encodeURIComponent(image.imageUrl)}` : ""); }
+export async function compressImage(source: Blob | string, maxDimension = 1400, quality = 0.86, preserveTransparency = false): Promise<string> {
   const blob = typeof source === "string" ? await (await fetch(source)).blob() : source;
   if (!/^image\/(jpeg|png|webp|avif)$/.test(blob.type)) throw new Error("Choose a JPG, PNG, WebP, or AVIF image.");
   const bitmap = await createImageBitmap(blob);
   try {
+    if (bitmap.width * bitmap.height > 64_000_000) throw new Error("Choose a photo smaller than 64 megapixels.");
     const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const context = canvas.getContext("2d");
     if (!context) throw new Error("This browser could not process the image.");
-    context.fillStyle = "#fff";
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    if (!preserveTransparency) {
+      context.fillStyle = "#fff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+    }
     context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-    return canvas.toDataURL("image/jpeg", quality);
+    return canvas.toDataURL(preserveTransparency ? "image/webp" : "image/jpeg", quality);
   } finally { bitmap.close(); }
+}
+export async function prepareUploadedImage(file: File): Promise<string> {
+  if (!file.size) throw new Error("This photo is empty. Choose another file.");
+  if (file.size > MAX_PHOTO_BYTES) throw new Error("Choose a photo smaller than 20 MB.");
+  return compressImage(file, 1400, 0.86, true);
 }
 async function loadProductImage(image: ProductImage): Promise<string> {
   if (image.imageData) return image.imageData;
+  if (!image.imageUrl) throw new Error("Choose a photo for this piece.");
   const response = await fetch(`/api/image?url=${encodeURIComponent(image.imageUrl)}`);
   if (!response.ok) throw new Error("The product image could not be saved. Try another image from this page.");
   return compressImage(await response.blob());
@@ -35,7 +45,7 @@ export async function cacheProductImages(front: ProductImage, back?: ProductImag
   // budget. Resize from the originals on each pass, avoiding repeated JPEG loss.
   for (const [dimension, quality] of [[1200, 0.82], [960, 0.76], [720, 0.7]]) {
     if (images.reduce((total, data) => total + data.length, 0) <= MAX_ITEM_IMAGE_CHARS) break;
-    images = await Promise.all(originals.map((data) => compressImage(data, dimension, quality)));
+    images = await Promise.all(originals.map((data) => compressImage(data, dimension, quality, /^data:image\/(png|webp);/i.test(data))));
   }
   if (images.reduce((total, data) => total + data.length, 0) > MAX_ITEM_IMAGE_CHARS) {
     throw new Error("These images are too large to save. Choose another product image.");

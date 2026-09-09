@@ -1,6 +1,6 @@
 # capsule
 
-A personal wardrobe. Import clothes from product links, keep a visual inventory, and render selected pieces on your reference photo. No advice, ratings, or recommendations.
+A personal wardrobe. Add clothes from product links or your own photos, keep a visual inventory, and render selected pieces on your reference photo. No advice, ratings, or recommendations.
 
 ## Run
 
@@ -17,13 +17,17 @@ Next.js 16, React 19, Tailwind 4, shadcn/ui (Radix primitives), Zustand, native 
 
 ## Product links and local storage
 
-Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Items have editable size, color, and purchase link. Product photos are copied into IndexedDB as compressed JPEGs. No garment upload or sample inventory is included.
+Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Or select Photos and choose or drop one or two JPG, PNG, WebP or AVIF images, up to 20 MB each. Add a name and any other details; purchase links are optional. Images are compressed and saved in IndexedDB. The wardrobe starts empty.
 
-Select a front image and an optional back image from the imported gallery. Wardrobe cards fade to the back on hover or keyboard focus; the detail panel lets you switch views on touch devices. Both images are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. Existing pieces with one image continue to work.
+Select a front image and an optional back image from the imported gallery or your uploaded photos. Wardrobe cards fade to the back on hover or keyboard focus; the detail panel lets you switch views on touch devices. Both images are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. When editing a saved piece, the photo toolbar can add uploads or fetch the gallery from its purchase link without replacing its details or selected photos. Existing pieces with one image continue to work.
 
-Import reads JSON-LD Product/ProductGroup data, OpenGraph, product galleries and public Shopify metadata. Product pages that block automated access or expose no product image return an error; the app does not fabricate an item. Images favor explicitly labeled packshots when available, with alternate images available for selection. It does not remove image backgrounds.
+Import reads JSON-LD Product/ProductGroup data, OpenGraph, product galleries and public Shopify metadata. Product pages that block automated access or expose no product image return an error; the app does not fabricate an item. Images favor explicitly labeled packshots when available, with alternate images available for selection.
+
+The Remove background icon processes the selected photo on this device in a dedicated worker using Transformers.js and BiRefNet Lite. Its first use downloads the pinned model (about 99 MB on supported WebGPU devices, or 192 MB for the WebAssembly fallback), plus runtime assets. Browser caches allow reuse without downloading again while those caches remain available. Photos are never sent to the model host. Compare the original with the transparent cutout before accepting it; cancel or keep the original at any time. Processing requires a browser with workers and OffscreenCanvas, and may be slow on devices without a supported GPU. It removes the background; it does not reconstruct fabric hidden by other objects. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses.
 
 Saved pieces, outfit images, edits and deletions work offline. A production service worker caches the app shell and assets after the first visit; dev mode does not register it. Fetching a new product page and rendering a new outfit require the internet. Browser storage is device-specific and can be removed by clearing site data.
+
+The sun/moon icon in the bottom bar switches between light and dark, matching Freewrite. Capsule follows the device setting until you choose a theme, then remembers that choice in this browser. Transparent cutouts use a plain white or black surface to match the theme, including the preview and wardrobe grid.
 
 ## Optional sync setup
 
