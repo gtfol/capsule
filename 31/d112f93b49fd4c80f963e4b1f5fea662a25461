@@ -1,0 +1,16 @@
+src/lib/server/render.ts
+  h_606d960bac5d85 144-150,154,157,159,161-167,169,181-183,212-219,225-232
+tests/render.test.ts
+  h_606d960bac5d85 2,9,50,64-114,185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "31d112f93b49fd4c80f963e4b1f5fea662a25461",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
