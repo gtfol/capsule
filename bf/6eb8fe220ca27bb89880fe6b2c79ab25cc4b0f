@@ -1,0 +1,16 @@
+src/components/outfits.tsx
+  h_606d960bac5d85 53
+src/lib/analytics.ts
+  h_606d960bac5d85 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "bf6eb8fe220ca27bb89880fe6b2c79ab25cc4b0f",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
