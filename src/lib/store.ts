@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { activateSpace, clearLegacyRenderKeys, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord, writeReferencePhoto } from "./db";
 import type { Item, Outfit, WishlistItem } from "./types";
+import { track } from "./analytics";
 
 interface WardrobeState {
   items: Item[];
@@ -80,7 +81,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
       await get().reload();
     },
     saveItem: (item) => change((space) => writeRecord(space, "items", item)),
-    deleteItem: (id) => change((space) => removeRecord(space, "items", id)),
+    deleteItem: (id) => change((space) => removeRecord(space, "items", id)).then(() => { track("piece_removed", { collection: "wardrobe" }); }),
     saveOutfit: (outfit) => change((space) => writeRecord(space, "outfits", outfit)),
     deleteOutfit: (id) => change((space) => removeRecord(space, "outfits", id)),
     saveWishlistItem: (item) => change((space) => writeRecord(space, "wishlist", item)),
@@ -93,6 +94,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
           if (get().space !== space) throw new Error("The active account changed. Reopen this wishlist item to continue.");
         });
         if (get().space === space) { await get().reload(); set({ error: null }); }
+        if (removed) track("piece_removed", { collection: "wishlist" });
         return removed;
       } catch (error) {
         if (get().space === space) set({ error: message(error) });
@@ -125,6 +127,8 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
           return transform ? transform(current) : current;
         });
         if (get().space === space) { await get().reload(); set({ error: null }); }
+        // A wishlist piece becoming owned is the strongest intent signal here.
+        if (owned) track("wishlist_piece_promoted");
         return owned;
       } catch (error) {
         if (get().space === space) set({ error: message(error) });

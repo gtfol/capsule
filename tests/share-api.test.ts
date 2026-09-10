@@ -14,7 +14,7 @@ const request = (method: string, body?: unknown, headers: Record<string, string>
 });
 function setup() {
   const calls: { method: string; args: unknown[] }[] = [];
-  const metadata = { id, expiry: "7d" as const, expiresAt: 1_900_000_000_000, updatedAt: 1_800_000_000_000 };
+  const metadata = { id, expiry: "7d" as const, expiresAt: 1_900_000_000_000, updatedAt: 1_800_000_000_000, views: 4 };
   const deps: ShareDependencies = {
     configured: async () => true, ipHash: () => "a".repeat(64), userId: async () => null,
     store: {
@@ -25,6 +25,7 @@ function setup() {
       remove: async (...args) => { calls.push({ method: "remove", args }); },
       inspect: async (...args) => { calls.push({ method: "inspect", args }); return metadata; },
       get: async () => null,
+      recordView: async () => {},
     },
   };
   return { calls, metadata, deps, handlers: createShareHandlers(deps) };
@@ -51,7 +52,8 @@ test("management status requires its header capability and exposes only metadata
   assert.equal((await handlers.inspect(request("GET", undefined, { "x-share-token": "" }), id)).status, 403);
   assert.deepEqual(calls, []);
   const result = await handlers.inspect(request("GET"), id);
-  assert.deepEqual(await result.json(), { exists: true, expiresAt: metadata.expiresAt, updatedAt: metadata.updatedAt, expiry: metadata.expiry });
+  // The owner's view count rides along; the token holder is the only caller.
+  assert.deepEqual(await result.json(), { exists: true, expiresAt: metadata.expiresAt, updatedAt: metadata.updatedAt, expiry: metadata.expiry, views: metadata.views });
   assert.ok(!JSON.stringify(await (await handlers.inspect(request("GET"), id)).json()).includes(token));
 });
 

@@ -7,6 +7,7 @@ import { shareOwnerName } from "./share-owner";
 import { pieceSourceKey } from "./piece-identity";
 import type { Item, Outfit, WishlistItem } from "./types";
 import type { ShareExpiry, ShareSnapshot, SharedPiece } from "./share-types";
+import { shareHandle, track } from "./analytics";
 
 export type ShareTarget =
   | { kind: "wardrobe"; pieces: Item[] }
@@ -21,6 +22,7 @@ export interface ShareRecord {
   sourceVersion: string;
   expiry: ShareExpiry;
   pending: boolean;
+  views?: number;
   title?: string;
   kind?: ShareSnapshot["kind"];
 }
@@ -159,7 +161,7 @@ export async function buildShareSnapshot(target: ShareTarget, compressor: ImageC
   return snapshot;
 }
 
-type RemoteRecord = { id?: string; exists?: boolean; expiresAt: number | null; updatedAt: number; expiry: ShareExpiry };
+type RemoteRecord = { id?: string; exists?: boolean; expiresAt: number | null; updatedAt: number; expiry: ShareExpiry; views?: unknown };
 async function shareRequest(path: string, method: string, token?: string, body?: unknown): Promise<RemoteRecord | null> {
   const response = await fetch(path, {
     method, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...(token ? { "x-share-token": token } : {}) },
@@ -172,7 +174,10 @@ async function shareRequest(path: string, method: string, token?: string, body?:
 }
 function confirmed(record: ShareRecord, remote: RemoteRecord): ShareRecord {
   if (!(remote.expiresAt === null || Number.isFinite(remote.expiresAt)) || !Number.isFinite(remote.updatedAt) || !["7d", "30d", "never"].includes(remote.expiry)) throw new Error("The link's status could not be confirmed. Reopen Share to check it.");
-  return { ...record, pending: false, expiresAt: remote.expiresAt, updatedAt: remote.updatedAt, expiry: remote.expiry };
+  // A view count is informational: a malformed one is dropped rather than
+  // failing a link the owner is trying to manage.
+  const views = typeof remote.views === "number" && Number.isSafeInteger(remote.views) && remote.views >= 0 ? remote.views : record.views;
+  return { ...record, pending: false, expiresAt: remote.expiresAt, updatedAt: remote.updatedAt, expiry: remote.expiry, views };
 }
 export async function refreshShareRecord(space: string, key: string, record: ShareRecord): Promise<ShareRecord | null> {
   assertSpace(space);
@@ -201,6 +206,7 @@ export async function createShareLink(space: string, target: ShareTarget, expiry
   if (!remote) throw new Error("This link was removed or expired. Remove it here, then create a new link.");
   assertSpace(space);
   const next = confirmed(record, remote);
+  track("share_link_created", { kind: target.kind, piece_count: piecesOf(target).length, expiry, share: shareHandle(record.id) });
   return (await remember(space, key, record, next))!;
 }
 export async function updateShareLink(space: string, target: ShareTarget, record: ShareRecord): Promise<ShareRecord> {
@@ -226,5 +232,6 @@ export async function removeShareLink(space: string, key: string, record: ShareR
   assertSpace(space);
   await shareRequest(`/api/share/${record.id}`, "DELETE", record.token);
   assertSpace(space);
+  track("share_link_revoked", { kind: record.kind ?? (key.split(":")[0] as ShareSnapshot["kind"]), share: shareHandle(record.id) });
   await remember(space, key, record, null);
 }

@@ -99,8 +99,8 @@ export function createShareHandlers(deps: ShareDependencies = shareDependencies)
         checkOrigin(request, false);
         const id = validateShareId(rawId), token = validateShareToken(request.headers.get("x-share-token"));
         await available();
-        const { expiresAt, updatedAt, expiry } = await deps.store.inspect(id, token);
-        return response({ exists: true, expiresAt, updatedAt, expiry });
+        const { expiresAt, updatedAt, expiry, views } = await deps.store.inspect(id, token);
+        return response({ exists: true, expiresAt, updatedAt, expiry, views });
       } catch (error) { return failure(error); }
     },
     async update(request: Request, rawId: string) {

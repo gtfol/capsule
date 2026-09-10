@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconAction } from "@/components/ui/icon-action";
 import type { RenderCredential } from "@/lib/render-credential";
+import { track } from "@/lib/analytics";
 
 type Props = { userId: string | null; sessionKey?: string; disabled?: boolean; active?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
 export function RenderKeySettings(props: Props) {
@@ -80,6 +81,8 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
       if (!response.ok || data.userId !== userId || data.saved !== !remove) throw new Error();
       if (sequence.current.version !== version) return;
       focusNext.current = remove ? "input" : "change";
+      // Whether a key exists, never any part of the key itself.
+      if (!remove) track("render_key_saved", { scope: "account" });
       setSaved(!remove); setDraft(""); setEditing(false);
       callback.current(remove ? null : { type: "saved", userId });
     } catch {

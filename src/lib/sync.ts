@@ -5,6 +5,7 @@ import { authClient } from "./auth-client";
 import { accountSpace, applySyncResponse, GUEST_SPACE, importGuestOnce, pendingChanges, subscribeToLocalChanges, syncCursor } from "./db";
 import { useWardrobe } from "./store";
 import type { SyncChange, SyncProviders, SyncResponse, SyncUser } from "./types";
+import { identifyAccount, resetIdentity, track } from "./analytics";
 
 export type SyncStatus = "loading" | "disabled" | "signed-out" | "idle" | "syncing" | "offline" | "error";
 interface SyncState {
@@ -125,7 +126,12 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         if (error) throw new Error(error.message || "Unable to check your sync session.");
         if (data?.user) {
           const user = { id: data.user.id, email: data.user.email, name: data.user.name ?? "" };
-          if (get().user?.id !== user.id) sessionGeneration++;
+          const signedInBefore = get().user?.id;
+          // The account ID alone joins one person's devices together. Email and
+          // name stay out of analytics.
+          identifyAccount(user.id);
+          if (!signedInBefore) track("account_signed_in");
+          if (signedInBefore !== user.id) sessionGeneration++;
           refreshGeneration = sessionGeneration;
           await importGuestOnce(user.id);
           if (refreshGeneration !== sessionGeneration) return;
@@ -213,6 +219,10 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       const { error } = await authClient.signOut();
       if (error) throw new Error(error.message || "Unable to sign out.");
       sessionGeneration++;
+      track("account_signed_out");
+      // Sign-out ends the identity too, so later activity on this browser is
+      // not attributed to the account that just left.
+      resetIdentity();
       set({ user: null, status: "signed-out", lastSyncAt: null, error: null });
       await useWardrobe.getState().switchSpace(GUEST_SPACE);
     } catch (error) {

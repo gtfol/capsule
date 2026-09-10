@@ -13,6 +13,7 @@ import { compressImage, imageSource } from "@/lib/images";
 import type { Outfit } from "@/lib/types";
 import { writeRecord, writeReferencePhoto } from "@/lib/db";
 import { renderCredentialPayload, type RenderCredential } from "@/lib/render-credential";
+import { track } from "@/lib/analytics";
 type RenderConfig = { enabled: boolean; requiresApiKey: boolean; provider: string; model: string };
 export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: boolean }) {
   const { items, outfits, referencePhoto, setReferencePhoto, saveOutfit, deleteOutfit, space } = useWardrobe();
@@ -39,14 +40,17 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       const data = await compressImage(file, 1200, 0.82);
       if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Choose the photo again.");
       await writeReferencePhoto(space, data);
+      track("model_photo_set");
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Your model photo could not be saved."); throw cause; }
     finally { setPhotoBusy(false); }
   }
   async function render() {
     if (busy || photoBusy || !config?.enabled || !referencePhoto || !selectedItems.length || unsaved) return;
-    if (!navigator.onLine) { setError("Connect to the internet to render an outfit."); return; }
+    if (!navigator.onLine) { track("outfit_render_failed", { status: "offline" }); setError("Connect to the internet to render an outfit."); return; }
     setBusy(true); setError("");
+    const startedAt = Date.now();
+    track("outfit_render_started", { piece_count: selectedItems.length, categories: [...new Set(selectedItems.map((item) => item.category))].sort() });
     try {
       const credentialBody = renderCredentialPayload(credential, space);
       const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, category: item.category, imageData: await compressImage(imageSource(item), 900, 0.78) })));
@@ -56,14 +60,20 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Select your pieces again.");
       const response = await fetch("/api/render", { method: "POST", headers: { "Content-Type": "application/json" }, body, signal: AbortSignal.timeout(125_000) });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "This outfit could not be rendered. Try again.");
+      if (!response.ok) { track("outfit_render_failed", { status: response.status }); throw new Error(data.error || "This outfit could not be rendered. Try again."); }
+      track("outfit_render_completed", { piece_count: selectedItems.length, duration_ms: Date.now() - startedAt });
       const imageData = await compressImage(data.imageData, 1500, 0.86);
       const now = Date.now();
       const outfit: Outfit = { id: crypto.randomUUID(), name: `Outfit ${String(outfits.length + 1).padStart(2, "0")}`, itemIds: selectedItems.map((item) => item.id), imageData, createdAt: now, updatedAt: now, deletedAt: null };
       setUnsaved(outfit);
       await writeRecord(space, "outfits", outfit);
+<<<<<<< HEAD
       setUnsaved(null); setCreating(false); setSelection([]); setNotes(""); setDetail(outfit);
     } catch (cause) { setError(cause instanceof Error && cause.name === "TimeoutError" ? "Rendering took too long. Try again." : cause instanceof Error ? cause.message : "This outfit could not be rendered."); }
+=======
+      setUnsaved(null); setCreating(false); setSelection([]); setDetail(outfit);
+    } catch (cause) { if (cause instanceof Error && cause.name === "TimeoutError") track("outfit_render_failed", { status: "timeout" }); setError(cause instanceof Error && cause.name === "TimeoutError" ? "Rendering took too long. Try again." : cause instanceof Error ? cause.message : "This outfit could not be rendered."); }
+>>>>>>> add product analytics and share view counts
     finally { setBusy(false); }
   }
   const builder = creating || outfits.length === 0;
@@ -100,6 +110,6 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={detail.imageData} alt={detail.name} className="mt-8 w-full" /><div className="mt-6 flex flex-wrap gap-3">{detail.itemIds.map((id) => { const item = items.find((piece) => piece.id === id); return item ? <div className="w-14" key={id} title={item.name}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageSource(item)} alt={item.name} className="aspect-[4/5] w-full object-contain" /></div> : null; })}</div><div className="mt-8 flex items-center justify-between"><a href={detail.imageData} download={`capsule-${detail.id}.jpg`} className="text-[12px] underline underline-offset-4">Download image</a><button className="text-[12px] text-muted-foreground" onClick={async () => { try { await deleteOutfit(detail.id); setRemoved(detail); setDetail(null); } catch { setError("Could not remove this outfit."); } }}>Remove outfit</button></div></SheetContent></Sheet>}
+        <img src={imageSource(item)} alt={item.name} className="aspect-[4/5] w-full object-contain" /></div> : null; })}</div><div className="mt-8 flex items-center justify-between"><a href={detail.imageData} download={`capsule-${detail.id}.jpg`} className="text-[12px] underline underline-offset-4" onClick={() => track("outfit_downloaded")}>Download image</a><button className="text-[12px] text-muted-foreground" onClick={async () => { try { await deleteOutfit(detail.id); track("outfit_removed"); setRemoved(detail); setDetail(null); } catch { setError("Could not remove this outfit."); } }}>Remove outfit</button></div></SheetContent></Sheet>}
   </section>;
 }

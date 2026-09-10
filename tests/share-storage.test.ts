@@ -16,6 +16,7 @@ function setup() {
   let now = 1_900_000_000_000;
   let rows = new Map<string, Record<string, unknown>>();
   let limits = new Map<string, { start: number; count: number }>();
+  const views = new Map<string, number>();
   let savedRows = rows, savedLimits = limits;
   const statements: { sql: string; values: unknown[] }[] = [];
   let locked = false, connected = 0, released = 0, ready = true, failInsert = false;
@@ -42,6 +43,24 @@ function setup() {
       if (value && time < value.start + hour && value.count >= 10) return { rows: [] };
       limits.set(key, value && time < value.start + hour ? { ...value, count: value.count + 1 } : { start: time, count: 1 });
       return { rows: [{ ip_hash: key }] };
+    }
+    if (q.startsWith("delete from public.capsule_share_views")) {
+      for (const [entry, at] of views) if (at < Number(values[0])) views.delete(entry);
+      return { rows: [] };
+    }
+    if (q.startsWith("insert into public.capsule_share_views")) {
+      assert.match(q, /on conflict \(share_id, viewer_hash\) do update/);
+      const viewKey = `${String(values[0])}|${String(values[1])}`;
+      const seenAt = views.get(viewKey);
+      // A repeat open inside the dedupe window refreshes without counting.
+      if (seenAt !== undefined && seenAt >= Number(values[3])) return { rows: [] };
+      views.set(viewKey, Number(values[2]));
+      return { rows: [{ share_id: values[0] }] };
+    }
+    if (q.startsWith("update public.capsule_shares set views = views + 1")) {
+      const target = rows.get(String(values[0]));
+      if (target) target.views = Number(target.views ?? 0) + 1;
+      return { rows: [] };
     }
     const key = String(values[0]), value = rows.get(key);
     if (q.startsWith("select snapshot,")) {
@@ -84,7 +103,7 @@ function setup() {
   return {
     store: createShareStore(database, () => now), statements,
     advance: (time: number) => { now += time; },
-    state: () => ({ rows, limits, connected, released, now }),
+    state: () => ({ rows, limits, views, connected, released, now }),
     setReady: (value: boolean) => { ready = value; },
     setFailInsert: (value: boolean) => { failInsert = value; },
   };
@@ -244,4 +263,46 @@ test("share snapshots allow a display name without exposing the rest of an accou
   for (const extra of [{ ownerId: "private-account" }, { ownerEmail: "private@example.test" }, { owner: { name: "Allen" } }]) {
     assert.throws(() => validateShareSnapshot({ ...named, ...extra }), /invalid/);
   }
+});
+
+test("views count one open per viewer per day, only for live links, and reach only the owner", async () => {
+  const { store, state, advance } = setup();
+  const created = await store.create(id, token, snapshot, "7d", ipHash);
+  assert.equal(created.views, 0);
+  const viewer = "b".repeat(64), other = "c".repeat(64);
+
+  await store.recordView(id, viewer);
+  assert.equal((await store.inspect(id, token)).views, 1);
+  // A refresh, or a return visit the same afternoon, is not a second view.
+  await store.recordView(id, viewer);
+  advance(6 * hour);
+  await store.recordView(id, viewer);
+  assert.equal((await store.inspect(id, token)).views, 1);
+  // A different viewer counts immediately.
+  await store.recordView(id, other);
+  assert.equal((await store.inspect(id, token)).views, 2);
+  // The same viewer counts again once the dedupe window has passed.
+  advance(19 * hour);
+  await store.recordView(id, viewer);
+  assert.equal((await store.inspect(id, token)).views, 3);
+
+  // Changing the expiry keeps the count; the viewer hash is all that is stored.
+  assert.equal((await store.changeExpiry(id, token, "30d")).views, 3);
+  assert.equal([...state().views.keys()].every((entry) => entry.startsWith(`${id}|`) && !entry.includes("192.")), true);
+
+  // A malformed ID or viewer hash is ignored rather than counted or thrown.
+  await store.recordView("not-a-share-id", viewer);
+  await store.recordView(id, "not-a-hash");
+  assert.equal((await store.inspect(id, token)).views, 3);
+  assert.equal(state().connected, state().released);
+});
+
+test("a share view never surfaces through the public record", async () => {
+  const { store } = setup();
+  await store.create(id, token, snapshot, "7d", ipHash);
+  await store.recordView(id, "d".repeat(64));
+  const publicRecord = await store.get(id);
+  assert.ok(publicRecord);
+  assert.equal("views" in publicRecord, false);
+  assert.equal(JSON.stringify(publicRecord).includes("dddd"), false);
 });

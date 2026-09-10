@@ -40,6 +40,8 @@ export interface ShareMetadata {
   expiry: ShareExpiry;
   expiresAt: number | null;
   updatedAt: number;
+  /** Deduplicated opens of this link, visible only to its owner. */
+  views: number;
 }
 
 export interface SharePublicRecord {
