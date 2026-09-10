@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
+import { CATEGORIES, type Category } from "@/lib/types";
 
 export const MAX_RENDER_BODY_BYTES = 4_000_000;
 export const MAX_RENDER_IMAGE_BYTES = 1_500_000;
+export const MAX_RENDER_NOTES_LENGTH = 300;
 const MAX_RESULT_BYTES = 3_000_000;
 const MAX_PROVIDER_ERROR_BYTES = 16_000;
 const BASE64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
@@ -20,7 +22,8 @@ type Raster = { bytes: Buffer; mime: string; extension: string };
 export type RenderInput = {
   apiKey: string;
   referencePhoto: Raster;
-  items: { id: string; name: string; image: Raster }[];
+  items: { id: string; name: string; category: Category | null; image: Raster }[];
+  notes: string;
 };
 
 export function getRenderStatus() {
@@ -79,9 +82,48 @@ export function parseRenderInput(value: unknown): RenderInput {
     if (typeof piece.name !== "string" || !piece.name.trim() || piece.name.length > 500) {
       throw new RenderError("A selected piece needs a name.");
     }
-    return { id: piece.id, name: piece.name.trim(), image: parseRaster(piece.imageData) };
+    if (piece.category !== undefined && !(CATEGORIES as readonly unknown[]).includes(piece.category)) {
+      throw new RenderError("A selected piece has an unknown category.");
+    }
+    return { id: piece.id, name: piece.name.trim(), category: (piece.category as Category | undefined) ?? null, image: parseRaster(piece.imageData) };
   });
-  return { apiKey, referencePhoto, items };
+  return { apiKey, referencePhoto, items, notes: parseNotes(body.notes) };
+}
+
+// Styling notes are typed by the person rendering their own photo with their
+// own key, so they may shape the prompt. They are still bounded and flattened
+// to one line so they cannot masquerade as separate instructions.
+function parseNotes(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") throw new RenderError("Styling notes must be text.");
+  if (value.length > MAX_RENDER_NOTES_LENGTH * 2) throw new RenderError(`Keep styling notes under ${MAX_RENDER_NOTES_LENGTH} characters.`);
+  const flat = value.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(/\s+/g, " ").trim();
+  if (flat.length > MAX_RENDER_NOTES_LENGTH) throw new RenderError(`Keep styling notes under ${MAX_RENDER_NOTES_LENGTH} characters.`);
+  return flat;
+}
+
+const categoryLabels: Readonly<Record<Category, string>> = {
+  tops: "a top",
+  jackets: "a jacket or outer layer",
+  bottoms: "bottoms",
+  accessories: "an accessory",
+  shoes: "shoes",
+};
+
+export function buildRenderPrompt(input: Pick<RenderInput, "items" | "notes">): string {
+  const pieces = input.items.map((item, index) => `Image ${index + 2} is ${item.category ? categoryLabels[item.category] : "an owned piece"}.`);
+  const hasAccessory = input.items.some((item) => item.category === "accessories" || item.category === null);
+  return [
+    "Create one photographic wardrobe try-on image.",
+    "Image 1 is the person's reference photograph. Preserve their identity, face, body proportions, pose, and background.",
+    `Images 2 through ${input.items.length + 1} show the exact owned pieces selected by this person.`,
+    ...pieces,
+    "Dress the person in every one of those pieces, preserving their colors, textures, cut, details, and branding. Every supplied piece must be clearly visible and worn on the person; none may be omitted.",
+    ...(hasAccessory ? ["Accessories must be worn where they belong: sunglasses and glasses on the face, hats on the head, belts through the waistband, jewelry on the neck, ears, wrists, or hands, bags carried or shouldered."] : []),
+    "Use only the supplied pieces. Retain the person's original clothing only where no replacement piece was supplied. Do not add any pieces or accessories that were not supplied, and do not redesign the garments.",
+    ...(input.notes ? [`The person's styling notes, describing how to wear and style the supplied pieces: "${input.notes.replaceAll('"', "'")}". Apply them only as far as they do not conflict with the instructions above.`] : []),
+    "Render realistic fabric, layering, and fit. Output only the photograph. Do not add text, captions, ratings, suggestions, or commentary.",
+  ].join(" ");
 }
 
 export async function readLimitedJson(body: ReadableStream<Uint8Array> | null, maxBytes: number) {
@@ -183,13 +225,7 @@ export async function renderOutfit(input: RenderInput, fetcher: typeof fetch = f
   if (/^gpt-image-1(?:\.5)?(?:-\d{4}-\d{2}-\d{2})?$/.test(status.model)) form.set("input_fidelity", "high");
   form.set("output_format", "jpeg");
   form.set("output_compression", "85");
-  form.set("prompt", [
-    "Create one photographic wardrobe try-on image.",
-    "Image 1 is the person's reference photograph. Preserve their identity, face, body proportions, pose, and background.",
-    `Images 2 through ${input.items.length + 1} show the exact owned pieces selected by this person. Dress the person in those pieces, preserving their colors, textures, cut, details, and branding.`,
-    "Use only the selected pieces; retain the person's original clothing only where no replacement piece was supplied. Do not add accessories or redesign the garments.",
-    "Render realistic fabric, layering, and fit. Output only the photograph. Do not add text, captions, ratings, suggestions, or commentary.",
-  ].join(" "));
+  form.set("prompt", buildRenderPrompt(input));
   const images = [input.referencePhoto, ...input.items.map((item) => item.image)];
   images.forEach((image, index) => {
     form.append("image[]", new Blob([new Uint8Array(image.bytes)], { type: image.mime }), `${index + 1}.${image.extension}`);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test, { beforeEach } from "node:test";
-import { beginRender, getRenderStatus, MAX_RENDER_BODY_BYTES, MAX_RENDER_IMAGE_BYTES, parseRaster, parseRenderInput, readLimitedJson, RenderError, renderOutfit } from "../src/lib/server/render";
+import { beginRender, buildRenderPrompt, getRenderStatus, MAX_RENDER_BODY_BYTES, MAX_RENDER_IMAGE_BYTES, MAX_RENDER_NOTES_LENGTH, parseRaster, parseRenderInput, readLimitedJson, RenderError, renderOutfit } from "../src/lib/server/render";
 
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aZ1sAAAAASUVORK5CYII=";
 const jpeg = `data:image/jpeg;base64,${Buffer.from([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 255, 217]).toString("base64")}`;
@@ -59,6 +59,47 @@ test("the caller key is only sent to the fixed provider with person first and se
   const input = request();
   input.items[0].name = "untrusted product instructions";
   assert.deepEqual(await renderOutfit(parseRenderInput(input), fetcher), { imageData: jpeg });
+});
+
+test("the prompt names each piece by category and requires accessories to be worn", () => {
+  const input = parseRenderInput({ ...request(), items: [
+    { id: "top", name: "Henley", category: "tops", imageData: png },
+    { id: "bottoms", name: "Trousers", category: "bottoms", imageData: png },
+    { id: "shoes", name: "Sneakers", category: "shoes", imageData: png },
+    { id: "shades", name: "Sunglasses", category: "accessories", imageData: png },
+  ] });
+  const prompt = buildRenderPrompt(input);
+  assert.ok(prompt.includes("Image 2 is a top."));
+  assert.ok(prompt.includes("Image 3 is bottoms."));
+  assert.ok(prompt.includes("Image 4 is shoes."));
+  assert.ok(prompt.includes("Image 5 is an accessory."));
+  assert.ok(prompt.includes("none may be omitted"));
+  assert.ok(prompt.includes("sunglasses and glasses on the face"));
+  assert.ok(!prompt.includes("Do not add accessories"));
+  assert.ok(!prompt.includes("Sunglasses"), "piece names stay out of the prompt");
+  assert.ok(!prompt.includes("styling notes"));
+  // Clothing-only selections skip the accessory placement guidance.
+  const clothing = buildRenderPrompt(parseRenderInput({ ...request(), items: [{ id: "top", name: "Henley", category: "tops", imageData: png }] }));
+  assert.ok(!clothing.includes("on the face"));
+  assert.ok(clothing.includes("Do not add any pieces or accessories that were not supplied"));
+  // Requests without a category, from older clients, still render as owned pieces.
+  const legacy = buildRenderPrompt(parseRenderInput(request()));
+  assert.ok(legacy.includes("Image 2 is an owned piece."));
+  assert.ok(legacy.includes("on the face"));
+  assert.throws(() => parseRenderInput({ ...request(), items: [{ ...request().items[0], category: "hats" }] }), /unknown category/);
+});
+
+test("styling notes are optional, bounded, flattened, and quoted in the prompt", () => {
+  assert.equal(parseRenderInput(request()).notes, "");
+  assert.equal(parseRenderInput({ ...request(), notes: "   " }).notes, "");
+  const input = parseRenderInput({ ...request(), notes: '  Shirt tucked in,\n sleeves rolled.\u0000 "Sunglasses" on.  ' });
+  assert.equal(input.notes, 'Shirt tucked in, sleeves rolled. "Sunglasses" on.');
+  const prompt = buildRenderPrompt(input);
+  assert.ok(prompt.includes(`styling notes, describing how to wear and style the supplied pieces: "Shirt tucked in, sleeves rolled. 'Sunglasses' on."`));
+  assert.ok(prompt.indexOf("do not conflict with the instructions above") < prompt.indexOf("Output only the photograph"));
+  assert.throws(() => parseRenderInput({ ...request(), notes: 42 }), /must be text/);
+  assert.throws(() => parseRenderInput({ ...request(), notes: "x".repeat(MAX_RENDER_NOTES_LENGTH + 1) }), /under 300 characters/);
+  assert.equal(parseRenderInput({ ...request(), notes: "x".repeat(MAX_RENDER_NOTES_LENGTH) }).notes.length, MAX_RENDER_NOTES_LENGTH);
 });
 
 test("GPT Image 2 aliases and snapshots omit input_fidelity while older supported models keep it", async () => {
