@@ -1,0 +1,14 @@
+.gitignore
+  h_606d960bac5d85 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5dfbb2ed2d4a76a48e244a034457506a34fc5055",
+  "prompts": {},
+  "humans": {
+    "h_606d960bac5d85": {
+      "author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
