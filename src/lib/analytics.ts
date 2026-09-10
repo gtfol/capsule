@@ -26,7 +26,7 @@ export type AnalyticsEvent =
   | { name: "wishlist_piece_promoted"; props: Record<string, never> }
   | { name: "model_photo_set"; props: Record<string, never> }
   | { name: "render_key_saved"; props: { scope: "session" | "account" } }
-  | { name: "outfit_render_started"; props: { piece_count: number; categories: string[] } }
+  | { name: "outfit_render_started"; props: { piece_count: number; categories: string[]; has_notes: boolean } }
   | { name: "outfit_render_completed"; props: { piece_count: number; duration_ms: number } }
   | { name: "outfit_render_failed"; props: { status: number | "timeout" | "offline" | "client" } }
   | { name: "outfit_removed"; props: Record<string, never> }
