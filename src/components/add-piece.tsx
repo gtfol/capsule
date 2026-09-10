@@ -10,6 +10,7 @@ import { WishlistDetail } from "./wishlist-detail";
 import { createWishlistItem } from "@/lib/wishlist";
 import type { WishlistPriceQuote } from "@/lib/wishlist-editor";
 import { fetchProductImport } from "@/lib/product-import";
+import { track } from "@/lib/analytics";
 export function AddPiece({ onAdded, destination = "wardrobe", active = true, importUrl = null, onImportClosed }: { onAdded: () => void; destination?: "wardrobe" | "wishlist"; active?: boolean; importUrl?: string | null; onImportClosed?: () => void }) {
   const [mode, setMode] = useState<"link" | "photos">("link");
   const [url, setUrl] = useState(importUrl ?? "");
@@ -52,6 +53,8 @@ export function AddPiece({ onAdded, destination = "wardrobe", active = true, imp
     if (!busy) void extractUrl(url, new AbortController());
   }
   function closeDraft() { setDraft(null); onImportClosed?.(); }
+  // How a piece entered the wardrobe, without recording what the piece is.
+  const addedSource = () => mode === "photos" ? "photo" as const : importUrl ? "extension" as const : "url_import" as const;
   async function addPhotos(files: File[]) {
     if (busy || !files.length) return;
     setError("");
@@ -75,6 +78,6 @@ export function AddPiece({ onAdded, destination = "wardrobe", active = true, imp
       </div><p className="mt-4 text-[12px] text-subtle">JPG, PNG, WebP or AVIF.</p>
     </>}
     {error && <p className="mt-6 text-[13px] leading-relaxed" role="alert">{error}</p>}
-    {draft && (destination === "wishlist" ? <WishlistDetail key={draft.id} active={active} item={createWishlistItem({ ...draft.item, id: draft.id, createdAt: draft.fetchedAt, updatedAt: draft.fetchedAt }, draft.fetchedAt, draft.priceQuote ?? null)} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveWishlistItem(item); onAdded(); }} /> : <ItemDetail key={draft.id} active={active} item={draft.item} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveItem(item); onAdded(); }} />)}
+    {draft && (destination === "wishlist" ? <WishlistDetail key={draft.id} active={active} item={createWishlistItem({ ...draft.item, id: draft.id, createdAt: draft.fetchedAt, updatedAt: draft.fetchedAt }, draft.fetchedAt, draft.priceQuote ?? null)} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveWishlistItem(item); track("piece_added", { collection: "wishlist", source: addedSource(), has_photo: Boolean(item.imageData || item.imageUrl) }); onAdded(); }} /> : <ItemDetail key={draft.id} active={active} item={draft.item} images={draft.images} uploadedImages={draft.uploadedImages} isNew onClose={closeDraft} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Add this piece again to save."); await saveItem(item); track("piece_added", { collection: "wardrobe", source: addedSource(), has_photo: Boolean(item.imageData || item.imageUrl) }); onAdded(); }} />)}
   </section>;
 }

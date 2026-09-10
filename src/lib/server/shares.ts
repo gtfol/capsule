@@ -87,6 +87,18 @@ export function validateShareSnapshot(value: unknown): ShareSnapshot {
   return parsed.data;
 }
 
+// A viewer is only ever a keyed digest, in its own namespace so a view row can
+// never be lined up against a rate-limit row for the same address. Rows expire
+// after the retention window below.
+export const VIEW_DEDUPE_MS = 24 * 3_600_000;
+export const VIEW_RETENTION_MS = 90 * 86_400_000;
+export function hashShareViewer(request: Request, secret: string): string {
+  const forwarded = request.headers.get("x-vercel-forwarded-for") ?? request.headers.get("x-forwarded-for") ?? "";
+  const candidate = forwarded.split(",")[0].trim();
+  const address = isIP(candidate) ? candidate.toLowerCase() : "unavailable";
+  return createHmac("sha256", secret).update(`capsule:share-view:v1:${address}`).digest("hex");
+}
+
 // A keyed digest avoids retaining either raw IPs or enumerable unsalted IP
 // hashes. Rotating the server connection secret simply resets these limits.
 export function hashShareIp(request: Request, secret: string): string {
@@ -104,6 +116,7 @@ export interface ShareDatabase {
 type ShareRow = {
   id: string; token_hash: string; snapshot: ShareSnapshot | null; expiry: ShareExpiry;
   expires_at: Date | string | null; updated_at: Date | string; revoked_at: Date | string | null;
+  views?: string | number | null;
 };
 function row(value: Record<string, unknown> | undefined): ShareRow | undefined { return value as ShareRow | undefined; }
 function timestamp(value: Date | string): number { return new Date(value).getTime(); }
@@ -111,7 +124,10 @@ function active(value: ShareRow, now: number): boolean {
   return !value.revoked_at && value.snapshot !== null && (value.expires_at === null || timestamp(value.expires_at) > now);
 }
 function metadata(value: ShareRow): ShareMetadata {
-  return { id: value.id, expiry: value.expiry, expiresAt: value.expires_at === null ? null : timestamp(value.expires_at), updatedAt: timestamp(value.updated_at) };
+  // Postgres returns bigint as a string; a view count never needs more range
+  // than a JavaScript integer, so clamp rather than widen the public type.
+  const views = Number(value.views ?? 0);
+  return { id: value.id, expiry: value.expiry, expiresAt: value.expires_at === null ? null : timestamp(value.expires_at), updatedAt: timestamp(value.updated_at), views: Number.isSafeInteger(views) && views >= 0 ? views : 0 };
 }
 function requireOwner(value: ShareRow | undefined, hash: string): ShareRow {
   if (!value) throw new ShareError("This share link is no longer available.", 410);
@@ -148,6 +164,7 @@ export function createShareStore(database: ShareDatabase, clock: () => number = 
         order by expires_at limit 50 for update skip locked
       ) update public.capsule_shares set snapshot = null where id in (select id from expired)`, [new Date(clock())]);
       await database.query("delete from public.capsule_share_limits where window_start < $1", [new Date(clock() - 2 * 3_600_000)]);
+      await database.query("delete from public.capsule_share_views where viewed_at < $1", [new Date(clock() - VIEW_RETENTION_MS)]);
     } catch { /* Cleanup cannot prevent reading or revoking a share. */ }
   }
   async function limit(query: ShareQuery, ipHash: string, now: number) {
@@ -160,7 +177,7 @@ export function createShareStore(database: ShareDatabase, clock: () => number = 
       returning ip_hash`, [ipHash, new Date(now)]);
     if (!result.rows.length) throw new ShareError("You have created several share links recently. Try again in an hour.", 429);
   }
-  const find = async (query: ShareQuery, id: string) => row((await query("select id, token_hash, snapshot, expiry, expires_at, updated_at, revoked_at from public.capsule_shares where id = $1 for update", [id])).rows[0]);
+  const find = async (query: ShareQuery, id: string) => row((await query("select id, token_hash, snapshot, expiry, expires_at, updated_at, revoked_at, views from public.capsule_shares where id = $1 for update", [id])).rows[0]);
   return {
     async configured(): Promise<boolean> {
       try {
@@ -176,7 +193,7 @@ export function createShareStore(database: ShareDatabase, clock: () => number = 
         await limit(query, ipHash, now);
         const expiresAt = shareExpiresAt(expiry, now);
         await query("insert into public.capsule_shares (id, token_hash, snapshot, expires_at, updated_at, expiry) values ($1, $2, $3::jsonb, $4, $5, $6)", [id, hash, JSON.stringify(snapshot), expiresAt === null ? null : new Date(expiresAt), new Date(now), expiry]);
-        return { id, expiry, expiresAt, updatedAt: now };
+        return { id, expiry, expiresAt, updatedAt: now, views: 0 };
       });
       await cleanup(); return result;
     },
@@ -195,7 +212,7 @@ export function createShareStore(database: ShareDatabase, clock: () => number = 
         const now = clock(); const existing = requireOwner(await find(query, id), hash); requireActive(existing, now);
         const expiresAt = shareExpiresAt(expiry, now);
         await query("update public.capsule_shares set expires_at = $2, updated_at = $3, expiry = $5 where id = $1 and token_hash = $4 and revoked_at is null", [id, expiresAt === null ? null : new Date(expiresAt), new Date(now), hash, expiry]);
-        return { id, expiry, expiresAt, updatedAt: now };
+        return { id, expiry, expiresAt, updatedAt: now, views: metadata(existing).views };
       });
     },
     async remove(id: string, token: string, ipHash: string): Promise<void> {
@@ -214,9 +231,30 @@ export function createShareStore(database: ShareDatabase, clock: () => number = 
     },
     async inspect(id: string, token: string): Promise<ShareMetadata> {
       validateShareId(id); const hash = hashShareToken(token);
-      const existing = requireOwner(row((await database.query("select id, token_hash, snapshot, expiry, expires_at, updated_at, revoked_at from public.capsule_shares where id = $1", [id])).rows[0]), hash);
+      const existing = requireOwner(row((await database.query("select id, token_hash, snapshot, expiry, expires_at, updated_at, revoked_at, views from public.capsule_shares where id = $1", [id])).rows[0]), hash);
       requireActive(existing, clock());
       return metadata(existing);
+    },
+    /**
+     * Count one view of a live share link. A repeat open by the same viewer
+     * inside the dedupe window refreshes their row without counting again, so
+     * a refresh or a return visit that afternoon does not inflate the total.
+     */
+    async recordView(id: string, viewerHash: string): Promise<void> {
+      try { validateShareId(id); } catch { return; }
+      if (!/^[a-f0-9]{64}$/.test(viewerHash)) return;
+      try {
+        const now = new Date(clock());
+        const counted = await database.query(
+          `insert into public.capsule_share_views (share_id, viewer_hash, viewed_at) values ($1, $2, $3)
+           on conflict (share_id, viewer_hash) do update set viewed_at = excluded.viewed_at
+           where public.capsule_share_views.viewed_at < $4
+           returning share_id`,
+          [id, viewerHash, now, new Date(clock() - VIEW_DEDUPE_MS)],
+        );
+        if (!counted.rows.length) return;
+        await database.query("update public.capsule_shares set views = views + 1, last_viewed_at = $2 where id = $1", [id, now]);
+      } catch { /* A view that cannot be counted must never fail the page. */ }
     },
     async get(id: string): Promise<SharePublicRecord | null> {
       try { validateShareId(id); } catch { return null; }

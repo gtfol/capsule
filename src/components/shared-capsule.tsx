@@ -15,6 +15,7 @@ import type { SharedPiece, ShareSnapshot } from "@/lib/share-types";
 import { readSharedCopyIntent } from "@/lib/shared-copy";
 import { useSyncStore } from "@/lib/sync";
 import { sharedHeading } from "@/lib/share-owner";
+import { shareHandle, track } from "@/lib/analytics";
 
 function PieceDetails({ piece }: { piece: SharedPiece }) {
   const photos = [
@@ -39,6 +40,11 @@ function PieceDetails({ piece }: { piece: SharedPiece }) {
 export function SharedCapsule({ shareId, snapshot, updatedAt, expiresAt }: { shareId: string; snapshot: ShareSnapshot; updatedAt: number; expiresAt: number | null }) {
   const [category, setCategory] = useState<Category | "all">("all");
   const [selected, setSelected] = useState<SharedPiece | null>(null);
+  // One open per mount. The handle groups a link's traffic without carrying
+  // the ID, which is the link itself.
+  useEffect(() => {
+    track("share_link_opened", { kind: snapshot.kind, piece_count: snapshot.pieces.length, share: shareHandle(shareId) });
+  }, [shareId, snapshot.kind, snapshot.pieces.length]);
   const [{ addTo, piece }, setCopyQuery] = useQueryStates({ addTo: parseAsStringLiteral(["wardrobe", "wishlist"] as const), piece: parseAsString }, { history: "replace", shallow: true, scroll: false });
   const intentKey = `${addTo ?? ""}:${piece ?? ""}`;
   const [handledIntent, setHandledIntent] = useState("");

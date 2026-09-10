@@ -13,6 +13,7 @@ import { copySharedPieces, selectedSharedPieces, sharedCopyReturnUrl, type Share
 import { previewSharedPieces, type SharedImportResult } from "@/lib/piece-identity";
 import { collectionPieceUrl } from "@/lib/navigation";
 import type { ShareSnapshot } from "@/lib/share-types";
+import { shareHandle, track } from "@/lib/analytics";
 
 type Props = { shareId: string; snapshot: ShareSnapshot; selection: SharedCopySelection; initialDestination?: SharedCopyDestination | null; onIntentClosed?: () => void };
 
@@ -108,6 +109,8 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
       const outcome = await copySharedPieces({ shareId, shownSnapshot: snapshot, selection, destination, expectedUserId: userId });
       if (!alive.current || useSyncStore.getState().user?.id !== userId || useWardrobe.getState().space !== space) return;
       setResult(outcome);
+      // The conversion that shows a link actually moved someone.
+      if (outcome.count > 0) track("shared_pieces_copied", { kind: snapshot.kind, piece_count: outcome.count, share: shareHandle(shareId) });
       void useWardrobe.getState().reload();
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : "These pieces could not be added. Try again."); }
     finally { actionRunning.current = false; if (alive.current) setWorking(false); }

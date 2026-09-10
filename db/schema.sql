@@ -109,6 +109,19 @@ do $$ begin
   end if;
 end $$;
 create index if not exists capsule_shares_expiry on public.capsule_shares (expires_at) where snapshot is not null;
+-- View counts belong to the link, so they survive snapshot updates and are
+-- readable only by the owner, who holds the token.
+alter table public.capsule_shares add column if not exists views bigint not null default 0;
+alter table public.capsule_shares add column if not exists last_viewed_at timestamptz;
+-- One row per viewer per link, holding a salted hash rather than an address.
+-- A repeat open inside the dedupe window refreshes the row without counting.
+create table if not exists public.capsule_share_views (
+  share_id text not null references public.capsule_shares (id) on delete cascade,
+  viewer_hash text not null check (viewer_hash ~ '^[a-f0-9]{64}$'),
+  viewed_at timestamptz not null default now(),
+  primary key (share_id, viewer_hash)
+);
+create index if not exists capsule_share_views_viewed on public.capsule_share_views (viewed_at);
 create table if not exists public.capsule_share_limits (
   ip_hash text primary key check (ip_hash ~ '^[a-f0-9]{64}$'),
   window_start timestamptz not null,
@@ -117,12 +130,13 @@ create table if not exists public.capsule_share_limits (
 create index if not exists capsule_share_limits_window on public.capsule_share_limits (window_start);
 alter table public.capsule_shares enable row level security;
 alter table public.capsule_share_limits enable row level security;
-revoke all on public.capsule_shares, public.capsule_share_limits from public;
+alter table public.capsule_share_views enable row level security;
+revoke all on public.capsule_shares, public.capsule_share_limits, public.capsule_share_views from public;
 do $$ begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    revoke all on public.capsule_shares, public.capsule_share_limits from anon;
+    revoke all on public.capsule_shares, public.capsule_share_limits, public.capsule_share_views from anon;
   end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
-    revoke all on public.capsule_shares, public.capsule_share_limits from authenticated;
+    revoke all on public.capsule_shares, public.capsule_share_limits, public.capsule_share_views from authenticated;
   end if;
 end $$;
