@@ -50,7 +50,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
     if (!navigator.onLine) { track("outfit_render_failed", { status: "offline" }); setError("Connect to the internet to render an outfit."); return; }
     setBusy(true); setError("");
     const startedAt = Date.now();
-    track("outfit_render_started", { piece_count: selectedItems.length, categories: [...new Set(selectedItems.map((item) => item.category))].sort() });
+    track("outfit_render_started", { piece_count: selectedItems.length, categories: [...new Set(selectedItems.map((item) => item.category))].sort(), has_notes: Boolean(notes.trim()) });
     try {
       const credentialBody = renderCredentialPayload(credential, space);
       const pieces = await Promise.all(selectedItems.map(async (item) => ({ id: item.id, name: item.name, category: item.category, imageData: await compressImage(imageSource(item), 900, 0.78) })));
@@ -67,13 +67,8 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       const outfit: Outfit = { id: crypto.randomUUID(), name: `Outfit ${String(outfits.length + 1).padStart(2, "0")}`, itemIds: selectedItems.map((item) => item.id), imageData, createdAt: now, updatedAt: now, deletedAt: null };
       setUnsaved(outfit);
       await writeRecord(space, "outfits", outfit);
-<<<<<<< HEAD
       setUnsaved(null); setCreating(false); setSelection([]); setNotes(""); setDetail(outfit);
-    } catch (cause) { setError(cause instanceof Error && cause.name === "TimeoutError" ? "Rendering took too long. Try again." : cause instanceof Error ? cause.message : "This outfit could not be rendered."); }
-=======
-      setUnsaved(null); setCreating(false); setSelection([]); setDetail(outfit);
     } catch (cause) { if (cause instanceof Error && cause.name === "TimeoutError") track("outfit_render_failed", { status: "timeout" }); setError(cause instanceof Error && cause.name === "TimeoutError" ? "Rendering took too long. Try again." : cause instanceof Error ? cause.message : "This outfit could not be rendered."); }
->>>>>>> add product analytics and share view counts
     finally { setBusy(false); }
   }
   const builder = creating || outfits.length === 0;
