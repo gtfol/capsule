@@ -58,23 +58,43 @@ export function shareHandle(id: string): string {
 
 const SHARE_PATH = /\/share\/[^/?#]+/g;
 
-/** Replace share IDs in any URL or path with the route pattern. */
+/** URLs can carry imported product links, piece IDs, and OAuth data. */
 export function scrubShareUrl(value: string): string {
-  return value.replace(SHARE_PATH, "/share/[id]");
+  const stripped = value.split(/[?#]/, 1)[0].replace(SHARE_PATH, "/share/[id]");
+  if (/^https?:\/\//i.test(stripped)) {
+    try {
+      const url = new URL(stripped);
+      // Reconstruct without credentials as well as without query/hash data.
+      return `${url.origin}${url.pathname.replace(SHARE_PATH, "/share/[id]")}`;
+    } catch { return ""; }
+  }
+  return stripped;
 }
 
 const URL_PROPERTIES = new Set(["$current_url", "$pathname", "$referrer", "$referring_domain", "$initial_current_url", "$initial_pathname", "$initial_referrer", "$session_entry_url", "$session_entry_pathname", "$session_entry_referrer"]);
 
-/** Strip share IDs out of the URL properties PostHog attaches automatically. */
+/** PostHog also nests URL properties under $set and $set_once. */
 export function sanitizeProperties(properties: Properties): Properties {
-  const cleaned: Properties = { ...properties };
-  for (const key of Object.keys(cleaned)) {
-    const value = cleaned[key];
+  const ancestors = new WeakSet<object>();
+  function clean(value: unknown, key: string, depth: number): unknown {
+    if (depth > 32) return null;
     if (typeof value === "string" && (URL_PROPERTIES.has(key) || key.endsWith("_url"))) {
-      cleaned[key] = scrubShareUrl(value);
+      // Attribution needs the referring site, not its private/product path.
+      if (key.endsWith("referrer") && /^https?:\/\//i.test(value)) {
+        try { return new URL(value).origin; } catch { return ""; }
+      }
+      return scrubShareUrl(value);
     }
+    if (!value || typeof value !== "object") return value;
+    if (ancestors.has(value)) return null;
+    ancestors.add(value);
+    const result = Array.isArray(value)
+      ? value.map((entry) => clean(entry, key, depth + 1))
+      : Object.fromEntries(Object.entries(value).map(([name, entry]) => [name, clean(entry, name, depth + 1)]));
+    ancestors.delete(value);
+    return result;
   }
-  return cleaned;
+  return clean(properties, "", 0) as Properties;
 }
 
 export type AnalyticsConfig = { key: string; host: string };

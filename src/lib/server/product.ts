@@ -45,7 +45,7 @@ function absoluteImage(value: unknown, baseUrl: string): string {
 }
 
 export function inferCategory(value: string): ProductCategory {
-  const text = value.toLowerCase();
+  const text = value.toLowerCase().replace(/\bshort[\s\u2010-\u2015-]*sleeve[ds]?\b/g, "sleeve");
   if (/\b(?:sneakers?|shoes?|boots?|sandals?|loafers?|mules?|slippers?|footwear|derbies|oxfords)\b/.test(text)) return "shoes";
   if (/\b(?:jackets?|coats?|parkas?|blazers?|outerwear|anoraks?|windbreakers?|puffers?|shells?|gilets?)\b/.test(text)) return "jackets";
   if (/\b(?:pants?|jeans|trousers?|shorts?|skirts?|bottoms?|leggings?|chinos?|sweatpants?)\b/.test(text)) return "bottoms";

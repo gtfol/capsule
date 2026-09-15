@@ -1,3 +1,4 @@
+import { checkRequestLimit } from "@/lib/server/request-limit";
 import { NextResponse } from "next/server";
 import { importProduct, ProductImportError } from "@/lib/server/product";
 import { SafeFetchError } from "@/lib/server/safe-fetch";
@@ -6,6 +7,8 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  const limited = await checkRequestLimit(request, "import");
+  if (limited) return limited;
   try {
     const text = await request.text();
     if (text.length > 10000) return NextResponse.json({ error: "The link is too long.", code: "INVALID_URL" }, { status: 400 });

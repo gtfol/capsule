@@ -21,7 +21,7 @@ test("analytics stays off unless a well-formed project key is configured", () =>
 
 test("share IDs never reach the provider through a URL", () => {
   assert.equal(scrubShareUrl("https://capsule.gtfol.dev/share/AbCdEfGhIjKlMnOpQrStUv"), "https://capsule.gtfol.dev/share/[id]");
-  assert.equal(scrubShareUrl("/share/AbCdEfGhIjKlMnOpQrStUv?addTo=wardrobe"), "/share/[id]?addTo=wardrobe");
+  assert.equal(scrubShareUrl("/share/AbCdEfGhIjKlMnOpQrStUv?addTo=wardrobe"), "/share/[id]");
   assert.equal(scrubShareUrl("https://capsule.gtfol.dev/"), "https://capsule.gtfol.dev/");
   const cleaned = sanitizeProperties({
     $current_url: "https://capsule.gtfol.dev/share/AbCdEfGhIjKlMnOpQrStUv",
@@ -33,6 +33,27 @@ test("share IDs never reach the provider through a URL", () => {
   assert.equal(JSON.stringify(cleaned).includes("AbCdEfGhIjKlMnOpQrStUv"), false);
   assert.equal(cleaned.$pathname, "/share/[id]");
   assert.equal(cleaned.piece_count, 3);
+});
+
+test("nested analytics URLs exclude import queries, fragments, credentials, and share IDs", () => {
+  const secret = "private-token";
+  const original = {
+    $current_url: `https://capsule.gtfol.dev/?view=add&import=https%3A%2F%2Fshop.test%2F${secret}#${secret}`,
+    $set: { $current_url: `https://username:${secret}@capsule.gtfol.dev/share/${secret}?piece=${secret}` },
+    $set_once: { $initial_current_url: `https://capsule.gtfol.dev/share/${secret}`, $initial_referrer: `https://shop.test/products/${secret}` },
+    nested: [{ $session_entry_url: `/share/${secret}?import=${secret}` }],
+    piece_count: 2,
+  };
+  const cleaned = sanitizeProperties(original);
+  assert.equal(JSON.stringify(cleaned).includes(secret), false);
+  assert.equal(cleaned.$current_url, "https://capsule.gtfol.dev/");
+  assert.equal(cleaned.$set.$current_url, "https://capsule.gtfol.dev/share/[id]");
+  assert.equal(cleaned.$set_once.$initial_referrer, "https://shop.test");
+  assert.equal(cleaned.piece_count, 2);
+  assert.ok(original.$current_url.includes(secret), "must not mutate SDK state");
+  const circular: Record<string, unknown> = {};
+  circular.self = circular;
+  assert.deepEqual(sanitizeProperties(circular), { self: null });
 });
 
 test("a share handle is stable, opaque, and distinct per link", () => {

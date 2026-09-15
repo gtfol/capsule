@@ -123,3 +123,15 @@ npm run build
 ```
 
 Tests cover metadata and price extraction, public-host validation and DNS pinning, redirect and decompression limits, offline writes and tombstones, sync conflicts and account isolation, offline reconnection, request validation, rendering credentials and mocked image-service responses. Wishlist tests cover currency separation, price-history ordering, source failures and recovery, local/synced ratings, concurrent updates, and atomic moves to the wardrobe including rollback.
+
+## Public endpoint protection and analytics
+
+Before deploying this release, save and run [20260915_add_request_limits.sql](db/migrations/20260915_add_request_limits.sql) in Supabase's SQL editor. Fresh databases include the same table in `db/schema.sql`.
+
+Product imports allow 20 requests per 10 minutes, price checks 60 per 10 minutes, and image fetches 300 per minute, per IP and endpoint. Postgres counters are shared across Vercel instances; only keyed IP digests are retained. Expired counters are cleaned in bounded batches. Requests over quota return 429 with `Retry-After`; an unavailable database returns 503 rather than bypassing protection. Every Vercel deployment using these endpoints needs a database, including previews. Local development without a database uses in-memory counters.
+
+PostHog requires `NEXT_PUBLIC_POSTHOG_KEY` and optionally `NEXT_PUBLIC_POSTHOG_HOST` at build time. Analytics strips query strings, fragments, URL credentials, and share IDs, including URL properties nested in SDK attribution objects. Referrers retain only the referring origin. Autocapture, session replay, and automatic exception capture remain disabled.
+
+The generic social preview is `public/social-preview.png` (1200×630), sourced from `public/social-preview.svg`. Regenerate with `node -e 'require("sharp")("public/social-preview.svg").png().toFile("public/social-preview.png")'`. Shared links use the generic artwork, never wardrobe photos.
+
+To test distributed rate limits, apply the migration to a disposable local Postgres database and run `TEST_RATE_LIMIT_DATABASE_URL=postgres://... npm test`. This adds concurrent multi-instance, window-reset, and RLS checks to the regular suite.
