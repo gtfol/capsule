@@ -1,9 +1,11 @@
 "use client";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
-import { ArrowRight, Check, Plus, X } from "lucide-react";
+import { ArrowRight, Check, Plus, Settings as SettingsIcon, X } from "lucide-react";
 import { AddPiece } from "@/components/add-piece";
 import { CATEGORIES, ItemDetail } from "@/components/item-detail";
+import { Settings } from "@/components/settings";
+import type { RenderCredential } from "@/lib/render-credential";
 import { Outfits } from "@/components/outfits";
 import { SyncPopover } from "@/components/sync-popover";
 import { SharePopover } from "@/components/share-popover";
@@ -26,15 +28,17 @@ function AppLoading() {
 }
 
 export function WardrobeApp() {
-  const { space, ready, initialize } = useWardrobe();
+  const { space, ready, initialize, libraryGeneration } = useWardrobe();
   // Hydrate the active browser/account space before mounting any views. This
   // also keeps empty states and the sidebar out of the startup transition.
   useEffect(() => { void initialize(); void useSyncStore.getState().initialize(); return () => { useSyncStore.getState().stop(); }; }, [initialize]);
   return <Suspense fallback={<AppLoading />}>
-    {ready ? <WardrobeSurface key={space} /> : <AppLoading />}
+    {ready ? <WardrobeSurface key={`${space}:${libraryGeneration}`} /> : <AppLoading />}
   </Suspense>;
 }
 function WardrobeSurface() {
+  const [credential, setCredential] = useState<RenderCredential | null>(null);
+  const [rendering, setRendering] = useState(false);
   const [{ view, to, import: importUrl, piece: pieceId }, setNavigation] = useQueryStates(navigationParsers, navigationOptions);
   const [destination, rememberDestination] = useState<AddDestination>(to);
   // Keep the hidden Add editor's destination when `to` leaves the URL. On
@@ -48,7 +52,7 @@ function WardrobeSurface() {
   const [sort, setSort] = useState<Sort>("newest");
   const [selectedPiece, setSelected] = useState<Item | null>(null);
   const [removed, setRemoved] = useState<Item | null>(null);
-  const [notice, setNotice] = useState<{ id: string; message: string } | null>(null);
+  const [notice, setNotice] = useState<{ id: string; message: string } | null>(() => useWardrobe.getState().libraryGeneration ? { id: "library-deleted", message: useWardrobe.getState().space === "guest" ? "Library deleted." : "Library deleted from this browser. Check Sync for other devices." } : null);
   const { items, wishlist, ready, error, saveItem, deleteItem, space } = useWardrobe();
   const selected = selectedPiece ?? (view === "wardrobe" && pieceId ? items.find((item) => item.id === pieceId) ?? null : null);
   const clearPiece = () => { if (pieceId) void setNavigation({ piece: null }, { history: "replace" }); };
@@ -69,10 +73,11 @@ function WardrobeSurface() {
       </section></>}
       <div hidden={view !== "wishlist"} className={view === "wishlist" ? "contents" : "hidden"}><Wishlist pieceId={view === "wishlist" ? pieceId : null} onPieceClosed={clearPiece} active={view === "wishlist"} onAdd={() => openAdd("wishlist")} onMoved={() => showNotice("Moved to wardrobe.")} /></div>
       <div hidden={view !== "add"} className={view === "add" ? "add-workspace" : undefined}><div className="add-destination" role="group" aria-label="Save to"><button type="button" aria-pressed={destination === "wardrobe"} onClick={() => setDestination("wardrobe")}>Wardrobe</button><span aria-hidden="true">·</span><button type="button" aria-pressed={destination === "wishlist"} onClick={() => setDestination("wishlist")}>Wishlist</button></div><AddPiece key={destination} active={view === "add"} destination={destination} importUrl={view === "add" ? importUrl : null} onImportClosed={() => { if (importUrl !== null) void setNavigation({ import: null }, { history: "replace" }); }} onAdded={() => { setCategory("all"); setView(destination); setRemoved(null); showNotice(destination === "wishlist" ? "Added to wishlist." : "Piece saved."); }} /></div>
-      <div hidden={view !== "outfits"}><Outfits active={view === "outfits"} onAdd={() => openAdd("wardrobe")} /></div>
+      <div hidden={view !== "outfits"}><Outfits active={view === "outfits"} onAdd={() => openAdd("wardrobe")} onSettings={() => setView("settings")} credential={credential} busy={rendering} setBusy={setRendering} /></div>
+      <div hidden={view !== "settings"}><Settings active={view === "settings"} credential={credential} onCredentialChange={setCredential} rendering={rendering} /></div>
     </main>
     {(error || notice || removed) && <Notice key={error ? `error:${error}` : removed ? `removed:${removed.id}` : notice?.id} role={error ? "alert" : "status"} autoDismiss={!error && !removed && !!notice} onDismiss={dismissNotice}><span>{error || (removed ? "Piece removed." : notice?.message)}</span>{removed && !error && <button className="underline underline-offset-4" onClick={async () => { try { await saveItem({ ...removed, updatedAt: Date.now(), deletedAt: null }); setRemoved(null); } catch { showNotice("Could not restore the piece. Try again."); } }}>Undo</button>}{!error && <button aria-label="Dismiss notification" onClick={dismissNotice}><X size={13} /></button>}</Notice>}
-    <nav className="bottom-nav" aria-label="Main navigation"><div className="bottom-nav-inner"><button className={`nav-button ${view === "wardrobe" ? "current" : ""}`} aria-current={view === "wardrobe" ? "page" : undefined} onClick={() => setView("wardrobe")}>Wardrobe</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "wishlist" ? "current" : ""}`} aria-current={view === "wishlist" ? "page" : undefined} onClick={() => setView("wishlist")}>Wishlist</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "add" ? "current" : ""}`} aria-current={view === "add" ? "page" : undefined} onClick={() => openAdd(view === "add" ? destination : view === "wishlist" ? "wishlist" : "wardrobe")}>Add</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "outfits" ? "current" : ""}`} aria-current={view === "outfits" ? "page" : undefined} onClick={() => setView("outfits")}>Outfits</button>{(view === "wardrobe" || view === "wishlist") && <><span className="nav-dot" aria-hidden="true">•</span><SharePopover key={view} target={{ kind: view, pieces: view === "wishlist" ? wishlist : items }} appearance="nav" disabled={!ready} /></>}<span className="nav-dot" aria-hidden="true">•</span><ThemeControl /><SyncPopover /></div></nav>
+    <nav className="bottom-nav" aria-label="Main navigation"><div className="bottom-nav-inner"><button className={`nav-button ${view === "wardrobe" ? "current" : ""}`} aria-current={view === "wardrobe" ? "page" : undefined} onClick={() => setView("wardrobe")}>Wardrobe</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "wishlist" ? "current" : ""}`} aria-current={view === "wishlist" ? "page" : undefined} onClick={() => setView("wishlist")}>Wishlist</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "add" ? "current" : ""}`} aria-current={view === "add" ? "page" : undefined} onClick={() => openAdd(view === "add" ? destination : view === "wishlist" ? "wishlist" : "wardrobe")}>Add</button><span className="nav-dot" aria-hidden="true">•</span><button className={`nav-button ${view === "outfits" ? "current" : ""}`} aria-current={view === "outfits" ? "page" : undefined} onClick={() => setView("outfits")}>Outfits</button>{(view === "wardrobe" || view === "wishlist") && <><span className="nav-dot" aria-hidden="true">•</span><SharePopover key={view} target={{ kind: view, pieces: view === "wishlist" ? wishlist : items }} appearance="nav" disabled={!ready} /></>}<span className="nav-dot" aria-hidden="true">•</span><ThemeControl /><SyncPopover /><button type="button" className={`nav-button flex items-center justify-center ${view === "settings" ? "current" : ""}`} aria-label="Settings" title="Settings" aria-current={view === "settings" ? "page" : undefined} onClick={() => setView("settings")}><SettingsIcon size={14} strokeWidth={1.5} /></button></div></nav>
     {selected && <ItemDetail key={selected.id} active={view === "wardrobe"} item={selected} onClose={() => { setSelected(null); clearPiece(); }} onSave={async (item) => { if (useWardrobe.getState().space !== space) throw new Error("The active wardrobe changed. Open this piece again to save."); await saveItem(item); }} onDelete={remove} />}
   </div>;
 }

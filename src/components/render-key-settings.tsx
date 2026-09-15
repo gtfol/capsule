@@ -53,8 +53,8 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
     callback.current(null);
     void fetch(`/api/render/key?expectedUserId=${encodeURIComponent(userId)}`, { cache: "no-store", signal: controller.signal }).then(async (response) => {
       const data = await response.json();
-      if (!response.ok) throw new Error(response.status === 401 ? "Sign in again through Sync to use your saved API key." : response.status === 409 ? "Your signed-in account changed. Reopen Outfits to continue." : "Your saved key could not be checked. Try again.");
-      if (data.userId !== userId) throw new Error("Your signed-in account changed. Reopen Outfits to continue.");
+      if (!response.ok) throw new Error(response.status === 401 ? "Sign in again through Sync to use your saved API key." : response.status === 409 ? "Your signed-in account changed. Reopen Settings to continue." : "Your saved key could not be checked. Try again.");
+      if (data.userId !== userId) throw new Error("Your signed-in account changed. Reopen Settings to continue.");
       if (current.version !== version) return;
       const usable = data.available === true;
       const hasKey = usable && data.saved === true;

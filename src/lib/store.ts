@@ -6,6 +6,7 @@ import type { Item, Outfit, WishlistItem } from "./types";
 import { track } from "./analytics";
 
 interface WardrobeState {
+  libraryGeneration: number;
   items: Item[];
   outfits: Outfit[];
   wishlist: WishlistItem[];
@@ -45,7 +46,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
     }
   }
   return {
-    items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null, space: GUEST_SPACE,
+    libraryGeneration: 0, items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null, space: GUEST_SPACE,
     initialize: () => {
       if (initialization) return initialization;
       initialization = (async () => {
@@ -55,7 +56,8 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
           set({ space });
           if (!subscribed) {
             subscribed = true;
-            subscribeToLocalChanges((changedSpace) => {
+            subscribeToLocalChanges((changedSpace, source) => {
+              if (source === "reset" && get().space === changedSpace) set({ libraryGeneration: get().libraryGeneration + 1 });
               if (get().space === changedSpace) void get().reload();
             });
           }
@@ -76,7 +78,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
     },
     switchSpace: async (space) => {
       revision++;
-      set({ space, items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null });
+      set({ space, items: [], outfits: [], wishlist: [], referencePhoto: null, ready: false, error: null, libraryGeneration: 0 });
       await activateSpace(space);
       await get().reload();
     },

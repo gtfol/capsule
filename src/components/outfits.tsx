@@ -6,7 +6,6 @@ import { InfoTooltip } from "@/components/ui/info-tooltip";
 import { IconAction } from "@/components/ui/icon-action";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ModelPhotoPicker } from "@/components/model-photo-picker";
-import { RenderKeySettings } from "@/components/render-key-settings";
 import { SharePopover } from "@/components/share-popover";
 import { useWardrobe } from "@/lib/store";
 import { compressImage, imageSource } from "@/lib/images";
@@ -15,13 +14,11 @@ import { writeRecord, writeReferencePhoto } from "@/lib/db";
 import { renderCredentialPayload, type RenderCredential } from "@/lib/render-credential";
 import { track } from "@/lib/analytics";
 type RenderConfig = { enabled: boolean; requiresApiKey: boolean; provider: string; model: string };
-export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: boolean }) {
-  const { items, outfits, referencePhoto, setReferencePhoto, saveOutfit, deleteOutfit, space } = useWardrobe();
+export function Outfits({ onAdd, onSettings, credential, busy, setBusy, active = true }: { onAdd: () => void; onSettings: () => void; credential: RenderCredential | null; busy: boolean; setBusy: (busy: boolean) => void; active?: boolean }) {
+  const { items, outfits, referencePhoto, setReferencePhoto, saveOutfit, deleteOutfit, space, libraryGeneration } = useWardrobe();
   const [creating, setCreating] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
   const [config, setConfig] = useState<RenderConfig | null>(null);
-  const [credential, setCredential] = useState<RenderCredential | null>(null);
-  const [busy, setBusy] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -38,7 +35,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       if (!file.size) throw new Error("This photo is empty. Choose another file.");
       if (file.size > 20_000_000) throw new Error("Choose a model photo smaller than 20 MB.");
       const data = await compressImage(file, 1200, 0.82);
-      if (useWardrobe.getState().space !== space) throw new Error("Your account changed. Choose the photo again.");
+      if (useWardrobe.getState().space !== space || useWardrobe.getState().libraryGeneration !== libraryGeneration) throw new Error("Your library changed. Choose the photo again.");
       await writeReferencePhoto(space, data);
       track("model_photo_set");
     }
@@ -65,6 +62,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
       const imageData = await compressImage(data.imageData, 1500, 0.86);
       const now = Date.now();
       const outfit: Outfit = { id: crypto.randomUUID(), name: `Outfit ${String(outfits.length + 1).padStart(2, "0")}`, itemIds: selectedItems.map((item) => item.id), imageData, createdAt: now, updatedAt: now, deletedAt: null };
+      if (useWardrobe.getState().space !== space || useWardrobe.getState().libraryGeneration !== libraryGeneration) throw new Error("Your library changed. This render was not added.");
       setUnsaved(outfit);
       await writeRecord(space, "outfits", outfit);
       setUnsaved(null); setCreating(false); setSelection([]); setNotes(""); setDetail(outfit);
@@ -89,7 +87,7 @@ export function Outfits({ onAdd, active = true }: { onAdd: () => void; active?: 
         <img src={imageSource(item)} alt={item.name} loading="lazy" />{selection.includes(item.id) && <span className="selected-mark p-1"><Check size={13} /></span>}<span className="mt-3 block truncate text-[11px]">{item.name}</span><span className="mt-1 block truncate text-[10px] text-subtle">{item.brand || "\u00a0"}</span>
       </button>)}</div></div>
       <div className="space-y-6">{modelPhotoPanel}
-      {config?.requiresApiKey && <RenderKeySettings key={space} active={active} userId={space.startsWith("account:") ? space.slice(8) : null} sessionKey={credential?.type === "session" ? credential.apiKey : ""} disabled={busy} onCredentialChange={setCredential} />}
+      {config?.requiresApiKey && !credential && <button type="button" onClick={onSettings} className="text-[12px] underline underline-offset-4">Set up rendering in Settings</button>}
       <div><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1"><label htmlFor="outfit-styling-notes" className="text-[12px]">Styling notes</label>{active && <InfoTooltip label="About styling notes">Optional. How to wear the selected pieces, such as tucked in, sleeves rolled, or sunglasses on. Sent to OpenAI with your render.</InfoTooltip>}</div><span className="text-[11px] text-subtle">{notes.length} / 300</span></div><textarea id="outfit-styling-notes" className="field-input mt-1 min-h-12 resize-y py-2" value={notes} onChange={(event) => { setError(""); setNotes(event.target.value); }} maxLength={300} placeholder="—" disabled={busy} /></div>
       <div>{config?.model && <p className="mb-3 text-[11px] text-subtle">Model: {config.model}</p>}<Button type="button" onClick={() => { void render(); }} className="w-full" disabled={busy || photoBusy || Boolean(unsaved) || !referencePhoto || selectedItems.length === 0 || !config?.enabled || (config.requiresApiKey && !credential)}>{busy ? <><Loader2 size={14} className="animate-spin" />Rendering…</> : "Render outfit"}</Button><p className="mt-3 text-[11px] leading-relaxed text-subtle">{!config ? "Connect to the internet to render outfits." : !config.enabled ? "Rendering is not available right now." : config.requiresApiKey ? "Rendering is billed to your OpenAI account." : "Sends your photo and selected pieces to OpenAI to create an image."}</p></div>
       {error && <p className="text-[12px] leading-relaxed" role="alert">{error}</p>}{unsaved && <div>

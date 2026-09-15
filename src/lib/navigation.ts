@@ -1,6 +1,6 @@
 import { parseAsString, parseAsStringLiteral } from "nuqs/server";
 
-export const CAPSULE_VIEWS = ["wardrobe", "wishlist", "add", "outfits"] as const;
+export const CAPSULE_VIEWS = ["wardrobe", "wishlist", "add", "outfits", "settings"] as const;
 export type CapsuleView = (typeof CAPSULE_VIEWS)[number];
 export const ADD_DESTINATIONS = ["wardrobe", "wishlist"] as const;
 export type AddDestination = (typeof ADD_DESTINATIONS)[number];

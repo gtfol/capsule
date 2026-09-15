@@ -135,3 +135,13 @@ PostHog requires `NEXT_PUBLIC_POSTHOG_KEY` and optionally `NEXT_PUBLIC_POSTHOG_H
 The generic social preview is `public/social-preview.png` (1200×630), sourced from `public/social-preview.svg`. Regenerate with `node -e 'require("sharp")("public/social-preview.svg").png().toFile("public/social-preview.png")'`. Shared links use the generic artwork, never wardrobe photos.
 
 To test distributed rate limits, apply the migration to a disposable local Postgres database and run `TEST_RATE_LIMIT_DATABASE_URL=postgres://... npm test`. This adds concurrent multi-instance, window-reset, and RLS checks to the regular suite.
+
+## Settings and data ownership
+
+Open the Settings icon in the bottom navigation (`/?view=settings`). Appearance offers System, Light, and Dark. OpenAI key entry and account-key management live here; Outfits links to Settings when setup is needed. Guest keys remain in memory for the current page session, including navigation between views. Account keys retain the existing encrypted storage and account checks.
+
+Export data downloads a versioned JSON file containing the active library's wardrobe, wishlist ratings and price history, all locally saved photo views, saved outfits, and this browser's model photo. Remote-only photos remain URLs. Sync first for the latest changes from other devices. Credentials, sync internals, and share-management tokens are excluded. This release exports data; it does not yet restore backup files.
+
+Delete library requires confirmation. Guests' records are removed from IndexedDB; signed-in libraries must finish syncing first, then queue scrubbed deletion markers through normal sync. Clothing details, image data, and the local model photo are removed. Other account spaces are untouched. The account itself, its saved OpenAI key, and public shares remain; key removal and Manage share links are available separately in Settings. Concurrent remote edits follow existing conflict handling and may be preserved. Other devices' model photos remain local to those devices.
+
+Set `NEXT_PUBLIC_SUPPORT_URL` to a one-time `https://buy.stripe.com/...` Payment Link to show Support Capsule in Settings. It opens Stripe's hosted checkout; no payment SDK, credentials, subscriptions, or webhooks are used. The link is hidden when unconfigured. Verify the payment link itself is configured for one-time payments before publishing it.
