@@ -92,6 +92,9 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       window.addEventListener("offline", offline);
       document.addEventListener("visibilitychange", refresh);
       const unsubscribe = subscribeToLocalChanges((space, source) => {
+        if (source === "account-deleted" && get().user && space === accountSpace(get().user!.id)) {
+          sessionGeneration++; resetIdentity(); set({ user: null, status: "signed-out", lastSyncAt: null, error: null }); return;
+        }
         if (source === "remote" || applyingRemote || !get().user || space !== accountSpace(get().user!.id)) return;
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => { void get().syncNow(); }, 1_500);

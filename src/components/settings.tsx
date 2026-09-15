@@ -1,32 +1,30 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ArrowUpRight, Download, Link2, Trash2, X } from "lucide-react";
+import { ArrowUpRight, Download, Trash2, X } from "lucide-react";
 import { useWardrobe } from "@/lib/store";
 import { useSyncStore } from "@/lib/sync";
-import { deleteLibrary, readLibrarySnapshot } from "@/lib/db";
-import { libraryExport, supportUrl } from "@/lib/library-data";
-import { getServerThemePreference, getThemePreference, setThemePreference, subscribeTheme, type ThemePreference } from "@/lib/theme";
+import { deleteLibrary, forgetDeletedAccount, readLibrarySnapshot } from "@/lib/db";
+import { libraryExport } from "@/lib/library-data";
+import { listShareRecords } from "@/lib/share-client";
 import type { RenderCredential } from "@/lib/render-credential";
 import { RenderKeySettings } from "./render-key-settings";
-import { ShareLinkManager } from "./share-link-manager";
 import { InfoTooltip } from "./ui/info-tooltip";
 import { Button } from "./ui/button";
 
-const actionClass = "flex min-h-10 items-center justify-between gap-4 text-left text-[12px] text-muted-foreground hover:text-foreground disabled:opacity-40";
-const contributionLink = supportUrl(process.env.NEXT_PUBLIC_SUPPORT_URL);
+const actionClass = "flex min-h-10 items-center justify-between gap-4 text-left text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40";
 export function Settings({ active, credential, onCredentialChange, rendering }: {
   active: boolean; credential: RenderCredential | null; onCredentialChange: (value: RenderCredential | null) => void;
   rendering: boolean;
 }) {
   const { space } = useWardrobe();
   const account = space.startsWith("account:");
-  const theme = useSyncExternalStore(subscribeTheme, getThemePreference, getServerThemePreference);
+  const [confirmationText, setConfirmationText] = useState("");
+  const confirmedDeletion = useRef(false);
   const [busy, setBusy] = useState(false);
   const working = useRef(false);
   const [confirmation, setConfirmation] = useState(false);
-  const [links, setLinks] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const cancel = useRef<HTMLButtonElement>(null);
@@ -52,41 +50,44 @@ export function Settings({ active, credential, onCredentialChange, rendering }: 
     try {
       guard();
       if (account) {
-        if (!navigator.onLine) throw new Error("Connect to the internet before deleting your synced library.");
-        const sync = useSyncStore.getState();
-        if (!sync.enabled || sync.user?.id !== space.slice(8)) throw new Error("Sign in again through Sync before deleting your library.");
-        await sync.syncNow();
-        guard();
-        const latest = useSyncStore.getState();
-        if (latest.user?.id !== space.slice(8) || latest.status !== "idle" || latest.error) throw new Error("Finish syncing before deleting your library. Check Sync and try again.");
+        if (confirmationText !== "DELETE") return;
+        if (!confirmedDeletion.current) {
+          if (!navigator.onLine) throw new Error("Connect to the internet before deleting your account.");
+          const sync = useSyncStore.getState();
+          if (sync.user?.id !== space.slice(8)) throw new Error("Sign in again through Sync before deleting your account.");
+          const links = await listShareRecords(space);
+          guard();
+          const response = await fetch("/api/account", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expectedUserId: space.slice(8), confirmation: "DELETE", links: links.map(({ record }) => ({ id: record.id, token: record.token })) }), signal: AbortSignal.timeout(30_000) });
+          const result = await response.json();
+          if (!response.ok || result.deleted !== true || result.userId !== space.slice(8)) throw new Error(result.error || "Your account deletion could not be confirmed.");
+          confirmedDeletion.current = true;
+        }
+        await forgetDeletedAccount(space);
+      } else {
+        await deleteLibrary(space, guard);
+        await useWardrobe.getState().reload();
       }
-      await deleteLibrary(space, guard);
-      await useWardrobe.getState().reload();
-      guard();
-      // Normal durable sync sends the deletion markers; offline retries remain queued.
-      if (account) void useSyncStore.getState().syncNow();
       setConfirmation(false);
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Your library could not be deleted."); }
+    } catch (cause) { setError(confirmedDeletion.current ? "Your account was deleted, but this browser’s copy could not be cleared. Retry to finish clearing it." : cause instanceof Error ? cause.message : "Your data could not be deleted."); }
     finally { working.current = false; setBusy(false); }
   }
   const locked = busy || rendering;
-  return <section className="mx-auto w-full max-w-[560px] pb-8 pt-[30px]" aria-labelledby="settings-heading">
+  return <section className="mx-auto w-full max-w-[480px] pb-8 pt-[30px]" aria-labelledby="settings-heading">
     <h1 id="settings-heading" className="text-[14px]">Settings</h1>
-    <div className="mt-10 space-y-10">
-      <section><h2 className="text-[12px]">Appearance</h2><div className="mt-3 flex gap-6" role="group" aria-label="Theme">{([['system', 'System'], ['light', 'Light'], ['dark', 'Dark']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={theme === value} className={`min-h-9 text-[12px] ${theme === value ? 'text-foreground underline underline-offset-4' : 'text-muted-foreground'}`} onClick={() => setThemePreference(value as ThemePreference)}>{label}</button>)}</div></section>
+    <div className="mt-8 space-y-8">
       <RenderKeySettings userId={account ? space.slice(8) : null} sessionKey={credential?.type === "session" ? credential.apiKey : ""} disabled={locked} active={active} onCredentialChange={onCredentialChange} />
-      <section><div className="flex items-center gap-1"><h2 className="text-[12px]">Your data</h2><InfoTooltip active={active} label="About your data">Export includes the wardrobe, wishlist and price history, saved photos, outfits, and model photo available in this browser. Sync first to include changes from other devices. API keys and private share-management tokens are excluded. Linked photos that are not saved locally remain URLs.</InfoTooltip></div>
+      <section><div className="flex items-center gap-1"><h2 className="text-[13px]">Your data</h2><InfoTooltip active={active} label="About your data">Export includes the wardrobe, wishlist and price history, saved photos, outfits, and model photo available in this browser. Sync first to include changes from other devices. API keys and private share-management tokens are excluded. Linked photos that are not saved locally remain URLs.</InfoTooltip></div>
         <p className="mt-2 text-[11px] text-subtle">{account ? "Your account’s library on this device." : "Your library in this browser."}</p>
-        <div className="mt-3 flex flex-col"><button className={actionClass} type="button" disabled={locked} onClick={() => void exportData()}>Export data <Download size={13} strokeWidth={1.5} /></button><button className={actionClass} type="button" disabled={locked} onClick={() => { setError(""); setConfirmation(true); }}>Delete library <Trash2 size={13} strokeWidth={1.5} /></button></div>
+        <div className="mt-3 flex flex-col"><button className={actionClass} type="button" disabled={locked} onClick={() => void exportData()}>Export data <Download size={13} strokeWidth={1.5} /></button><button className={actionClass} type="button" disabled={locked} onClick={() => { setError(""); setConfirmationText(""); setConfirmation(true); }}>{account ? "Delete account" : "Clear browser data"} <Trash2 size={13} strokeWidth={1.5} /></button></div>
       </section>
-      <section>{links && active ? <ShareLinkManager space={space} onBack={() => setLinks(false)} /> : <><h2 className="text-[12px]">Sharing</h2><button type="button" className={`${actionClass} mt-2 w-full`} onClick={() => setLinks(true)}>Manage share links <Link2 size={13} strokeWidth={1.5} /></button></>}</section>
-      <section><h2 className="text-[12px]">Capsule</h2><a className={`${actionClass} mt-2`} href="https://github.com/gtfol/capsule" target="_blank" rel="noopener noreferrer">Source code <ArrowUpRight size={13} strokeWidth={1.5} /></a>{contributionLink && <><a className={actionClass} href={contributionLink} target="_blank" rel="noopener noreferrer">Support Capsule <ArrowUpRight size={13} strokeWidth={1.5} /></a><p className="mt-1 text-[11px] text-subtle">Optional, one-time support for development and hosting.</p></>}</section>
+      <section><a className={`${actionClass} mt-2`} href="https://github.com/gtfol/capsule" target="_blank" rel="noopener noreferrer">Source code <ArrowUpRight size={13} strokeWidth={1.5} /></a></section>
     </div>
-    {status && <p className="mt-5 text-[12px] text-subtle" role="status">{status}</p>}{error && !confirmation && <p className="mt-5 text-[12px]" role="alert">{error}</p>}
+    {status && <p className="mt-5 text-[13px] text-subtle" role="status">{status}</p>}{error && !confirmation && <p className="mt-5 text-[13px]" role="alert">{error}</p>}
     <Dialog.Root open={confirmation && active} onOpenChange={(open) => { if (!busy) setConfirmation(open); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-[70] bg-black/20 dark:bg-black/70" /><Dialog.Content role="alertdialog" className="fixed left-1/2 top-1/2 z-[80] w-[calc(100%_-_40px)] max-w-[390px] -translate-x-1/2 -translate-y-1/2 border border-border bg-background p-7 text-foreground outline-none" onOpenAutoFocus={(event) => { event.preventDefault(); cancel.current?.focus(); }}>
       <button ref={cancel} type="button" aria-label="Cancel deletion" disabled={busy} className="absolute right-4 top-4 p-2 text-muted-foreground" onClick={() => setConfirmation(false)}><X size={14} /></button>
-      <Dialog.Title className="pr-8 text-[14px]">Delete your library?</Dialog.Title><Dialog.Description className="mt-3 text-[12px] leading-relaxed text-muted-foreground">This removes your wardrobe, wishlist, saved outfits, and this browser’s model photo. {account ? "Deletion syncs to your account and other devices. Conflicting edits on another device may be kept. Your account and saved API key stay." : "This cannot be undone."} Public share links stay available until you remove them in Manage share links. Export anything you want to keep first.</Dialog.Description>
-      <Button type="button" className="mt-6 w-full" disabled={busy} onClick={() => void removeData()}>{busy ? "Deleting…" : "Delete library"}</Button>{error && <p role="alert" className="mt-4 text-[12px]">{error}</p>}
+      <Dialog.Title className="pr-8 text-[14px]">{account ? "Delete your account?" : "Clear browser data?"}</Dialog.Title><Dialog.Description className="mt-3 text-[12px] leading-relaxed text-muted-foreground">{account ? "Permanently deletes your account, synced wardrobe, wishlist, outfits, saved API key, and this browser’s account data. Share links managed by this browser are revoked. Offline copies and links created on other browsers remain there. Guest data is separate." : "Permanently removes this browser’s guest wardrobe, wishlist, saved outfits, and model photo. Public share links remain available; manage them through Share."} Export anything you want to keep first.</Dialog.Description>
+      {account && <label className="mt-5 block text-[12px] text-muted-foreground">Type DELETE to confirm<input className="field-input mt-2" value={confirmationText} disabled={busy} autoComplete="off" onChange={(event) => setConfirmationText(event.target.value)} /></label>}
+      <Button type="button" className="mt-6 w-full" disabled={busy || (account && confirmationText !== "DELETE")} onClick={() => void removeData()}>{busy ? "Deleting…" : account ? "Delete account" : "Clear browser data"}</Button>{error && <p role="alert" className="mt-4 text-[13px]">{error}</p>}
     </Dialog.Content></Dialog.Portal></Dialog.Root>
   </section>;
 }
