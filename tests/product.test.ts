@@ -5,6 +5,15 @@ import { extractProduct, inferCategory, ProductImportError } from "../src/lib/se
 const pageUrl = "https://store.example.com/products/work-jacket";
 const jsonPage = (data: unknown, extra = "") => `<html><head><script type="application/ld+json">${JSON.stringify(data)}</script>${extra}</head><body></body></html>`;
 
+test("short sleeve descriptions do not turn shirts into bottoms", () => {
+  for (const name of ["Short-sleeve shirt", "Men's washed jersey short sleeve T-shirt", "SHORT SLEEVED SHIRT", "Short–sleeved polo", "Short sleeves tee", "Shortsleeve shirt"]) {
+    assert.equal(inferCategory(name), "tops", name);
+    assert.equal(extractProduct(jsonPage({ "@type": "Product", name, image: "/shirt.jpg" }), pageUrl).item.category, "tops", name);
+  }
+  for (const name of ["Cotton shorts", "Linen short", "Short sleeve top and shorts", "Short trousers"]) assert.equal(inferCategory(name), "bottoms", name);
+  assert.equal(inferCategory("Short-sleeved jacket"), "jackets");
+});
+
 test("extracts a structured product and decodes description without markup", () => {
   const imported = extractProduct(jsonPage({
     "@type": "Product", name: "Canvas work jacket", brand: { "@type": "Brand", name: "Factory" },

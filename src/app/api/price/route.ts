@@ -1,3 +1,4 @@
+import { checkRequestLimit } from "@/lib/server/request-limit";
 import { NextResponse } from "next/server";
 import { fetchProductPrice, ProductImportError } from "@/lib/server/product";
 import { SafeFetchError } from "@/lib/server/safe-fetch";
@@ -32,6 +33,8 @@ async function readBody(request: Request): Promise<unknown> {
 }
 
 export async function POST(request: Request) {
+  const limited = await checkRequestLimit(request, "price");
+  if (limited) return limited;
   try {
     const body = await readBody(request);
     const url = body && typeof body === "object" && "url" in body ? body.url : undefined;

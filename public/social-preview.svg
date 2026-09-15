@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="white"/>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="400">
+    <text x="72" y="238" font-size="106" letter-spacing="-5" fill="#111">capsule</text>
+    <text x="76" y="300" font-size="27" fill="#777">Your personal wardrobe.</text>
+    <text x="76" y="548" font-size="20" fill="#777">Wardrobe · Wishlist · Outfits</text>
+    <text x="1128" y="548" text-anchor="end" font-size="20" fill="#111">capsule.gtfol.dev</text>
+  </g>
+  <!-- Original garment illustrations; no personal photos or retailer assets. -->
+  <g transform="translate(602 152)">
+    <path d="M0 47 48 18 73 30 98 18 146 47 124 91 107 80 107 224 39 224 39 80 22 91Z" fill="#151515"/>
+    <path d="M48 18Q73 55 98 18" fill="none" stroke="#666" stroke-width="2"/>
+    <path d="M46 208H100" stroke="#444" fill="none"/>
+  </g>
+  <g transform="translate(780 139)">
+    <path d="M40 18 103 18 117 235 80 235 70 98 60 235 23 235Z" fill="#ddd" stroke="#c8c8c8" stroke-width="2"/>
+    <path d="M40 34H104M71 35V79M32 216H61M79 216H114M44 36Q43 66 35 68M99 36Q99 66 107 68" fill="none" stroke="#b5b5b5" stroke-width="2"/>
+  </g>
+  <g transform="translate(952 143)">
+    <path d="M45 24 67 15 84 24 119 43 146 177 120 185 102 109 106 235 25 235 29 109 12 185-14 177 13 43Z" fill="#888"/>
+    <path d="M45 24 66 60 84 24M66 60V235M38 119H56V154H36ZM76 119H94L96 154H76Z" fill="none" stroke="#5c5c5c" stroke-width="2"/>
+    <path d="M45 24 44 52 66 60 85 52 84 24" fill="none" stroke="#666" stroke-width="2"/>
+  </g>
+</svg>

@@ -1,3 +1,4 @@
+import { checkRequestLimit } from "@/lib/server/request-limit";
 import { NextResponse } from "next/server";
 import { rasterImageType, safeFetch, SafeFetchError } from "@/lib/server/safe-fetch";
 
@@ -5,6 +6,8 @@ export const runtime = "nodejs";
 export const maxDuration = 20;
 
 export async function GET(request: Request) {
+  const limited = await checkRequestLimit(request, "image");
+  if (limited) return limited;
   const url = new URL(request.url).searchParams.get("url");
   if (!url) return NextResponse.json({ error: "An image URL is required." }, { status: 400 });
   try {
