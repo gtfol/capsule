@@ -21,7 +21,7 @@ interface Meta { key: string; value: unknown; }
 export interface Snapshot { items: Item[]; outfits: Outfit[]; wishlist: WishlistItem[]; referencePhoto: string | null; }
 let databasePromise: Promise<IDBDatabase> | null = null;
 let channel: BroadcastChannel | null = null;
-type ChangeSource = "local" | "remote" | "reset";
+type ChangeSource = "local" | "remote" | "reset" | "account-deleted";
 const listeners = new Set<(space: string, source: ChangeSource) => void>();
 const keyFor = (space: string, collection: Collection, id: string) => `${space}|${collection}|${id}`;
 const metaKey = (space: string, name: string) => `${space}|${name}`;
@@ -64,7 +64,7 @@ export function openDatabase(): Promise<IDBDatabase> {
       if (typeof BroadcastChannel !== "undefined" && !channel) {
         channel = new BroadcastChannel("capsule-local-changes");
         channel.onmessage = ({ data }) => {
-          if (typeof data?.space === "string" && (data.source === "local" || data.source === "remote" || data.source === "reset")) {
+          if (typeof data?.space === "string" && (data.source === "local" || data.source === "remote" || data.source === "reset" || data.source === "account-deleted")) {
             listeners.forEach((listener) => listener(data.space, data.source));
           }
         };
@@ -150,8 +150,9 @@ export async function readSnapshot(space: string): Promise<Snapshot> {
 export async function writeRecord(space: string, collection: Collection, record: WardrobeRecord): Promise<void> {
   if (collection === "wishlist") assertWishlistLimits(record as WishlistItem);
   const db = await openDatabase();
-  const tx = db.transaction("records", "readwrite");
+  const tx = db.transaction(["records", "meta"], "readwrite");
   const done = completed(tx);
+  if (await request(tx.objectStore("meta").get(metaKey(space, "account-deleted")))) { await done; throw new Error("This account was deleted."); }
   const store = tx.objectStore("records");
   const key = keyFor(space, collection, record.id);
   const previous = await request(store.get(key)) as StoredRecord | undefined;
@@ -328,6 +329,7 @@ export async function writeReferencePhoto(space: string, image: string | null): 
   const db = await openDatabase();
   const tx = db.transaction("meta", "readwrite");
   const done = completed(tx);
+  if (await request(tx.objectStore("meta").get(metaKey(space, "account-deleted")))) { await done; throw new Error("This account was deleted."); }
   tx.objectStore("meta").put({ key: metaKey(space, "reference-photo"), value: image });
   await done;
   notify(space);
@@ -350,6 +352,7 @@ export async function applySyncResponse(space: string, sent: SyncChange[], respo
   const db = await openDatabase();
   const tx = db.transaction(["records", "meta"], "readwrite");
   const done = completed(tx);
+  if (await request(tx.objectStore("meta").get(metaKey(space, "account-deleted")))) { await done; return 0; }
   const records = tx.objectStore("records");
   let conflicts = 0;
   const sentByKey = new Map(sent.map((change) => [keyFor(space, change.collection, change.record.id), change]));
@@ -436,4 +439,23 @@ export async function deleteLibrary(space: string, guard: () => void): Promise<v
     await done.catch(() => undefined);
     throw error;
   }
+}
+
+export async function forgetDeletedAccount(space: string): Promise<void> {
+  if (!space.startsWith("account:")) throw new Error("An account is required.");
+  const db = await openDatabase();
+  const tx = db.transaction(["records", "meta"], "readwrite");
+  const done = completed(tx);
+  try {
+    const records = tx.objectStore("records"), meta = tx.objectStore("meta");
+    const rows = await request(records.index("space").getAll(space)) as StoredRecord[];
+    for (const row of rows) records.delete(row.key);
+    const keys = await request(meta.getAllKeys());
+    for (const key of keys) if (typeof key === "string" && key.startsWith(`${space}|`)) meta.delete(key);
+    meta.put({ key: metaKey(space, "account-deleted"), value: true });
+    const active = await request(meta.get("active-space")) as Meta | undefined;
+    if (active?.value === space) meta.put({ key: "active-space", value: GUEST_SPACE });
+    await done;
+    notify(space, "account-deleted");
+  } catch (error) { try { tx.abort(); } catch {} await done.catch(() => undefined); throw error; }
 }

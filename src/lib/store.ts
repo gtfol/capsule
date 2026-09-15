@@ -57,6 +57,7 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
           if (!subscribed) {
             subscribed = true;
             subscribeToLocalChanges((changedSpace, source) => {
+              if (source === "account-deleted" && get().space === changedSpace) { void get().switchSpace(GUEST_SPACE); return; }
               if (source === "reset" && get().space === changedSpace) set({ libraryGeneration: get().libraryGeneration + 1 });
               if (get().space === changedSpace) void get().reload();
             });
