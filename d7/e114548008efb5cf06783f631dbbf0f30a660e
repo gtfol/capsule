@@ -1,0 +1,49 @@
+tests/analytics.test.ts
+  s_0521f8d73d6032::t_be3cc328b6aa70 24,38-56
+  s_0521f8d73d6032::t_8e3c6a045f3f97 57-58
+src/lib/analytics.ts
+  s_0521f8d73d6032::t_be3cc328b6aa70 61,63-71,76,78-80,82-86,88-95,97
+tests/request-limit-postgres.test.ts
+  s_0521f8d73d6032::t_be3cc328b6aa70 1-29
+public/social-preview.svg
+  s_0521f8d73d6032::t_dcb0ff66d2caf9 1-24
+db/migrations/20260915_add_request_limits.sql
+  s_0521f8d73d6032::t_c85294ba90c7dd 1-23
+tests/product.test.ts
+  s_0521f8d73d6032::t_92b5999a374170 8-16
+src/lib/server/request-limit.ts
+  s_0521f8d73d6032::t_c85294ba90c7dd 1-39,41-86
+  s_0521f8d73d6032::t_92b5999a374170 40
+tests/request-limit.test.ts
+  s_0521f8d73d6032::t_92b5999a374170 1-61
+src/app/layout.tsx
+  s_0521f8d73d6032::t_dcb0ff66d2caf9 8-15
+README.md
+  s_0521f8d73d6032::t_bdee606baeda00 126-137
+db/schema.sql
+  s_0521f8d73d6032::t_d2fe6c0a86afc1 143-159
+src/app/api/image/route.ts
+  s_0521f8d73d6032::t_21813d740ffe99 1,9-10
+src/app/api/import/route.ts
+  s_0521f8d73d6032::t_3b4e223f53988d 1,10-11
+src/app/api/price/route.ts
+  s_0521f8d73d6032::t_a078b12c6f7f17 1,36-37
+src/lib/server/product.ts
+  s_0521f8d73d6032::t_d1fc2753a1f58c 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d7e114548008efb5cf06783f631dbbf0f30a660e",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
