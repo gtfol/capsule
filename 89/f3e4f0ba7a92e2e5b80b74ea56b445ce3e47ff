@@ -1,0 +1,41 @@
+.env.example
+  s_0521f8d73d6032::t_7198d9280c9669 27-29
+README.md
+  s_0521f8d73d6032::t_d6dd6e5658d64b 138-147
+src/components/outfits.tsx
+  s_0521f8d73d6032::t_a1e745a0e83d64 17-18,38,65,90
+src/components/render-key-settings.tsx
+  s_0521f8d73d6032::t_d236510dc06ef3 56-57
+src/components/settings.tsx
+  s_0521f8d73d6032::t_135a6466422c3c 1-92
+src/components/wardrobe-app.tsx
+  s_0521f8d73d6032::t_35f68c4ef69d40 4,7-8,31,36,40-41,55,76-77,80
+src/lib/db.ts
+  s_0521f8d73d6032::t_e9b4a580bba443 1,24,67,387-439
+src/lib/library-data.ts
+  s_0521f8d73d6032::t_82d5e54070cb07 1-39
+src/lib/navigation.ts
+  s_0521f8d73d6032::t_c048501ea53adc 3
+src/lib/store.ts
+  s_0521f8d73d6032::t_41ba18dfe04c32 9,49,59-60,81
+tests/library-data.test.ts
+  s_0521f8d73d6032::t_023c333f1ed7ab 1-65
+tests/navigation.test.ts
+  s_0521f8d73d6032::t_38a91c88299c18 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "89f3e4f0ba7a92e2e5b80b74ea56b445ce3e47ff",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
