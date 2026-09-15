@@ -1,0 +1,43 @@
+.env.example
+  s_0521f8d73d6032::t_7292910bddbd0c 28
+README.md
+  s_0521f8d73d6032::t_9e0eb60ca48306 141,145,147
+src/app/api/account/route.ts
+  s_0521f8d73d6032::t_fc6ab905075fb1 1-4
+src/components/render-key-settings.tsx
+  s_0521f8d73d6032::t_43d9417a408c32 22,103
+src/components/settings.tsx
+  s_0521f8d73d6032::t_d555d6ab11d140 3,5,8-10,16,23-24,53-68,71,75,77,79,81,83,85,88-90
+src/components/support-link.tsx
+  s_0521f8d73d6032::t_90b23c49d0a119 1-14
+src/components/wardrobe-app.tsx
+  s_0521f8d73d6032::t_27aa6be3d4a905 12,81
+src/lib/db.ts
+  s_0521f8d73d6032::t_c572e0201115a1 24,67,153,155,332,355,443-461
+src/lib/server/account-api.ts
+  s_0521f8d73d6032::t_9ee8c572a6f8d5 1-52
+src/lib/store.ts
+  s_0521f8d73d6032::t_d19b005d17632d 60
+src/lib/sync.ts
+  s_0521f8d73d6032::t_b803ad47996c01 95-97
+tests/account-delete-postgres.test.ts
+  s_0521f8d73d6032::t_dc24bac7c8578a 1-35
+tests/account-delete.test.ts
+  s_0521f8d73d6032::t_b5060fa303582f 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "ddd741bc2ba0e014c9206bcfab15e4b12258e3f1",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
