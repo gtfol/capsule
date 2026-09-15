@@ -6,7 +6,7 @@ import { CAPSULE_VIEWS, navigationParsers, navigationQuery } from "../src/lib/na
 const read = createLoader(navigationParsers);
 const write = createSerializer(navigationParsers);
 
-test("all four navigation views survive a URL round trip, with a clean Wardrobe default", () => {
+test("all navigation views survive a URL round trip, with a clean Wardrobe default", () => {
   for (const view of CAPSULE_VIEWS) {
     const url = write("/", navigationQuery(view));
     assert.equal(read(new URL(url, "https://capsule.example")).view, view);

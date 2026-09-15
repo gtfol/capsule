@@ -1,3 +1,4 @@
+import { libraryTombstone } from "./library-data";
 import type { Collection, Item, Outfit, SyncChange, SyncResponse, SyncRow, WardrobeRecord, WishlistItem } from "./types";
 import { assertWishlistLimits } from "./wishlist";
 import { findDuplicatePiece, pieceSourceKey, type SharedImportResult } from "./piece-identity";
@@ -20,7 +21,7 @@ interface Meta { key: string; value: unknown; }
 export interface Snapshot { items: Item[]; outfits: Outfit[]; wishlist: WishlistItem[]; referencePhoto: string | null; }
 let databasePromise: Promise<IDBDatabase> | null = null;
 let channel: BroadcastChannel | null = null;
-type ChangeSource = "local" | "remote";
+type ChangeSource = "local" | "remote" | "reset";
 const listeners = new Set<(space: string, source: ChangeSource) => void>();
 const keyFor = (space: string, collection: Collection, id: string) => `${space}|${collection}|${id}`;
 const metaKey = (space: string, name: string) => `${space}|${name}`;
@@ -63,7 +64,7 @@ export function openDatabase(): Promise<IDBDatabase> {
       if (typeof BroadcastChannel !== "undefined" && !channel) {
         channel = new BroadcastChannel("capsule-local-changes");
         channel.onmessage = ({ data }) => {
-          if (typeof data?.space === "string" && (data.source === "local" || data.source === "remote")) {
+          if (typeof data?.space === "string" && (data.source === "local" || data.source === "remote" || data.source === "reset")) {
             listeners.forEach((listener) => listener(data.space, data.source));
           }
         };
@@ -382,4 +383,57 @@ export async function applySyncResponse(space: string, sent: SyncChange[], respo
   await done;
   notify(space, "remote");
   return conflicts;
+}
+
+// Settings operations read one consistent snapshot and only touch the active space.
+export async function readLibrarySnapshot(space: string, guard: () => void): Promise<Snapshot> {
+  guard();
+  const db = await openDatabase();
+  guard();
+  const tx = db.transaction(["records", "meta"], "readonly");
+  const done = completed(tx);
+  try {
+    const rowsRequest = request(tx.objectStore("records").index("space").getAll(space)) as Promise<StoredRecord[]>;
+    const photoRequest = request(tx.objectStore("meta").get(metaKey(space, "reference-photo"))) as Promise<Meta | undefined>;
+    const activeRequest = request(tx.objectStore("meta").get("active-space")) as Promise<Meta | undefined>;
+    const [rows, photo, active] = await Promise.all([rowsRequest, photoRequest, activeRequest]);
+    await done;
+    guard();
+    if ((active?.value ?? GUEST_SPACE) !== space) throw new Error("Your active wardrobe changed. Try again.");
+    const alive = rows.filter((row) => !row.record.deletedAt);
+    return { items: alive.filter((r) => r.collection === "items").map((r) => r.record as Item),
+      wishlist: alive.filter((r) => r.collection === "wishlist").map((r) => r.record as WishlistItem),
+      outfits: alive.filter((r) => r.collection === "outfits").map((r) => r.record as Outfit),
+      referencePhoto: typeof photo?.value === "string" ? photo.value : null };
+  } catch (error) { await done.catch(() => undefined); throw error; }
+}
+
+export async function deleteLibrary(space: string, guard: () => void): Promise<void> {
+  guard();
+  const db = await openDatabase();
+  guard();
+  const tx = db.transaction(["records", "meta"], "readwrite");
+  const done = completed(tx);
+  try {
+    const meta = tx.objectStore("meta");
+    const active = await request(meta.get("active-space")) as Meta | undefined;
+    guard();
+    if ((active?.value ?? GUEST_SPACE) !== space) throw new Error("Your active wardrobe changed. Try again.");
+    const records = tx.objectStore("records");
+    const rows = await request(records.index("space").getAll(space)) as StoredRecord[];
+    guard();
+    for (const row of rows) {
+      if (space === GUEST_SPACE) records.delete(row.key);
+      else records.put({ ...row, record: libraryTombstone(row.collection, row.record), pendingToken: crypto.randomUUID() });
+    }
+    meta.delete(metaKey(space, "reference-photo"));
+    // Preserve share-management tokens and sync cursors. Deleting either could
+    // lose control of public links or pull old records back into this browser.
+    await done;
+    notify(space, "reset");
+  } catch (error) {
+    try { tx.abort(); } catch { /* Already complete. */ }
+    await done.catch(() => undefined);
+    throw error;
+  }
 }
