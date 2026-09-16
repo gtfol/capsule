@@ -9,6 +9,7 @@ import { deleteLibrary, forgetDeletedAccount, readLibrarySnapshot } from "@/lib/
 import { libraryExport } from "@/lib/library-data";
 import { listShareRecords } from "@/lib/share-client";
 import type { RenderCredential } from "@/lib/render-credential";
+import { SupportLink } from "./support-link";
 import { IntegrationSettings } from "./integration-settings";
 import { Sheet, SheetContent, SheetTitle } from "./ui/sheet";
 import { RenderKeySettings, useRenderKeyController } from "./render-key-settings";
@@ -87,7 +88,7 @@ export function Settings({ active, onClose, credential, onCredentialChange, rend
         <p className="mt-2 text-[11px] text-subtle">{account ? "Your account’s data on this device." : "Saved in this browser."}</p>
         <div className="mt-3 flex flex-col"><button className={actionClass} type="button" disabled={locked} onClick={() => void exportData()}>Export data <Download size={13} strokeWidth={1.5} /></button><button className={actionClass} type="button" disabled={locked} onClick={() => { setError(""); setConfirmationText(""); setConfirmation(true); }}>{account ? "Delete account" : "Clear browser data"} <Trash2 size={13} strokeWidth={1.5} /></button></div>
       </section>
-      <section><a className={`${actionClass} mt-2`} href="https://github.com/gtfol/capsule" target="_blank" rel="noopener noreferrer">Source code <ArrowUpRight size={13} strokeWidth={1.5} /></a></section>
+      <section><a className={`${actionClass} mt-2`} href="https://github.com/gtfol/capsule" target="_blank" rel="noopener noreferrer">Source code <ArrowUpRight size={13} strokeWidth={1.5} /></a><SupportLink className={actionClass} /></section>
     </div>
     {status && <p className="mt-5 text-[13px] text-subtle" role="status">{status}</p>}{error && !confirmation && <p className="mt-5 text-[13px]" role="alert">{error}</p>}
     <Dialog.Root open={confirmation && active} onOpenChange={(open) => { if (!busy) setConfirmation(open); }}><Dialog.Portal><Dialog.Overlay className="fixed inset-0 z-[70] bg-black/20 dark:bg-black/70" /><Dialog.Content role="alertdialog" className="fixed left-1/2 top-1/2 z-[80] w-[calc(100%_-_40px)] max-w-[390px] -translate-x-1/2 -translate-y-1/2 border border-border bg-background p-7 text-foreground outline-none" onOpenAutoFocus={(event) => { event.preventDefault(); cancel.current?.focus(); }}>
