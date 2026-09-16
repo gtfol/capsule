@@ -102,10 +102,34 @@ test("styling notes are optional, bounded, flattened, and quoted in the prompt",
   assert.equal(parseRenderInput({ ...request(), notes: "x".repeat(MAX_RENDER_NOTES_LENGTH) }).notes.length, MAX_RENDER_NOTES_LENGTH);
 });
 
-test("GPT Image 2 aliases and snapshots omit input_fidelity while older supported models keep it", async () => {
+test("default model matches the advertised status and outgoing render request", async () => {
   const previous = process.env.OPENAI_IMAGE_MODEL;
   try {
-    for (const [model, fidelity] of [["gpt-image-2", null], ["gpt-image-2-2026-04-21", null], ["gpt-image-1", "high"], ["gpt-image-1.5", "high"], ["gpt-image-1-mini", null]] as const) {
+    for (const value of [undefined, "", "   "]) {
+      if (value === undefined) delete process.env.OPENAI_IMAGE_MODEL;
+      else process.env.OPENAI_IMAGE_MODEL = value;
+      assert.equal(getRenderStatus().model, "gpt-image-2.5-sunburst");
+      await renderOutfit(parseRenderInput(request()), async (_url, options) => {
+        const form = options?.body as FormData;
+        assert.equal(form.get("model"), getRenderStatus().model);
+        assert.equal(form.get("input_fidelity"), null);
+        assert.equal(form.get("size"), "1024x1536");
+        assert.equal(form.get("quality"), "medium");
+        assert.equal(form.get("output_format"), "jpeg");
+        assert.equal(form.get("output_compression"), "85");
+        return Response.json({ data: [{ b64_json: jpeg.split(",")[1] }] });
+      });
+    }
+  } finally {
+    if (previous === undefined) delete process.env.OPENAI_IMAGE_MODEL;
+    else process.env.OPENAI_IMAGE_MODEL = previous;
+  }
+});
+
+test("model overrides preserve supported fidelity settings", async () => {
+  const previous = process.env.OPENAI_IMAGE_MODEL;
+  try {
+    for (const [model, fidelity] of [["gpt-image-2.5-sunburst", null], ["gpt-image-2.5-sunburst-2026-09-08", null], ["gpt-image-2", null], ["gpt-image-2-2026-04-21", null], ["gpt-image-1", "high"], ["gpt-image-1.5", "high"], ["gpt-image-1-mini", null]] as const) {
       process.env.OPENAI_IMAGE_MODEL = model;
       await renderOutfit(parseRenderInput(request()), async (_url, options) => {
         const form = options?.body as FormData;

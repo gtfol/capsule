@@ -30,7 +30,7 @@ export function getRenderStatus() {
   return {
     enabled: process.env.OUTFIT_RENDERING_ENABLED !== "false",
     provider: "openai",
-    model: process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-2",
+    model: process.env.OPENAI_IMAGE_MODEL?.trim() || "gpt-image-2.5-sunburst",
     requiresApiKey: true,
   };
 }
