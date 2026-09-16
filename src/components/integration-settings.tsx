@@ -22,7 +22,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
   const [tokens,setTokens] = useState<Token[]>([]);
   const [ready,setReady] = useState(false);
   const [adding,setAdding] = useState(false);
-  const [name,setName] = useState("Instinct");
+  const [name,setName] = useState("");
   const [scopes,setScopes] = useState<Scope[]>(choices.map(c=>c.scope));
   const [secret,setSecret] = useState("");
   const [copied,setCopied] = useState(false);
@@ -47,7 +47,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
       const data = await res.json();
       if (!res.ok || data.userId !== userId) throw new Error(data.error?.message ?? "Could not update this integration.");
       if (id) {setRevoking(null);setSecret("");}
-      else {setSecret(data.token);setCopied(false);setAdding(false);}
+      else {setSecret(data.token);setCopied(false);setAdding(false);setName("");}
       setTokens(await load());setReady(true);
     } catch(cause) {setError(cause instanceof Error ? cause.message : "Could not update this integration.");}
     finally {setBusy(false);}
