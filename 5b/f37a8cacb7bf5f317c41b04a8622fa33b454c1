@@ -1,0 +1,50 @@
+src/lib/server/integration-token-api.ts
+  s_0521f8d73d6032::t_c1aaaa1ce3402c 4,6,25
+src/lib/server/integration-api.ts
+  s_0521f8d73d6032::t_1f13a2717fdcdf 6-8,10,18-19,24-26,28,32
+  s_0521f8d73d6032::t_2f44a2888117f3 42,44,101,104,110-113,117,144-166,169,172,186-194
+src/lib/server/integration-photos.ts
+  s_0521f8d73d6032::t_1f13a2717fdcdf 1-42
+tests/integration-photos.test.ts
+  s_0521f8d73d6032::t_1876b45628b783 1-28
+db/migrations/20260916_integration_token_expiry.sql
+  s_0521f8d73d6032::t_c1aaaa1ce3402c 1-4
+src/lib/server/integration-tokens.ts
+  s_0521f8d73d6032::t_c1aaaa1ce3402c 6-7,20,26-27,33,36-37
+README.md
+  s_0521f8d73d6032::t_62202c4c9fde9d 153-159
+db/schema.sql
+  s_0521f8d73d6032::t_60caf90f4d8f2b 169
+docs/integrations.md
+  s_0521f8d73d6032::t_bbd4f8b6a324e4 7-8,15-16,20-21,29-30,44-46,50,102-105,109,149-221,258-260,272
+package-lock.json
+  s_0521f8d73d6032::t_20daba5f66605a 28
+package.json
+  s_0521f8d73d6032::t_3dd72de19be817 31
+src/app/api/v1/wardrobe/[id]/route.ts
+  s_0521f8d73d6032::t_9ae2bc04847f86 1-4
+src/app/api/v1/wishlist/[id]/route.ts
+  s_0521f8d73d6032::t_0b28c073ad106d 1-4
+src/components/integration-settings.tsx
+  s_0521f8d73d6032::t_81f9e8587c3888 11-12,16,26,47,58,69
+src/lib/server/integration-routes.ts
+  s_0521f8d73d6032::t_50e0e90f8a786a 8
+tests/integrations.test.ts
+  s_0521f8d73d6032::t_3475bc18ee3d87 97-192
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "5bf37a8cacb7bf5f317c41b04a8622fa33b454c1",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
