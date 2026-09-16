@@ -145,3 +145,15 @@ Export data downloads a versioned JSON file containing the active library's ward
 Guests can clear their browser data with confirmation. Signed-in users can delete their account by typing DELETE. The server deletes the user and cascades to sessions, OAuth accounts, synced content, and encrypted rendering keys. Share links managed by the current browser are revoked in the same transaction; links created on other browsers are not associated with an account and must be removed there. This browser’s account cache is erased, and late sync responses cannot restore it. Offline copies on other devices and separate guest data remain. Share management stays in the Share popover. No database migration is needed.
 
 Set `NEXT_PUBLIC_SUPPORT_URL` to a one-time `https://buy.stripe.com/...` Payment Link to show a Support Capsule heart icon in the bottom navigation. It opens Stripe's hosted checkout; no payment SDK, credentials, subscriptions, or webhooks are used. The link is hidden when unconfigured. Verify the payment link itself is configured for one-time payments before publishing it.
+
+### Integrations
+
+Settings → Integrations creates scoped, revocable bearer tokens for shopping tools.
+The [REST API guide](docs/integrations.md) covers adding wishlist/wardrobe pieces,
+confirmed-purchase moves, lookup, idempotency, and sync status. Apply
+`db/migrations/20260915_add_integrations.sql` before deploying this feature. No new
+secrets or environment variables are needed. Instinct's actual connection path
+remains dependent on its supported authenticated integration mechanism.
+
+Integration database tests use a disposable local `capsule_integrations_test`
+database initialized with `db/schema.sql` and `TEST_INTEGRATION_DATABASE_URL`.
