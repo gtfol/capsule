@@ -1,0 +1,44 @@
+src/lib/server/mcp-http.ts
+  s_0521f8d73d6032::t_4365a04cc21627 1-40
+docs/integrations.md
+  s_0521f8d73d6032::t_af3c8b70714d3b 10,283-284
+README.md
+  s_0521f8d73d6032::t_af3c8b70714d3b 159-166
+docs/mcp.md
+  s_0521f8d73d6032::t_af3c8b70714d3b 1-103
+tests/mcp-tools.test.ts
+  s_0521f8d73d6032::t_d8c2b93d973505 116
+  s_0521f8d73d6032::t_13363f193f66cb 1-115,117-154
+.env.example
+  s_0521f8d73d6032::t_4365a04cc21627 30-36
+tests/mcp-database.test.ts
+  s_0521f8d73d6032::t_d8c2b93d973505 1-47
+src/lib/server/mcp-tools.ts
+  s_0521f8d73d6032::t_6afbb15b4d35dc 1-134
+src/app/api/mcp/route.ts
+  s_0521f8d73d6032::t_4365a04cc21627 1-15
+package-lock.json
+  s_0521f8d73d6032::t_06175a7c22cd6a 12,1095-1106,1749-1810,3276-3288,3338-3376,3772-3824,3896-3904,4095-4116,4124-4141,4156-4172,4338-4346,4456-4461,4475-4483,4748-4753,5205-5296,5356-5371,5413-5433,5491-5508,5826-5834,5866-5885,5934-5939,5954-5971,6214-6219,6365,6458-6463,6901-6925,6950-6974,7000,7041-7069,7323-7343,7513-7521,7545-7554,7662-7670,7844-7860,7871-7886,7914-7957,8094-8102,8178-8193,8300-8325,8341-8359,8412-8417,8487-8490,8493-8494,8506-8509,8512,8585-8593,8875-8883,8957-8987,9124-9132,9241-9249,9393-9398,9436-9444
+package.json
+  s_0521f8d73d6032::t_2fde9855429265 15
+src/lib/integration-input.ts
+  s_0521f8d73d6032::t_4157e9848cd13e 1-21
+src/lib/server/integration-api.ts
+  s_0521f8d73d6032::t_d5a69b860ec367 4-5,7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "3b759045d92bdce1818377f3536f465665536ec9",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
