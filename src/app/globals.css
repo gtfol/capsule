@@ -126,9 +126,9 @@ button:focus-visible, a:focus-visible { outline: 1px solid var(--strong-text); o
 /* Text inputs avoid password-save prompts. Hide text before enabling the mask
    so older browsers never expose a key when this nonstandard property is absent. */
 .render-key-input { color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--ink); forced-color-adjust: none; }
-.render-key-input::placeholder { -webkit-text-fill-color: var(--placeholder-text); }
+.render-key-input::placeholder { font-size: 13px; -webkit-text-fill-color: var(--placeholder-text); }
 .render-key-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: var(--line); }
-.render-key-fallback { position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; color: var(--ink); pointer-events: none; white-space: nowrap; }
+.render-key-fallback { font-size: 13px; position: absolute; inset: 0; display: flex; align-items: center; overflow: hidden; color: var(--ink); pointer-events: none; white-space: nowrap; }
 @supports (-webkit-text-security: disc) {
   .render-key-input { color: var(--ink); -webkit-text-fill-color: var(--ink); -webkit-text-security: disc; }
   .render-key-input::selection { color: var(--ink); -webkit-text-fill-color: var(--ink); }

@@ -11,7 +11,7 @@ HTTP integration path; this API does not itself install or connect an Instinct a
 ## Connect
 
 1. Sign in through **Sync** in Capsule.
-2. Open **Settings → Integrations → Connect a tool**. Name it “Instinct”.
+2. Open **Settings → Integrations → Connect an AI agent**. Name it “Instinct”.
 3. Choose permissions, create the token, and copy it immediately. It is shown once.
 4. Put the token in your tool's secret/credential store, not a URL, prompt, public
    configuration, repository, or browser local storage.

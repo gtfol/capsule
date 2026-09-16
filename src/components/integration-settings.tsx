@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Copy, Trash2, X } from "lucide-react";
+import { SyncPopover } from "./sync-popover";
 import { Button } from "./ui/button";
 import { IconAction } from "./ui/icon-action";
 import { InfoTooltip } from "./ui/info-tooltip";
@@ -12,8 +13,8 @@ const choices: {scope:Scope;label:string}[] = [{scope:"items:read",label:"Look u
 
 export function IntegrationSettings({userId,active,disabled}: {userId:string|null;active:boolean;disabled:boolean}) {
   return <section>
-    <div className="flex items-center gap-1"><h2 className="text-[13px]">Integrations</h2><InfoTooltip active={active} label="About integrations">Give a trusted tool access to your synced wardrobe. Tokens expire after 90 days and can be revoked here. Moving a wishlist piece to your wardrobe requires both write permissions. Unsynced browser data is not accessible.</InfoTooltip></div>
-    {userId ? active && <TokenControls key={userId} userId={userId} disabled={disabled} /> : <p className="mt-2 text-[11px] text-subtle">Sign in through Sync to connect a tool.</p>}
+    <div className="flex items-center gap-1"><h2 className="text-[13px]">Integrations</h2><InfoTooltip active={active} label="About integrations">Connect an AI agent to your synced items. Tokens expire in 90 days; revoke anytime.</InfoTooltip></div>
+    {userId ? active && <TokenControls key={userId} userId={userId} disabled={disabled} /> : active && <div className="mt-2"><SyncPopover appearance="text" disabled={disabled} /></div>}
   </section>;
 }
 function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
@@ -66,7 +67,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
       <fieldset disabled={busy||disabled} className="space-y-2"><legend className="mb-2 text-[11px] text-subtle">Permissions</legend>{choices.map(choice=><label key={choice.scope} className="flex items-center gap-2 text-[12px]"><input type="checkbox" className="accent-foreground" checked={scopes.includes(choice.scope)} onChange={event=>setScopes(current=>event.target.checked ? [...current,choice.scope] : current.filter(s=>s!==choice.scope))} />{choice.label}</label>)}</fieldset>
       <p className="text-[11px] text-subtle">Expires after 90 days.</p>
       <div className="flex items-center gap-4"><Button type="submit" disabled={busy||disabled||!scopes.length||!name.trim()}>{busy ? "Creating…" : "Create token"}</Button><button type="button" className="text-muted-foreground" disabled={busy} onClick={()=>setAdding(false)}>Cancel</button></div>
-    </form> : <button type="button" className="min-h-10 text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={disabled||busy||!ready} onClick={()=>{setSecret("");setAdding(true);}}>Connect a tool</button>}
+    </form> : <button type="button" className="min-h-10 text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={disabled||busy||!ready} onClick={()=>{setSecret("");setAdding(true);}}>Connect an AI agent</button>}
     <a className="mt-2 block text-[11px] text-subtle hover:text-foreground" href="https://github.com/gtfol/capsule/blob/main/docs/integrations.md" target="_blank" rel="noopener noreferrer">API documentation</a>
     {error && <p role="alert" className="mt-3 text-[12px]">{error}</p>}
   </div>;
