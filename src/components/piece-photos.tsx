@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ImagePlus, Images, Loader2, ScanLine, Undo2 } from "lucide-react";
+import { ArrowLeftRight, Check, ImagePlus, Images, Loader2, ScanLine, Undo2 } from "lucide-react";
 import { Button } from "./ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { imageSource, prepareUploadedImage } from "@/lib/images";
 import { removeBackground } from "@/lib/background-removal";
-import { assignPhotoSlot, type PhotoSide } from "@/lib/photo-slots";
+import { assignPhotoSlot, photoSideForId, selectPhotoSlot, type PhotoSide } from "@/lib/photo-slots";
 import { chosenImage, initialPhotos, savePhotoState, type PhotoChoice, type PieceImages } from "@/lib/photo-editor";
 
 type BackgroundProgress = { stage: "download" | "processing"; progress?: number };
@@ -41,7 +42,17 @@ export function usePiecePhotos({ item, images = [], uploadedImages = [], purchas
   function selectImage(id: string) {
     if (imageControlsLocked) return;
     setBackgroundError("");
-    setPhotos((current) => assignPhotoSlot(current, imageSide, id));
+    const selection = selectPhotoSlot(photos, imageSide, id);
+    setPhotos(selection.photos);
+    setImageSide(selection.side);
+  }
+  function assignSelectedImage(side: PhotoSide) {
+    if (imageControlsLocked || !selectedId) return;
+    const updated = assignPhotoSlot(photos, side, selectedId);
+    if (updated[`${side}Id`] !== selectedId) return;
+    setPhotos(updated);
+    setImageSide(side);
+    setBackgroundError("");
   }
   function cancelBackground() {
     backgroundRequest.current?.abort();
@@ -121,7 +132,7 @@ export function usePiecePhotos({ item, images = [], uploadedImages = [], purchas
     photos, setPhotos, imageSide, setImageSide, selectedId, selectedPhoto, previewSource,
     photoInput, photoWork, photoError, photoStatus, backgroundProgress, backgroundError,
     setBackgroundError, review, setReview, validPurchaseUrl, busy, imageControlsLocked,
-    selectImage, addPhotos, fetchProductPhotos, createCutout, finishReview, cancelBackground, cancelPhotoWork,
+    selectImage, assignSelectedImage, addPhotos, fetchProductPhotos, createCutout, finishReview, cancelBackground, cancelPhotoWork,
     dirty, working, locked: imageControlsLocked,
     cancel: () => { cancelBackground(); cancelPhotoWork(); },
     save: () => savePhotoState(photos),
@@ -129,11 +140,12 @@ export function usePiecePhotos({ item, images = [], uploadedImages = [], purchas
 }
 
 export function PiecePhotos({ editor, name }: { editor: ReturnType<typeof usePiecePhotos>; name: string }) {
+  const [assignmentOpen, setAssignmentOpen] = useState(false);
   const {
     photos, setPhotos, imageSide, setImageSide, selectedId, selectedPhoto, previewSource,
     photoInput, photoWork, photoError, photoStatus, backgroundProgress, backgroundError,
     setBackgroundError, review, setReview, validPurchaseUrl, busy, imageControlsLocked,
-    selectImage, addPhotos, fetchProductPhotos, createCutout, finishReview, cancelBackground, cancelPhotoWork,
+    selectImage, assignSelectedImage, addPhotos, fetchProductPhotos, createCutout, finishReview, cancelBackground, cancelPhotoWork,
   } = editor;
   return <>
     {photos.choices.length > 1 && <div className="mt-7 flex items-center justify-between gap-4">
@@ -149,13 +161,19 @@ export function PiecePhotos({ editor, name }: { editor: ReturnType<typeof usePie
       {/* eslint-disable-next-line @next/next/no-img-element */}
       {previewSource ? <img src={previewSource} alt={`${name || "Product image"}, ${imageSide}`} className="h-full w-full object-contain" /> : <p className="text-[12px] text-subtle">Choose a {imageSide} image{imageSide === "front" ? "." : " below. Optional."}</p>}
     </div>
-    {photos.choices.length > 1 && <div className="mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product images">{photos.choices.map((choice, i) => <button type="button" key={choice.id} aria-label={`Use image ${i + 1} as ${imageSide}`} aria-pressed={selectedId === choice.id} disabled={imageControlsLocked || (imageSide !== "front" && choice.id === photos.frontId && !selectedId)} className={`relative h-14 w-12 shrink-0 border-b disabled:opacity-40 ${selectedId === choice.id ? "border-foreground" : "border-transparent"}`} onClick={() => selectImage(choice.id)}>
+    {photos.choices.length > 1 && <div className="mt-4 flex gap-3 overflow-x-auto pb-2" aria-label="Product images">{photos.choices.map((choice, i) => <button type="button" key={choice.id} aria-label={photoSideForId(photos, choice.id) ? `View ${photoSideForId(photos, choice.id)} image` : `Use image ${i + 1} as ${imageSide}`} aria-pressed={selectedId === choice.id} disabled={imageControlsLocked} className={`relative h-14 w-12 shrink-0 border-b disabled:opacity-40 ${selectedId === choice.id ? "border-foreground" : "border-transparent"}`} onClick={() => selectImage(choice.id)}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={imageSource(chosenImage(choice))} alt="" className="h-full w-full object-contain" loading="lazy" />
       {selectedId === choice.id && <Check size={10} className="absolute bottom-0 right-0 bg-background" />}
     </button>)}</div>}
     <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple hidden aria-label="Add piece photos" disabled={imageControlsLocked} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ""; void addPhotos(files); }} />
     {!photoWork && !backgroundProgress && !review && <div className="photo-toolbar" role="group" aria-label="Photo tools">
+      {selectedPhoto && photos.choices.length > 1 && <Popover open={assignmentOpen} onOpenChange={setAssignmentOpen}>
+        <PopoverTrigger asChild><button type="button" className="photo-tool" aria-label="Assign photo view" disabled={imageControlsLocked}><ArrowLeftRight size={14} strokeWidth={1.4} aria-hidden="true" /><span className="photo-tool-label" aria-hidden="true">Assign photo view</span></button></PopoverTrigger>
+        <PopoverContent align="start" className="w-36 p-2" aria-label="Assign photo view">
+          {(["front", "back", "side"] as const).map((side) => <button key={side} type="button" className="block w-full px-2 py-2 text-left text-[12px] hover:bg-muted disabled:opacity-40" disabled={imageControlsLocked || side === imageSide || (selectedId === photos.frontId && !photos[`${side}Id`])} onClick={() => { assignSelectedImage(side); setAssignmentOpen(false); }}>Use as {side}</button>)}
+        </PopoverContent>
+      </Popover>}
       <button type="button" className="photo-tool" aria-label="Add photos" disabled={imageControlsLocked} onClick={() => photoInput.current?.click()}><ImagePlus size={14} strokeWidth={1.4} aria-hidden="true" /><span className="photo-tool-label" aria-hidden="true">Add photos</span></button>
       {validPurchaseUrl && <button type="button" className="photo-tool" aria-label="Fetch product photos" disabled={imageControlsLocked} onClick={() => void fetchProductPhotos()}><Images size={14} strokeWidth={1.4} aria-hidden="true" /><span className="photo-tool-label" aria-hidden="true">Fetch product photos</span></button>}
       {selectedPhoto && <button type="button" className="photo-tool" aria-label={selectedPhoto.cutout ? selectedPhoto.useCutout ? "Revert to original" : "Use cutout" : "Remove background"} disabled={busy} onClick={() => { if (selectedPhoto.cutout) setPhotos((current) => ({ ...current, choices: current.choices.map((choice) => choice.id === selectedPhoto.id ? { ...choice, useCutout: !choice.useCutout } : choice) })); else void createCutout(); }}>{selectedPhoto.useCutout ? <Undo2 size={14} strokeWidth={1.4} aria-hidden="true" /> : <ScanLine size={14} strokeWidth={1.4} aria-hidden="true" />}<span className="photo-tool-label" aria-hidden="true">{selectedPhoto.cutout ? selectedPhoto.useCutout ? "Revert to original" : "Use cutout" : "Remove background"}</span></button>}
