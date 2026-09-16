@@ -4,19 +4,21 @@ Base URL: `https://capsule.gtfol.dev/api/v1`
 
 Use this REST API to add shopping finds to a wishlist, record confirmed purchases,
 add owned pieces directly, and look up duplicates. It writes to the signed-in
-owner's cloud library. Capsule downloads those changes through its existing sync.
-Local-only guest libraries are not accessible. Instinct still needs an available
+owner's synced items. Capsule downloads those changes through its existing sync.
+Local-only guest items are not accessible. Instinct still needs an available
 HTTP integration path; this API does not itself install or connect an Instinct app.
 
 ## Connect
 
 1. Sign in through **Sync** in Capsule.
 2. Open **Settings → Integrations → Connect an AI agent** and enter a name.
-3. Choose permissions, create the token, and copy it immediately. It is shown once.
+3. Choose permissions and an expiry: **90 days** (default), **1 year**, or **Never**.
+   Create the token and copy it immediately. It is shown once.
 4. Put the token in your tool's secret/credential store, not a URL, prompt, public
    configuration, repository, or browser local storage.
 
-Send `Authorization: Bearer <token>` on every request. Tokens expire after 90 days.
+Send `Authorization: Bearer <token>` on every request. Existing token expiries
+are unchanged; create a replacement token to choose a different expiry.
 Revoke them in Settings at any time. Capsule stores only their SHA-256 hashes.
 Deleting the Capsule account also deletes all its integration tokens and receipts.
 No account password, OpenAI key, OAuth session cookie, or Supabase key is needed.
@@ -24,8 +26,8 @@ No account password, OpenAI key, OAuth session cookie, or Supabase key is needed
 | Permission | Allows |
 | --- | --- |
 | `items:read` | Read item summaries for lookup and duplicate checking |
-| `wishlist:write` | Create wishlist items, including front/back/side image URLs |
-| `wardrobe:write` | Create wardrobe items, including front/back/side image URLs |
+| `wishlist:write` | Create and edit wishlist items, including front/back/side photos |
+| `wardrobe:write` | Create and edit wardrobe items, including front/back/side photos |
 | Both write permissions | Move a wishlist item to the wardrobe |
 
 Tokens cannot delete pieces, render outfits, read model photos/API keys, manage
@@ -39,14 +41,13 @@ controls you do: upload photos, choose front/back/side images, and remove
 backgrounds. It does not need an integration token. Token permissions apply only
 to REST API requests; they do not limit access through a signed-in browser.
 
-The REST API accepts `imageUrl`, `backImageUrl`, and `sideImageUrl` when creating
-pieces under the corresponding write permission. It does not currently update
-photos on existing pieces, accept image uploads, or remove backgrounds. Background
-removal runs on-device in Capsule's browser interface.
+The REST API supports photo URLs and direct uploads when creating or editing
+pieces under the corresponding write permission. Background removal remains
+on-device in Capsule's browser interface; there is no background-removal endpoint.
 
 ## Safe retries
 
-Every POST requires `Content-Type: application/json` and an `Idempotency-Key`:
+Every POST and PATCH requires `Content-Type: application/json` and an `Idempotency-Key`:
 8–200 characters from letters, digits, `.`, `_`, `:`, `-`. Generate a stable UUID
 for each user-approved action; **reuse it for every retry of that action**.
 A committed request replays the original response without fetching or writing
@@ -98,13 +99,14 @@ send `fetch: false` and a name with whatever details are known:
 ```
 
 Supported fields: `url`, `fetch`, `name`, `brand`, `description`, `category`, `size`,
-`color`, `price`, `currency`, `imageUrl`, `backImageUrl`, `sideImageUrl`.
-Unknown fields are rejected. Image fields accept HTTP(S) URLs, not uploaded/base64
-images. `price` is a nonnegative decimal string without a currency symbol; currency
+`color`, `price`, `currency`, `imageUrl`, `backImageUrl`, `sideImageUrl`,
+`imageData`, `backImageData`, `sideImageData`.
+Unknown fields are rejected. URL fields accept HTTP(S) URLs. Photo uploads use
+base64 data URLs in the matching `*ImageData` fields (front uses `imageData`). `price` is a nonnegative decimal string without a currency symbol; currency
 is a three-letter uppercase code or empty if unknown. Categories are `tops`,
 `jackets`, `bottoms`, `accessories`, `shoes`. An unspecified category defaults to
 `tops` when no product extraction supplies one. Names are required when `fetch`
-is false or no URL is provided. Bodies are limited to 100 KB.
+is false or no URL is provided. Bodies are limited to 3,800,000 bytes, including uploaded images.
 
 Wishlist creation records the initial price in history when available. When a
 page was fetched, the historical quote is the extracted quote, even if the tool
@@ -144,6 +146,79 @@ recover the successful receipt. A previously deleted wardrobe ID is not revived.
 Call this endpoint only after the user confirms a purchase; a shopping suggestion
 belongs in the wishlist.
 
+## Edit a piece
+
+`PATCH /wishlist/{id}` requires `wishlist:write`.
+`PATCH /wardrobe/{id}` requires `wardrobe:write`.
+
+Look up the piece to obtain its `revision`, then send it as `expectedRevision`
+along with only the fields to change. Omitted fields and photos stay untouched.
+The fields above are supported except `fetch`: editing never fetches a page.
+IDs, timestamps, ratings, and price history cannot be overwritten by an agent.
+
+```json
+{
+  "expectedRevision": 125,
+  "size": "M",
+  "backImageUrl": "https://shop.example/images/jacket-back.jpg",
+  "sideImageUrl": "https://shop.example/images/jacket-side.jpg"
+}
+```
+
+A stale revision returns `409 REVISION_CONFLICT` without saving. Look up the item
+again and reconcile the changes before retrying with a **new** idempotency key.
+Retrying an already-successful request with its original key returns its receipt,
+even if its original revision is now stale. Removed pieces cannot be restored by
+PATCH. Exact product matching on creation still returns the existing piece;
+use PATCH explicitly to update that piece's photos or details.
+
+Wishlist price edits update the purchase link's current snapshot and recompute
+the cheapest source; historical quotes and ratings stay intact. A new purchase
+URL becomes another source with no claimed fetch time. Price edits do not fabricate
+new fetched history entries or fetch a page. Existing sources remain when clearing
+the purchase URL, so their cheapest price can still determine the displayed price.
+
+## Upload photos
+
+POST creation and PATCH editing accept JPEG, PNG, or WebP files as base64 data
+URLs: `imageData` (front), `backImageData`, and `sideImageData`. No separate asset
+or blob-storage setup is needed; photos are stored on the item and delivered by
+normal account sync. This is a JSON upload, not multipart/form-data.
+
+For each view, provide **either** its URL field **or** its data field, never both.
+Replacing a view clears its previous URL/data counterpart. Send an empty string
+in either field to remove that view. Other views are preserved.
+
+Each original file must be at most 1,500,000 bytes and 25 megapixels. The combined
+uploaded data URLs must fit within 2,800,000 characters. Resize/compress larger
+photos before upload. Capsule validates and re-encodes uploads as WebP, strips
+metadata, preserves transparency, and scales to at most 1600 pixels on either
+edge. The resulting item must fit the same combined photo limit as browser sync,
+including unchanged existing views; oversized updates fail without partial saves.
+
+Example: build a PATCH body from a local file, then send it with your bearer token
+and a unique `Idempotency-Key`:
+
+```python
+import base64
+import json
+from pathlib import Path
+
+photo = base64.b64encode(Path("jacket-front.jpg").read_bytes()).decode("ascii")
+Path("update.json").write_text(json.dumps({
+    "expectedRevision": 125,  # From GET /items for this piece.
+    "imageData": "data:image/jpeg;base64," + photo,
+}))
+```
+
+```sh
+curl --request PATCH "https://capsule.gtfol.dev/api/v1/wardrobe/ITEM_ID" \
+  --header "Authorization: Bearer $CAPSULE_TOKEN" \
+  --header "Content-Type: application/json" \
+  --header "Idempotency-Key: replace-front-unique-action-id" \
+  --data-binary @update.json
+```
+
 ## Response and sync status
 
 Successful writes return HTTP 200:
@@ -180,7 +255,9 @@ GET /items?collection=wardrobe&url=https%3A%2F%2Fshop.example%2Fproducts%2Fjacke
 Response: `{ "items": [...], "cursor": 125, "hasMore": false,
 "sync": { "status": "cloud_snapshot" } }`. Summaries include `id`, `collection`,
 `revision`, `name`, `brand`, `category`, `size`, `color`, `url`, `imageUrl`, `price`,
-`currency`. Deleted items, outfits, embedded photos and history are excluded.
+`currency`, `backImageUrl`, `sideImageUrl`, and `photos: {front, back, side}`
+booleans indicating which views exist, including uploaded photos. Deleted items,
+outfits, embedded image bytes and history are excluded.
 For URL searches, Capsule scans 100 live records per page: **continue while
 `hasMore` is true, even if a page's `items` is empty**. Results are only this token's
 owner's cloud data; unsynced edits on other devices may not appear yet.
@@ -192,7 +269,7 @@ Errors have `{ "error": { "code": "…", "message": "…" } }` shape.
 - 400: invalid request/body/key
 - 401 `UNAUTHORIZED`: missing, invalid, expired or revoked token
 - 403 `INSUFFICIENT_SCOPE`: missing permission
-- 404 `NOT_FOUND`: missing/deleted wishlist item
+- 404 `NOT_FOUND`: missing/deleted piece
 - 409: idempotency, revision, or previously removed item conflict
 - 415: non-JSON write
 - 429 `RATE_LIMITED`: wait before retrying

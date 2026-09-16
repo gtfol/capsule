@@ -150,8 +150,13 @@ Set `NEXT_PUBLIC_SUPPORT_URL` to a one-time `https://buy.stripe.com/...` Payment
 
 Settings → Integrations creates scoped, revocable bearer tokens for shopping tools.
 The [REST API guide](docs/integrations.md) covers adding wishlist/wardrobe pieces,
-confirmed-purchase moves, lookup, idempotency, and sync status. Apply
-`db/migrations/20260915_add_integrations.sql` before deploying this feature. No new
+editing pieces and uploading front/back/side photos, confirmed-purchase moves,
+lookup, idempotency, and sync status. Tokens offer 90-day (default), one-year,
+or no expiry. Apply
+`db/migrations/20260915_add_integrations.sql` and
+`db/migrations/20260916_integration_token_expiry.sql` before deploying this feature.
+The expiry migration preserves existing tokens and allows null for no expiry.
+No new
 secrets or environment variables are needed. Instinct's actual connection path
 remains dependent on its supported authenticated integration mechanism.
 

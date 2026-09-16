@@ -8,12 +8,12 @@ import { IconAction } from "./ui/icon-action";
 import { InfoTooltip } from "./ui/info-tooltip";
 
 type Scope = "items:read" | "wishlist:write" | "wardrobe:write";
-type Token = {id:string;name:string;prefix:string;scopes:Scope[];expires_at:string;last_used_at:string|null};
-const choices: {scope:Scope;label:string}[] = [{scope:"items:read",label:"Look up pieces"},{scope:"wishlist:write",label:"Add to wishlist"},{scope:"wardrobe:write",label:"Add to wardrobe"}];
+type Token = {id:string;name:string;prefix:string;scopes:Scope[];expires_at:string|null;last_used_at:string|null};
+const choices: {scope:Scope;label:string}[] = [{scope:"items:read",label:"Look up pieces"},{scope:"wishlist:write",label:"Add and edit wishlist"},{scope:"wardrobe:write",label:"Add and edit wardrobe"}];
 
 export function IntegrationSettings({userId,active,disabled}: {userId:string|null;active:boolean;disabled:boolean}) {
   return <section>
-    <div className="flex items-center gap-1"><h2 className="text-[13px]">Integrations</h2><InfoTooltip active={active} label="About integrations">Connect an AI agent to your synced items. Tokens expire in 90 days; revoke anytime.</InfoTooltip></div>
+    <div className="flex items-center gap-1"><h2 className="text-[13px]">Integrations</h2><InfoTooltip active={active} label="About integrations">Connect an AI agent to your synced items. Choose an expiry; revoke access anytime.</InfoTooltip></div>
     {userId ? active && <TokenControls key={userId} userId={userId} disabled={disabled} /> : active && <div className="mt-2"><SyncPopover appearance="text" disabled={disabled} /></div>}
   </section>;
 }
@@ -23,6 +23,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
   const [ready,setReady] = useState(false);
   const [adding,setAdding] = useState(false);
   const [name,setName] = useState("");
+  const [expires,setExpires] = useState<"90d"|"1y"|"never">("90d");
   const [scopes,setScopes] = useState<Scope[]>(choices.map(c=>c.scope));
   const [secret,setSecret] = useState("");
   const [copied,setCopied] = useState(false);
@@ -43,7 +44,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
   async function mutate(id?:string) {
     setBusy(true); setError("");
     try {
-      const res = await fetch("/api/integrations/tokens",{method:id ? "DELETE" : "POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({expectedUserId:userId,...(id ? {id} : {name,scopes})})});
+      const res = await fetch("/api/integrations/tokens",{method:id ? "DELETE" : "POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({expectedUserId:userId,...(id ? {id} : {name,scopes,expires})})});
       const data = await res.json();
       if (!res.ok || data.userId !== userId) throw new Error(data.error?.message ?? "Could not update this integration.");
       if (id) {setRevoking(null);setSecret("");}
@@ -54,7 +55,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
   }
   return <div className="mt-3 text-[13px]">
     {tokens.map(token=><div key={token.id} className="mb-3 flex items-start justify-between gap-4">
-      <div><p>{token.name}</p><p className="mt-1 text-[11px] text-subtle">{Date.parse(token.expires_at)<now ? "Expired" : `Expires ${new Date(token.expires_at).toLocaleDateString()}`} · {token.scopes.map(scope=>choices.find(choice=>choice.scope===scope)?.label).join(", ")}</p></div>
+      <div><p>{token.name}</p><p className="mt-1 text-[11px] text-subtle">{!token.expires_at ? "Never expires" : Date.parse(token.expires_at)<now ? "Expired" : `Expires ${new Date(token.expires_at).toLocaleDateString()}`} · {token.scopes.map(scope=>choices.find(choice=>choice.scope===scope)?.label).join(", ")}</p></div>
       {revoking===token.id ? <div className="flex items-center gap-2"><button type="button" className="text-[11px]" disabled={busy||disabled} onClick={()=>void mutate(token.id)}>Revoke access</button><IconAction icon={X} label="Cancel revocation" disabled={busy} onClick={()=>setRevoking(null)} /></div> : <IconAction icon={Trash2} label={`Revoke ${token.name}`} disabled={busy||disabled} onClick={()=>setRevoking(token.id)} />}
     </div>)}
     {secret && <div className="ph-no-capture mb-4" data-private="true">
@@ -65,7 +66,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
     {adding ? <form className="space-y-3" onSubmit={event=>{event.preventDefault();if(!busy) void mutate();}}>
       <label className="block text-[11px] text-subtle">Name<input className="field-input mt-1" value={name} onChange={event=>setName(event.target.value)} maxLength={80} required disabled={busy||disabled} /></label>
       <fieldset disabled={busy||disabled} className="space-y-2"><legend className="mb-2 text-[11px] text-subtle">Permissions</legend>{choices.map(choice=><label key={choice.scope} className="flex items-center gap-2 text-[12px]"><input type="checkbox" className="accent-foreground" checked={scopes.includes(choice.scope)} onChange={event=>setScopes(current=>event.target.checked ? [...current,choice.scope] : current.filter(s=>s!==choice.scope))} />{choice.label}</label>)}</fieldset>
-      <p className="text-[11px] text-subtle">Expires after 90 days.</p>
+      <label className="flex items-center justify-between text-[12px] text-subtle">Expires<select className="border-b border-border bg-transparent px-1 py-2 text-[13px] text-foreground" value={expires} disabled={busy||disabled} onChange={event=>setExpires(event.target.value as typeof expires)}><option value="90d">After 90 days</option><option value="1y">After 1 year</option><option value="never">Never</option></select></label>
       <div className="flex items-center gap-4"><Button type="submit" disabled={busy||disabled||!scopes.length||!name.trim()}>{busy ? "Creating…" : "Create token"}</Button><button type="button" className="text-muted-foreground" disabled={busy} onClick={()=>setAdding(false)}>Cancel</button></div>
     </form> : <button type="button" className="min-h-10 text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={disabled||busy||!ready} onClick={()=>{setSecret("");setAdding(true);}}>Connect an AI agent</button>}
     <a className="mt-2 block text-[11px] text-subtle hover:text-foreground" href="https://github.com/gtfol/capsule/blob/main/docs/integrations.md" target="_blank" rel="noopener noreferrer">API documentation</a>
