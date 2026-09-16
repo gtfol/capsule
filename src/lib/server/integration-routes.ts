@@ -5,7 +5,7 @@ import { createIntegrationTokenHandlers } from "./integration-token-api";
 import { integrationFailure } from "./integration-tokens";
 
 let handlers: ReturnType<typeof createIntegrationHandlers> | undefined;
-export async function integrationRequest(request: Request, kind: "lookup" | "wishlist" | "wardrobe" | "purchase", id?: string) {
+export async function integrationRequest(request: Request, kind: "lookup" | "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe", id?: string) {
   try {
     handlers ??= createIntegrationHandlers(getPool());
     return await (kind === "lookup" ? handlers.lookup(request) : handlers.write(request,kind,id));

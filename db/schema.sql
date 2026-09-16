@@ -166,7 +166,7 @@ create table if not exists public.capsule_integration_tokens (
   prefix text not null,
   scopes text[] not null check (cardinality(scopes) > 0 and scopes <@ array['items:read','wishlist:write','wardrobe:write']::text[]),
   created_at timestamptz not null default now(),
-  expires_at timestamptz not null,
+  expires_at timestamptz,
   revoked_at timestamptz,
   last_used_at timestamptz
 );

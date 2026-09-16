@@ -3,9 +3,11 @@ import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { CATEGORIES, type Item, type WishlistItem } from "../types";
 import { findDuplicatePiece, productLinkKey } from "../piece-identity";
-import { createWishlistItem, wishlistPriceNumber } from "../wishlist";
+import { createWishlistItem, normalizeListingUrl, recomputeWishlistPrice, wishlistPriceNumber } from "../wishlist";
+import { MAX_ITEM_IMAGE_CHARS } from "../image-limits";
+import { PHOTO_FIELDS, prepareIntegrationPhotos } from "./integration-photos";
 import { importProduct, type ProductImport } from "./product";
-import { validateSyncRequest } from "./sync-validation";
+import { MAX_SYNC_BYTES, validateSyncRequest } from "./sync-validation";
 import { readLimitedJson } from "./render";
 import { createDatabaseLimiter } from "./request-limit";
 import { authenticateToken, bearerHash, digest, IntegrationError, integrationFailure, type IntegrationScope } from "./integration-tokens";
@@ -13,17 +15,21 @@ import { authenticateToken, bearerHash, digest, IntegrationError, integrationFai
 const link = z.string().max(8000).refine(value => value === "" || productLinkKey(value) !== null, "Use an HTTP or HTTPS URL without credentials.");
 const price = z.string().max(100).refine(value => value === "" || wishlistPriceNumber(value) !== null);
 const currency = z.string().regex(/^(?:[A-Z]{3})?$/);
-const createSchema = z.object({
-  url: link.optional(), fetch: z.boolean().default(true), name: z.string().trim().min(1).max(500).optional(),
+const fieldsSchema = z.object({
+  url: link.optional(), name: z.string().trim().min(1).max(500).optional(),
   brand: z.string().max(300).optional(), description: z.string().max(20000).optional(),
   size: z.string().max(100).optional(), color: z.string().max(200).optional(),
   category: z.enum(CATEGORIES).optional(), price: price.optional(), currency: currency.optional(),
   imageUrl: link.optional(), backImageUrl: link.optional(), sideImageUrl: link.optional(),
-}).strict().refine(value => value.url || value.name, "Provide a product URL or item name.")
+  imageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), backImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), sideImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(),
+}).strict();
+const createSchema = fieldsSchema.extend({fetch: z.boolean().default(true)}).refine(value => value.url || value.name, "Provide a product URL or item name.")
   .refine(value => (value.fetch && value.url) || value.name, "A name is required when page fetching is disabled.");
+const updateSchema = fieldsSchema.extend({expectedRevision:z.number().int().positive().safe()}).refine(value => Object.keys(value).length > 1, "Provide a field to update.");
 const purchaseSchema = z.object({size: z.string().max(100).optional(), color: z.string().max(200).optional(), price: price.optional(), currency: currency.optional(), expectedRevision: z.number().int().nonnegative().optional()}).strict();
 type CreateInput = z.infer<typeof createSchema>;
 type PurchaseInput = z.infer<typeof purchaseSchema>;
+type UpdateInput = z.infer<typeof updateSchema>;
 type Row = { collection: "items" | "wishlist"; record: Item | WishlistItem; revision: string };
 type MutationResult = { id: string; collection: "wardrobe" | "wishlist"; duplicate: boolean; movedFrom?: string; sync: { status: "saved_to_cloud"; revision: number; devices: "pending" } };
 export function canonical(value: unknown): string {
@@ -33,9 +39,9 @@ export function canonical(value: unknown): string {
 }
 const uuid = (value: string) => z.uuid().safeParse(value).success;
 const reply = (body: unknown, headers?: Record<string,string>) => Response.json(body, {headers: {"Cache-Control":"no-store", ...headers}});
-const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, price: row.record.price, currency: row.record.currency });
+const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, backImageUrl: row.record.backImageUrl ?? "", sideImageUrl: row.record.sideImageUrl ?? "", photos: {front:!!(row.record.imageUrl || row.record.imageData),back:!!(row.record.backImageUrl || row.record.backImageData),side:!!(row.record.sideImageUrl || row.record.sideImageData)}, price: row.record.price, currency: row.record.currency });
 // Lookup and deduplication do not load embedded photos or full price histories.
-const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','price',record->'price','currency',record->'currency') as record`;
+const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','backImageUrl',record->'backImageUrl','sideImageUrl',record->'sideImageUrl','imageData',case when coalesce(record->>'imageData','')<>'' then 'present' else '' end,'backImageData',case when coalesce(record->>'backImageData','')<>'' then 'present' else '' end,'sideImageData',case when coalesce(record->>'sideImageData','')<>'' then 'present' else '' end,'price',record->'price','currency',record->'currency') as record`;
 
 async function existingPieces(client: PoolClient, userId: string, collection: string): Promise<Row[]> {
   return (await client.query<Row>(`select collection, ${metadata}, revision from capsule_records where user_id=$1 and collection=$2 and coalesce((record->>'deletedAt')::bigint,0)=0`, [userId, collection])).rows;
@@ -92,21 +98,23 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
       } catch(error) { return integrationFailure(error); }
     },
-    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase", id?: string) {
+    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe", id?: string) {
       try {
         const hash = bearerHash(request);
-        const scopes: IntegrationScope[] = kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [kind === "wishlist" ? "wishlist:write" : "wardrobe:write"];
+        const scopes: IntegrationScope[] = kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [(kind === "wishlist" || kind === "update-wishlist") ? "wishlist:write" : "wardrobe:write"];
         const token = await authenticateToken(pool,hash,scopes);
         await rate(token.user_id,true);
         const key = request.headers.get("idempotency-key") ?? "";
         if (!/^[A-Za-z0-9._:-]{8,200}$/.test(key)) throw new IntegrationError("Send an Idempotency-Key of 8–200 letters, digits, dots, colons, underscores or hyphens.",400,"IDEMPOTENCY_KEY_REQUIRED");
         if (!request.headers.get("content-type")?.includes("application/json")) throw new IntegrationError("Send a JSON request.",415);
-        if (kind === "purchase" && (!id || !uuid(id))) throw new IntegrationError("Invalid wishlist item ID.");
-        let parsed: CreateInput | PurchaseInput;
-        try { const raw = await readLimitedJson(request.body,100_000); parsed = kind === "purchase" ? purchaseSchema.parse(raw) : createSchema.parse(raw); }
+        const updating = kind === "update-wishlist" || kind === "update-wardrobe";
+        if ((kind === "purchase" || updating) && (!id || !uuid(id))) throw new IntegrationError("Invalid item ID.");
+        let parsed: CreateInput | PurchaseInput | UpdateInput;
+        try { const raw = await readLimitedJson(request.body,MAX_SYNC_BYTES); parsed = kind === "purchase" ? purchaseSchema.parse(raw) : updating ? updateSchema.parse(raw) : createSchema.parse(raw); }
         catch { throw new IntegrationError("Invalid or oversized request body. Check the integration documentation."); }
         const requestHash = digest(canonical({kind,id:id ?? null,body:parsed}));
         let imported: ProductImport | undefined;
+        let photos: Partial<Item> | undefined;
         const perform = () => locked(hash,token.user_id,scopes,async client => {
           const saved = await client.query<{request_hash:string;response:MutationResult}>("select request_hash,response from capsule_integration_receipts where user_id=$1 and key=$2",[token.user_id,key]);
           if (saved.rows[0]) {
@@ -133,12 +141,35 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
             const tombstone = {...source.record,deletedAt:now,updatedAt:now};
             const moved = await client.query<{revision:string}>("update capsule_records set record=$3::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection='wishlist' and id=$2 returning revision",[token.user_id,id,JSON.stringify(tombstone)]);
             response = {...result(duplicate?.record.id ?? item.id,"items",Math.max(revision,Number(moved.rows[0].revision)),!!duplicate),movedFrom:id};
+          } else if (updating) {
+            const input = parsed as UpdateInput;
+            const collection = kind === "update-wishlist" ? "wishlist" : "items";
+            const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection=$2 and id=$3",[token.user_id,collection,id])).rows[0];
+            if (!source || source.record.deletedAt) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
+            if (input.expectedRevision !== Number(source.revision)) throw new IntegrationError("This piece changed. Look it up again before editing it.",409,"REVISION_CONFLICT");
+            if (!photos) return null;
+            const {expectedRevision:_expected,url,...fields} = input; void _expected;
+            let item: Item | WishlistItem = {...source.record,...fields,...photos,...(url !== undefined ? {purchaseUrl:url} : {}),updatedAt:Date.now()};
+            if (collection === "wishlist") {
+              const wishlist = item as WishlistItem;
+              const purchaseUrl = wishlist.purchaseUrl ? normalizeListingUrl(wishlist.purchaseUrl) : "";
+              let sources = wishlist.sources;
+              if (purchaseUrl && !sources.some(source => source.url === purchaseUrl)) {
+                sources = [...sources,{url:purchaseUrl,price:input.price ?? "",currency:input.currency ?? wishlist.currency,fetched_at:null,link_broken:false}];
+              } else if (purchaseUrl && (input.price !== undefined || input.currency !== undefined)) {
+                sources = sources.map(source => source.url === purchaseUrl ? {...source,...(input.price !== undefined ? {price:input.price} : {}),...(input.currency !== undefined ? {currency:input.currency} : {})} : source);
+              }
+              item = recomputeWishlistPrice({...wishlist,purchaseUrl,sources});
+            }
+            const record = validateRecord(token.user_id,collection,item);
+            const updated = await client.query<{revision:string}>("update capsule_records set record=$4::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection=$2 and id=$3 returning revision",[token.user_id,collection,id,JSON.stringify(record)]);
+            response = result(record.id,collection,Number(updated.rows[0].revision),false);
           } else {
             const input = parsed as CreateInput;
-            if (input.fetch && input.url && !imported) return null; // Fetch outside the account lock.
+            if (!photos || (input.fetch && input.url && !imported)) return null; // Fetch outside the account lock.
             const {url,fetch:_fetch,...fields} = input; void _fetch;
             const now = Date.now();
-            const item: Item = {id:randomUUID(),name:"",brand:"",size:"",color:"",category:"tops",price:"",currency:"",description:"",purchaseUrl:url ?? "",imageUrl:"",...imported?.item,...fields,createdAt:now,updatedAt:now,deletedAt:null};
+            const item: Item = {id:randomUUID(),name:"",brand:"",size:"",color:"",category:"tops",price:"",currency:"",description:"",purchaseUrl:url ?? "",imageUrl:"",...imported?.item,...fields,...photos,createdAt:now,updatedAt:now,deletedAt:null};
             const collection = kind === "wishlist" ? "wishlist" : "items";
             const record = validateRecord(token.user_id,collection,collection === "wishlist" ? createWishlistItem(item,now,imported?.priceQuote) : item);
             const candidates = await existingPieces(client,token.user_id,collection);
@@ -152,8 +183,15 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
         const initial = await perform();
         if (initial) return initial;
-        try { imported = await extract((parsed as CreateInput).url!); }
-        catch { throw new IntegrationError("This product page could not be fetched. Retry with the same key, or send item details with fetch:false and a new key.",502,"IMPORT_FAILED"); }
+        if (kind !== "purchase") {
+          const input = parsed as CreateInput | UpdateInput;
+          if (PHOTO_FIELDS.reduce((size,[,data])=>size+(input[data]?.length ?? 0),0) > MAX_ITEM_IMAGE_CHARS) throw new IntegrationError("The combined uploaded photos are too large.");
+          photos = await prepareIntegrationPhotos(input);
+          if (!updating && (input as CreateInput).fetch && input.url) {
+            try { imported = await extract(input.url); }
+            catch { throw new IntegrationError("This product page could not be fetched. Retry with the same key, or send item details with fetch:false and a new key.",502,"IMPORT_FAILED"); }
+          }
+        }
         return (await perform())!;
       } catch(error) { return integrationFailure(error); }
     },

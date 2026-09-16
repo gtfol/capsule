@@ -3,6 +3,8 @@ import type { Pool, PoolClient } from "pg";
 
 export const INTEGRATION_SCOPES = ["items:read", "wishlist:write", "wardrobe:write"] as const;
 export type IntegrationScope = typeof INTEGRATION_SCOPES[number];
+export const INTEGRATION_EXPIRIES = ["90d", "1y", "never"] as const;
+export type IntegrationExpiry = typeof INTEGRATION_EXPIRIES[number];
 export class IntegrationError extends Error {
   constructor(message: string, public status = 400, public code = "INVALID_REQUEST") { super(message); }
 }
@@ -15,23 +17,24 @@ export function bearerHash(request: Request): string {
 }
 export async function authenticateToken(db: Pool | PoolClient, hash: string, scopes: IntegrationScope[], lock = false): Promise<IntegrationToken> {
   const { rows } = await db.query<IntegrationToken>(`select id, user_id, scopes from public.capsule_integration_tokens
-    where token_hash = $1 and revoked_at is null and expires_at > clock_timestamp() ${lock ? "for share" : ""}`, [hash]);
+    where token_hash = $1 and revoked_at is null and (expires_at is null or expires_at > clock_timestamp()) ${lock ? "for share" : ""}`, [hash]);
   const token = rows[0];
   if (!token) throw new IntegrationError("This integration token is invalid, expired, or revoked.", 401, "UNAUTHORIZED");
   if (scopes.some(scope => !token.scopes.includes(scope))) throw new IntegrationError("This token does not have the required permissions.", 403, "INSUFFICIENT_SCOPE");
   return token;
 }
-export async function createIntegrationToken(pool: Pool, userId: string, name: string, scopes: IntegrationScope[]) {
+export async function createIntegrationToken(pool: Pool, userId: string, name: string, scopes: IntegrationScope[], expires: IntegrationExpiry = "90d") {
+  if (!INTEGRATION_EXPIRIES.includes(expires)) throw new IntegrationError("Choose a valid token expiry.");
   const token = `capsule_${randomBytes(32).toString("base64url")}`;
   const client = await pool.connect();
   try {
     await client.query("begin");
     await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [`capsule:${userId}`]);
-    const count = await client.query<{count: number}>("select count(*)::int as count from capsule_integration_tokens where user_id=$1 and revoked_at is null and expires_at > now()", [userId]);
+    const count = await client.query<{count: number}>("select count(*)::int as count from capsule_integration_tokens where user_id=$1 and revoked_at is null and (expires_at is null or expires_at > now())", [userId]);
     if (count.rows[0].count >= 10) throw new IntegrationError("Remove an unused token before creating another.", 409, "TOKEN_LIMIT");
     const result = await client.query(`insert into capsule_integration_tokens (id,user_id,name,token_hash,prefix,scopes,expires_at)
-      values ($1,$2,$3,$4,$5,$6,now()+interval '90 days') returning id,name,prefix,scopes,created_at,expires_at,last_used_at`,
-    [randomUUID(), userId, name, digest(token), token.slice(0, 16), scopes]);
+      values ($1,$2,$3,$4,$5,$6,case when $7::text is null then null else now()+$7::interval end) returning id,name,prefix,scopes,created_at,expires_at,last_used_at`,
+    [randomUUID(), userId, name, digest(token), token.slice(0, 16), scopes, expires === "never" ? null : expires === "1y" ? "1 year" : "90 days"]);
     await client.query("commit");
     return { ...result.rows[0], token };
   } catch(error) { await client.query("rollback"); throw error; }
