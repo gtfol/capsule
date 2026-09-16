@@ -156,9 +156,14 @@ or no expiry. Apply
 `db/migrations/20260915_add_integrations.sql` and
 `db/migrations/20260916_integration_token_expiry.sql` before deploying this feature.
 The expiry migration preserves existing tokens and allows null for no expiry.
-No new
-secrets or environment variables are needed. Instinct's actual connection path
-remains dependent on its supported authenticated integration mechanism.
+The REST integration itself needs no new secrets or environment variables.
+
+The optional [hosted MCP bridge](docs/mcp.md) at `/api/mcp` exposes
+`create_wardrobe_item` and `create_wishlist_item`, with stable idempotency keys
+and a follow-up GET to verify each write. It requires the server-only
+`CAPSULE_MCP_API_TOKEN` and a separate `CAPSULE_MCP_ACCESS_KEY`; it is disabled
+until configured. This is a private single-account bridge for clients supporting
+Streamable HTTP and a secure Authorization header, not an OAuth sign-in service.
 
 Integration database tests use a disposable local `capsule_integrations_test`
 database initialized with `db/schema.sql` and `TEST_INTEGRATION_DATABASE_URL`.

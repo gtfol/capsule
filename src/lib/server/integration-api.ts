@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
-import { CATEGORIES, type Item, type WishlistItem } from "../types";
+import { integrationCreateSchema as createSchema, integrationUpdateSchema as updateSchema, integrationPurchaseSchema as purchaseSchema } from "../integration-input";
+import { type Item, type WishlistItem } from "../types";
 import { findDuplicatePiece, productLinkKey } from "../piece-identity";
-import { createWishlistItem, normalizeListingUrl, recomputeWishlistPrice, wishlistPriceNumber } from "../wishlist";
+import { createWishlistItem, normalizeListingUrl, recomputeWishlistPrice } from "../wishlist";
 import { MAX_ITEM_IMAGE_CHARS } from "../image-limits";
 import { PHOTO_FIELDS, prepareIntegrationPhotos } from "./integration-photos";
 import { importProduct, type ProductImport } from "./product";
@@ -12,21 +13,6 @@ import { readLimitedJson } from "./render";
 import { createDatabaseLimiter } from "./request-limit";
 import { authenticateToken, bearerHash, digest, IntegrationError, integrationFailure, type IntegrationScope } from "./integration-tokens";
 
-const link = z.string().max(8000).refine(value => value === "" || productLinkKey(value) !== null, "Use an HTTP or HTTPS URL without credentials.");
-const price = z.string().max(100).refine(value => value === "" || wishlistPriceNumber(value) !== null);
-const currency = z.string().regex(/^(?:[A-Z]{3})?$/);
-const fieldsSchema = z.object({
-  url: link.optional(), name: z.string().trim().min(1).max(500).optional(),
-  brand: z.string().max(300).optional(), description: z.string().max(20000).optional(),
-  size: z.string().max(100).optional(), color: z.string().max(200).optional(),
-  category: z.enum(CATEGORIES).optional(), price: price.optional(), currency: currency.optional(),
-  imageUrl: link.optional(), backImageUrl: link.optional(), sideImageUrl: link.optional(),
-  imageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), backImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), sideImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(),
-}).strict();
-const createSchema = fieldsSchema.extend({fetch: z.boolean().default(true)}).refine(value => value.url || value.name, "Provide a product URL or item name.")
-  .refine(value => (value.fetch && value.url) || value.name, "A name is required when page fetching is disabled.");
-const updateSchema = fieldsSchema.extend({expectedRevision:z.number().int().positive().safe()}).refine(value => Object.keys(value).length > 1, "Provide a field to update.");
-const purchaseSchema = z.object({size: z.string().max(100).optional(), color: z.string().max(200).optional(), price: price.optional(), currency: currency.optional(), expectedRevision: z.number().int().nonnegative().optional()}).strict();
 type CreateInput = z.infer<typeof createSchema>;
 type PurchaseInput = z.infer<typeof purchaseSchema>;
 type UpdateInput = z.infer<typeof updateSchema>;
