@@ -53,7 +53,7 @@ function WardrobeSurface() {
   const [sort, setSort] = useState<Sort>("newest");
   const [selectedPiece, setSelected] = useState<Item | null>(null);
   const [removed, setRemoved] = useState<Item | null>(null);
-  const [notice, setNotice] = useState<{ id: string; message: string } | null>(() => useWardrobe.getState().libraryGeneration ? { id: "library-deleted", message: useWardrobe.getState().space === "guest" ? "Library deleted." : "Library deleted from this browser. Check Sync for other devices." } : null);
+  const [notice, setNotice] = useState<{ id: string; message: string } | null>(() => useWardrobe.getState().libraryGeneration ? { id: "library-deleted", message: useWardrobe.getState().space === "guest" ? "Browser data cleared." : "Data cleared from this browser. Check Sync for other devices." } : null);
   const { items, wishlist, ready, error, saveItem, deleteItem, space } = useWardrobe();
   const selected = selectedPiece ?? (view === "wardrobe" && pieceId ? items.find((item) => item.id === pieceId) ?? null : null);
   const clearPiece = () => { if (pieceId) void setNavigation({ piece: null }, { history: "replace" }); };

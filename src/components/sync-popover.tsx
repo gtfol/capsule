@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { useSyncStore } from "@/lib/sync";
-export function SyncPopover() {
+export function SyncPopover({ appearance = "icon", disabled = false }: { appearance?: "icon" | "text"; disabled?: boolean } = {}) {
   const sync = useSyncStore();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
@@ -18,8 +18,8 @@ export function SyncPopover() {
   async function emailAuth(event: React.FormEvent) { event.preventDefault(); setWorking(true); setError(""); try { const result = register ? await authClient.signUp.email({ email, password, name: name.trim() || email.split("@")[0] }) : await authClient.signIn.email({ email, password }); if (result.error) throw new Error(result.error.message || "Sign-in failed."); setPassword(""); await sync.refreshSession(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in failed."); } finally { setWorking(false); } }
   const optionClass = "w-full rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-40";
   return <Popover>
-    <PopoverTrigger asChild><button type="button" className="nav-button flex items-center justify-center" aria-label="Sync" title="Sync">{sync.status === "syncing" ? <Loader2 size={14} className="animate-spin" /> : sync.user ? <Cloud size={14} /> : <CloudOff size={14} />}</button></PopoverTrigger>
-    <PopoverContent side="top" align="end" className="w-72 p-3">
+    <PopoverTrigger asChild>{appearance === "text" ? <button type="button" disabled={disabled} className="min-h-10 text-[13px] text-muted-foreground hover:text-foreground disabled:opacity-40">Sign in to connect an AI agent</button> : <button type="button" disabled={disabled} className="nav-button flex items-center justify-center" aria-label="Sync" title="Sync">{sync.status === "syncing" ? <Loader2 size={14} className="animate-spin" /> : sync.user ? <Cloud size={14} /> : <CloudOff size={14} />}</button>}</PopoverTrigger>
+    <PopoverContent side={appearance === "text" ? "bottom" : "top"} align={appearance === "text" ? "start" : "end"} className="w-72 p-3">
       {sync.status === "loading" ? <p role="status" className="px-1 text-xs text-muted-foreground">Checking sync…</p> : sync.user ? <div className="flex flex-col gap-1">
         {sync.user.name && <p className="truncate px-1 text-sm">{sync.user.name}</p>}
         <p className={`truncate px-1 ${sync.user.name ? "text-xs text-muted-foreground" : "text-sm"}`}>{sync.user.email}</p>
