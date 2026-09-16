@@ -11,7 +11,7 @@ HTTP integration path; this API does not itself install or connect an Instinct a
 ## Connect
 
 1. Sign in through **Sync** in Capsule.
-2. Open **Settings → Integrations → Connect an AI agent**. Name it “Instinct”.
+2. Open **Settings → Integrations → Connect an AI agent** and enter a name.
 3. Choose permissions, create the token, and copy it immediately. It is shown once.
 4. Put the token in your tool's secret/credential store, not a URL, prompt, public
    configuration, repository, or browser local storage.
@@ -24,13 +24,25 @@ No account password, OpenAI key, OAuth session cookie, or Supabase key is needed
 | Permission | Allows |
 | --- | --- |
 | `items:read` | Read item summaries for lookup and duplicate checking |
-| `wishlist:write` | Create wishlist items |
-| `wardrobe:write` | Create wardrobe items |
+| `wishlist:write` | Create wishlist items, including front/back/side image URLs |
+| `wardrobe:write` | Create wardrobe items, including front/back/side image URLs |
 | Both write permissions | Move a wishlist item to the wardrobe |
 
 Tokens cannot delete pieces, render outfits, read model photos/API keys, manage
 share links, or create other integration tokens. A write permission permits the
 corresponding endpoint to return its resulting item ID even without read access.
+
+## Computer-use agents and photos
+
+An agent operating Capsule through your signed-in browser uses the same photo
+controls you do: upload photos, choose front/back/side images, and remove
+backgrounds. It does not need an integration token. Token permissions apply only
+to REST API requests; they do not limit access through a signed-in browser.
+
+The REST API accepts `imageUrl`, `backImageUrl`, and `sideImageUrl` when creating
+pieces under the corresponding write permission. It does not currently update
+photos on existing pieces, accept image uploads, or remove backgrounds. Background
+removal runs on-device in Capsule's browser interface.
 
 ## Safe retries
 
