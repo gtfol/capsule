@@ -7,6 +7,7 @@ add owned pieces directly, and look up duplicates. It writes to the signed-in
 owner's synced items. Capsule downloads those changes through its existing sync.
 Local-only guest items are not accessible. Instinct still needs an available
 HTTP integration path; this API does not itself install or connect an Instinct app.
+For clients that can execute hosted MCP tools, use the [MCP bridge](mcp.md).
 
 ## Connect
 
@@ -279,5 +280,5 @@ Errors have `{ "error": { "code": "…", "message": "…" } }` shape.
 Per account: 60 write requests per 10 minutes and 120 lookups per minute, shared
 across its tokens. Replays count toward the limit. Up to 10 active tokens.
 Integration endpoints use bearer authentication only; token management uses the
-signed-in Capsule browser session and same-origin checks. MCP can later wrap
-these same endpoints without changing their semantics.
+signed-in Capsule browser session and same-origin checks. The optional
+[hosted MCP bridge](mcp.md) wraps the two create endpoints and verifies each write.
