@@ -1,0 +1,23 @@
+src/components/piece-photos.tsx
+  s_0521f8d73d6032::t_b18a047fe4f627 4,6,9,45-55,135,143,148,164,171-176
+src/lib/photo-slots.ts
+  s_0521f8d73d6032::t_b18a047fe4f627 4-15
+tests/photo-slots.test.ts
+  s_0521f8d73d6032::t_b18a047fe4f627 3-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "24a0d97767601081a7c01943fee487b536611cce",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
