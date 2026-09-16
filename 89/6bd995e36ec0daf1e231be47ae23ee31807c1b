@@ -1,0 +1,29 @@
+docs/integrations.md
+  s_0521f8d73d6032::t_4d19faee5d8ee6 14
+src/app/globals.css
+  s_0521f8d73d6032::t_875016a7a0ecca 129,131
+src/components/integration-settings.tsx
+  s_0521f8d73d6032::t_ace22e96f9330e 5,16-17,70
+src/components/settings.tsx
+  s_0521f8d73d6032::t_40997dda7ba2af 82
+src/components/sync-popover.tsx
+  s_0521f8d73d6032::t_cc18aa9419175d 8,21-22
+src/components/wardrobe-app.tsx
+  s_0521f8d73d6032::t_9eef154a31b8df 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "896bd995e36ec0daf1e231be47ae23ee31807c1b",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
