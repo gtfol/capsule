@@ -1,0 +1,22 @@
+docs/integrations.md
+  s_0521f8d73d6032::t_83fed5508e8639 14,27-28,35-45
+  s_0521f8d73d6032::t_e91a26a68feff3 46
+src/components/integration-settings.tsx
+  s_0521f8d73d6032::t_83fed5508e8639 25,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "d6235b44ae85329a14714a0ede36a536040c9eb0",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
