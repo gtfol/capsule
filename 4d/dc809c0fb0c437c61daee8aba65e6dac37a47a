@@ -1,0 +1,25 @@
+.env.example
+  s_0521f8d73d6032::t_9708468dc27eab 21
+src/lib/server/render.ts
+  s_0521f8d73d6032::t_9708468dc27eab 33
+tests/render.test.ts
+  s_0521f8d73d6032::t_9708468dc27eab 105,108-132
+README.md
+  s_0521f8d73d6032::t_449156bb3e5987 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4ddc809c0fb0c437c61daee8aba65e6dac37a47a",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
