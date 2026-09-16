@@ -8,7 +8,7 @@ import { IconAction } from "@/components/ui/icon-action";
 import type { RenderCredential } from "@/lib/render-credential";
 import { track } from "@/lib/analytics";
 
-type Props = { userId: string | null; sessionKey?: string; disabled?: boolean; active?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
+type Props = { controller: ReturnType<typeof useRenderKeyController>; userId: string | null; sessionKey?: string; disabled?: boolean; active?: boolean; onCredentialChange: (credential: RenderCredential | null) => void };
 export function RenderKeySettings(props: Props) {
   return props.userId ? <AccountKeySettings key={props.userId} {...props} userId={props.userId} /> : <GuestKeySettings {...props} />;
 }
@@ -28,8 +28,7 @@ function GuestKeySettings({ disabled, active, sessionKey = "", onCredentialChang
   </section>;
 }
 
-function AccountKeySettings({ userId, disabled = false, active, onCredentialChange }: Props & { userId: string }) {
-  const id = useId();
+export function useRenderKeyController({ userId, disabled = false, onCredentialChange }: { userId: string | null; disabled?: boolean; onCredentialChange: Props["onCredentialChange"] }) {
   const [saved, setSaved] = useState(false);
   const [ready, setReady] = useState(false);
   const [available, setAvailable] = useState(false);
@@ -47,6 +46,7 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
   const focusNext = useRef<"input" | "change" | null>(null);
   useEffect(() => { callback.current = onCredentialChange; }, [onCredentialChange]);
   useEffect(() => {
+    if (!userId) return;
     const current = sequence.current;
     const version = ++current.version;
     const controller = new AbortController();
@@ -69,7 +69,7 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
   }, [saved, editing, ready, pending]);
 
   async function mutate(remove: boolean) {
-    if (disabled || !ready || !available || writing.current) return;
+    if (!userId || disabled || !ready || !available || writing.current) return;
     const key = draft.trim();
     if (!remove && !/^sk-[A-Za-z0-9_-]{16,500}$/.test(key)) { setInvalid(true); setError("Enter an OpenAI API key beginning with sk-."); input.current?.focus(); return; }
     const version = ++sequence.current.version;
@@ -95,8 +95,15 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
   function cancel() {
     if (disabled || writing.current) return;
     focusNext.current = "change"; setDraft(""); setEditing(false); setError(""); setInvalid(false);
-    callback.current(saved ? { type: "saved", userId } : null);
+    callback.current(saved && userId ? { type: "saved", userId } : null);
   }
+  function startEditing() { focusNext.current = "input"; setDraft(""); setError(""); setInvalid(false); setEditing(true); callback.current(null); }
+  return { saved, ready, available, editing, draft, pending, error, invalid, input, changeButton, setDraft, setError, setInvalid, setEditing, setAttempt, startEditing, mutate, cancel };
+}
+
+function AccountKeySettings({ disabled = false, active, controller }: Props & { userId: string }) {
+  const id = useId();
+  const { saved, ready, available, editing, draft, pending, error, invalid, input, changeButton, setDraft, setError, setInvalid, setEditing, setAttempt, startEditing, mutate, cancel } = controller;
   const locked = disabled || Boolean(pending);
   const note = saved ? "Saved securely to your account and reused for future outfits." : "Save your key securely to your account to reuse it for future outfits.";
   return <section aria-labelledby={`${id}-title`} aria-busy={(!ready && !error) || Boolean(pending)}>
@@ -104,7 +111,7 @@ function AccountKeySettings({ userId, disabled = false, active, onCredentialChan
     <p id={`${id}-note`} className="sr-only">{note}</p>
     {!ready || !available ? <div className="mt-3 text-[11px] text-subtle">{!error && <p role="status">Checking saved key…</p>}{error && <button type="button" className={actionClass} disabled={disabled} onClick={() => { setError(""); setDraft(""); setEditing(false); setAttempt((value) => value + 1); }}>Retry</button>}</div> : saved && !editing ? <div className="mt-2 flex min-h-9 items-center justify-between gap-4">
       <span className="select-none text-[13px] tracking-[0.12em]" aria-label="API key saved">••••••••••••</span>
-      <div role="group" aria-label="API key actions" className="-mr-2 flex items-center gap-1"><IconAction ref={changeButton} label="Change API key" tooltip="Change key" icon={Pencil} disabled={locked} onClick={() => { focusNext.current = "input"; setDraft(""); setError(""); setInvalid(false); setEditing(true); callback.current(null); }} /><IconAction label="Remove API key" tooltip="Remove key" icon={Trash2} loading={pending === "remove"} disabled={locked} onClick={() => { void mutate(true); }} /></div>
+      <div role="group" aria-label="API key actions" className="-mr-2 flex items-center gap-1"><IconAction ref={changeButton} label="Change API key" tooltip="Change key" icon={Pencil} disabled={locked} onClick={startEditing} /><IconAction label="Remove API key" tooltip="Remove key" icon={Trash2} loading={pending === "remove"} disabled={locked} onClick={() => { void mutate(true); }} /></div>
     </div> : <div className="mt-2">
       <div className="relative"><Input {...inputProps} ref={input} aria-label={saved ? "Replacement OpenAI API key" : "OpenAI API key"} value={draft} placeholder="Paste your API key" disabled={locked} aria-invalid={invalid || undefined} aria-describedby={`${id}-note${error ? ` ${id}-error` : ""}`} onChange={(event) => { setDraft(event.target.value); setError(""); setInvalid(false); }} onKeyDown={(event) => { if (event.nativeEvent.isComposing) return; if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); void mutate(false); } if (event.key === "Escape" && saved) { event.preventDefault(); cancel(); } }} /><span className="render-key-fallback" aria-hidden="true">{"•".repeat(Math.min(draft.length, 24))}</span></div>
       <div className="mt-1 flex items-center gap-5"><button type="button" className={`${actionClass} !text-foreground underline underline-offset-4`} disabled={locked || !draft.trim()} onClick={() => { void mutate(false); }}>{pending === "save" ? "Saving…" : "Save key"}</button>{saved && <button type="button" className={actionClass} disabled={locked} onClick={cancel}>Cancel</button>}</div>
