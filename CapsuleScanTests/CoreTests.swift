@@ -292,7 +292,7 @@ final class MediaTests: XCTestCase {
 
 actor CleanupFailureCredentials: CredentialStore {
     private let value = UUID().uuidString
-    func read(_ credential: Credential) -> String? { value }
+    func read(_ credential: Credential) -> String? { credential == .capsuleToken ? value : nil }
     func write(_ value: String?, for credential: Credential) throws { throw ScanError.keychain }
 }
 final class AuthenticationTests: XCTestCase {

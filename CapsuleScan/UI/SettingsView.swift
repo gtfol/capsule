@@ -2,7 +2,6 @@ import SwiftUI
 
 @MainActor struct SettingsView: View {
     @EnvironmentObject private var services: AppServices
-    @State private var capsuleToken = ""
     @State private var visionKey = ""
     @State private var error: String?
     @State private var busy = false
@@ -10,14 +9,12 @@ import SwiftUI
     var body: some View {
         Form {
             Section {
-                LabeledContent("capsule", value: services.connected ? "connected" : "not connected")
-                SecureField("integration token", text: $capsuleToken).textContentType(nil).textInputAutocapitalization(.never).autocorrectionDisabled()
-                Button(services.connected ? "replace token" : "connect capsule") { update(capsuleToken, kind: .capsuleToken) }.disabled(capsuleToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || busy)
-                if services.connected { Button("disconnect", role: .destructive) { update(nil, kind: .capsuleToken) }.disabled(busy) }
-                Link("open capsule settings", destination: URL(string: "https://capsule.gtfol.dev/?view=settings")!)
-            } header: { Text("capsule") } footer: {
-                Text("in capsule, open settings → integrations and create a token with wardrobe:write. your token stays in keychain.")
-            }
+                if let user = services.user {
+                    LabeledContent("signed in", value: user.name.isEmpty ? "capsule" : user.name)
+                    Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!)
+                    Button("sign out", role: .destructive) { Task { await services.signOut() } }.disabled(services.authenticating)
+                } else { SignInButton() }
+            } header: { Text("capsule") }
             if let message = services.connectionMessage { Text(message).font(.footnote).foregroundStyle(.secondary) }
             Section {
                 LabeledContent("extractor", value: services.visionEnabled ? "openai vision" : "on device")
@@ -33,14 +30,14 @@ import SwiftUI
         .navigationTitle("settings")
         .navigationBarTitleDisplayMode(.inline)
         .task { await services.refreshCredentials() }
-        .onDisappear { capsuleToken = ""; visionKey = "" }
+        .onDisappear { visionKey = "" }
     }
     private func update(_ value: String?, kind: Credential) {
         busy = true; error = nil
         Task {
             do {
                 try await services.setCredential(value, for: kind)
-                capsuleToken = ""; visionKey = ""
+                visionKey = ""
             } catch { self.error = ScanError.keychain.localizedDescription }
             busy = false
         }

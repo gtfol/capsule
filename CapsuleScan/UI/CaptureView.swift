@@ -24,8 +24,7 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
     @State private var pendingCameraPhoto: Data?
     @State private var cameraDenied = false
     @State private var processing = false
-    @State private var showingLibrary = false
-    @State private var openLibraryAfterReview = false
+    @State private var notice: String?
     @State private var error: String?
     private let camera: any CameraAuthorizing = CameraAuthorization()
 
@@ -33,6 +32,13 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
         NavigationStack {
             VStack(spacing: 24) {
                 Spacer()
+                if !services.credentialsReady {
+                    ProgressView()
+                } else if !services.connected {
+                    Text("sign in to add items to your capsule wardrobe.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    SignInButton().buttonStyle(.borderedProminent).controlSize(.large)
+                    if let message = services.connectionMessage { Text(message).font(.footnote).foregroundStyle(.secondary) }
+                } else {
                 Image(systemName: "tshirt").font(.system(size: 72, weight: .ultraLight)).foregroundStyle(.secondary).accessibilityHidden(true)
                 VStack(spacing: 8) {
                     Text("add an item").font(.title2)
@@ -56,13 +62,16 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 }.controlSize(.large)
                 if processing { ProgressView("preparing photo…").font(.footnote) }
                 if let error { Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
+                if let notice { Text(notice).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
+                Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!).font(.footnote)
+                }
                 Spacer()
             }
             .padding(24)
             .navigationTitle("capsule scan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { NavigationLink { LibraryView() } label: { Image(systemName: "square.grid.2x2") }.accessibilityLabel("local items") }
+                ToolbarItem(placement: .topBarLeading) { NavigationLink { DraftsView() } label: { Image(systemName: "tray") }.accessibilityLabel("drafts") }
                 ToolbarItem(placement: .topBarTrailing) { NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }.accessibilityLabel("settings") }
             }
             .sheet(isPresented: $showingCamera, onDismiss: {
@@ -72,16 +81,16 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 CameraPicker { data in pendingCameraPhoto = data; showingCamera = false }
                     .ignoresSafeArea()
             }
-            .sheet(item: $draft, onDismiss: {
-                if openLibraryAfterReview { showingLibrary = true; openLibraryAfterReview = false }
-            }) { draft in
+            .sheet(item: $draft) { draft in
                 NavigationStack {
-                    ItemEditorView(model: ItemEditorModel(image: draft.image, services: services)) {
-                        openLibraryAfterReview = true
+                    ItemEditorView(model: ItemEditorModel(image: draft.image, services: services)) { state in
+                        notice = state == .notSaved ? "draft saved" : state.label
                     }
                 }
             }
-            .navigationDestination(isPresented: $showingLibrary) { LibraryView() }
+            .task(id: notice) {
+                if notice != nil { try? await Task.sleep(for: .seconds(3)); if !Task.isCancelled { notice = nil } }
+            }
             .alert("camera access is off", isPresented: $cameraDenied) {
                 Button("open settings") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }
                 Button("cancel", role: .cancel) {}

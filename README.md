@@ -1,8 +1,8 @@
 # capsule scan
 
-Photograph one garment, review its details, and save it on your iPhone. Optionally send it to your [capsule](https://capsule.gtfol.dev) wardrobe.
+Photograph one garment, review its details, and save it to your [capsule](https://capsule.gtfol.dev) wardrobe.
 
-Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies, account requirement, or bundled credentials.
+Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or bundled credentials. Uses your existing capsule account.
 
 ## Build and run
 
@@ -11,15 +11,19 @@ Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies, a
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
 4. For a physical device, select your development team under Signing & Capabilities. Change the placeholder bundle identifier `dev.gtfol.capsulescan` if your team requires a unique identifier.
 
-The app opens directly to capture. Choose one photo, edit the draft, then tap **save**. With no keys or tokens, color extraction and the local collection work offline. A successful save opens the local item grid. Tap a saved item to edit or retry a failed capsule save.
+First launch opens **sign in to capsule**. The system browser uses capsule’s existing Google login (or email login when enabled). Confirm the connection and return to the app; future launches open capture directly.
 
-## Connect capsule
+Choose one photo, edit the draft, then tap **save to capsule**. A name is required. After saving, return to capture or open your wardrobe on the web. There is no separate local wardrobe or local/remote toggle.
 
-In capsule, open Settings → Integrations and create a token with `wardrobe:write`. In capsule scan Settings, paste it into **integration token**, then tap **connect capsule**.
+## Sign-in and drafts
 
-When reviewing an item, enable **save to capsule** and tap **save**. A name is required for capsule; unnamed local items are allowed. Choose a category if known: capsule's existing API defaults an omitted category to `tops`.
+The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and restricted `wardrobe:write` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
 
-“connected” means a token is stored, not that it has been validated by a network request. The create response verifies authorization. A 401/403 disconnects capsule and prompts for a replacement token without removing local items. Capsule sync delivers the created item to its web app. Edits after a successful send stay local in this first version; the app does not create a second remote copy.
+The web handoff must be deployed before using this app. See capsule’s `docs/scan-sign-in.md` for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
+
+For unfinished scans, tap **close → save draft**. Drafts and failed uploads appear under the tray button. Signed-in capture and draft editing work offline; uploads wait for an explicit retry. A 401/403 asks you to sign in again and keeps the draft. Drafts are bound to their account and cannot be sent to a different one.
+
+Successful saves leave a small internal receipt to prevent resubmission. They disappear from drafts, and their local photo and encoded request are removed. Already-saved records from older versions are preserved but no longer presented as a second wardrobe. Manage completed items in capsule. Choose a category if known: capsule’s API defaults an omitted category to `tops`.
 
 ## Optional vision extraction
 
@@ -29,7 +33,7 @@ Without a key, Core Image estimates the dominant color in the center of the phot
 
 ## Data and security
 
-- SwiftData stores item metadata; JPEGs are separate files in Application Support, referenced by stable relative UUID filenames.
+- SwiftData stores drafts and save receipts; pending JPEGs are separate files in Application Support, referenced by stable relative UUID filenames.
 - Photos are oriented, downscaled to at most 1600 px, flattened to JPEG, and stripped of source metadata off the main actor.
 - Prices are canonical decimal strings parsed with `Decimal`, never floating-point amounts. Currency defaults from the device locale.
 - Capsule tokens and OpenAI keys are stored only in Keychain (`WhenUnlockedThisDeviceOnly`, no Keychain sync). They are never included in SwiftData, image files, logs, or configuration.
@@ -61,9 +65,9 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 
 - `CapsuleScan/Core`: destination/extractor protocols, URLSession client, image processing, Keychain, decimal validation, save coordination.
 - `CapsuleScan/Persistence`: SwiftData model and explicit-save adapter.
-- `CapsuleScan/UI`: capture, review, local grid, settings.
+- `CapsuleScan/UI`: sign-in, capture, review, drafts, settings.
 - `CapsuleScanTests`: request, error, retry, extraction, image-limit, persistence, and editor regression tests.
 - `scripts/generate-project.py`: optional standard-library-only project generator. The complete generated Xcode project is committed; no generation step is needed to build.
 - `scripts/make-icon.swift`: creates the original code-drawn app icon.
 
-`ItemExtractor` and `WardrobeDestination` are the extension seams. This version deliberately contains only the single-photo → reviewed item → local/capsule save flow.
+`ItemExtractor` and `WardrobeDestination` are the extension seams. This version deliberately contains only the sign-in → single photo → reviewed item → capsule save flow.

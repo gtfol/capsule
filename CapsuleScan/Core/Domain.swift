@@ -13,7 +13,7 @@ enum CapsuleSaveState: String, Codable, Sendable {
     case notSaved, saving, saved, alreadyExists, failed
     var label: String {
         switch self {
-        case .notSaved: return "local only"
+        case .notSaved: return "draft"
         case .saving: return "saving to capsule…"
         case .saved: return "saved to capsule"
         case .alreadyExists: return "already in your wardrobe"
@@ -78,6 +78,7 @@ struct ItemRecord: Codable, Equatable, Sendable, Identifiable {
     var capsuleSaveState: CapsuleSaveState = .notSaved
     var capsuleIdempotencyKey: String?
     var capsuleRemoteItemID: String?
+    var capsuleUserID: String?
     var lastCapsuleError: String?
     // Exact encoded body on disk: retries never depend on re-encoding an image.
     var capsuleRequestReference: String?
@@ -97,7 +98,7 @@ struct ItemRecord: Codable, Equatable, Sendable, Identifiable {
 
 enum ScanError: Error, Equatable, LocalizedError, Sendable {
     case nameRequired, invalidFields, invalidPrice, invalidCurrency, invalidImage, imageTooLarge
-    case notConnected, authentication, offline, timeout, rateLimited, unavailable, idempotencyConflict
+    case notConnected, authentication, wrongAccount, offline, timeout, rateLimited, unavailable, idempotencyConflict
     case rejected, invalidResponse, storage, keychain, extraction
     var errorDescription: String? {
         switch self {
@@ -107,12 +108,13 @@ enum ScanError: Error, Equatable, LocalizedError, Sendable {
         case .invalidCurrency: return "use a three-letter currency code, like usd."
         case .invalidImage: return "this photo couldn’t be opened. choose another."
         case .imageTooLarge: return "this photo is too large to send. choose a smaller photo."
-        case .notConnected: return "connect capsule in settings to send this item."
-        case .authentication: return "re-enter your capsule token in settings. your item is saved on this iphone."
-        case .offline: return "you’re offline. your item is saved on this iphone. retry when connected."
+        case .notConnected: return "sign in to capsule to save this item."
+        case .authentication: return "sign in to capsule again. your scan is kept in drafts."
+        case .wrongAccount: return "sign in to the account used for this draft."
+        case .offline: return "you’re offline. your scan is kept in drafts. retry when connected."
         case .timeout: return "capsule took too long to reply. retry to check this save."
         case .rateLimited: return "too many saves. wait a few minutes, then retry."
-        case .unavailable: return "capsule is unavailable. your item is saved on this iphone. try again."
+        case .unavailable: return "capsule is unavailable. your scan is kept in drafts. try again."
         case .idempotencyConflict: return "capsule couldn’t confirm this save. try again."
         case .rejected: return "capsule couldn’t accept this item. review the details and retry."
         case .invalidResponse: return "capsule’s reply couldn’t be read. retry to confirm the save."

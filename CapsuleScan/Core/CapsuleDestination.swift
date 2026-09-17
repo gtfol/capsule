@@ -36,9 +36,14 @@ struct CapsuleDestination: WardrobeDestination {
     static let baseURL = URL(string: "https://capsule.gtfol.dev/api/v1")!
     let credentials: any CredentialStore
     let transport: any HTTPTransport
+    var expectedUserID: String? = nil
 
     func save(body: Data, idempotencyKey: String) async throws -> DestinationReceipt {
-        guard let token = try await credentials.read(.capsuleToken), !token.isEmpty else { throw ScanError.notConnected }
+        let login = try await credentials.capsuleLogin()
+        if let expectedUserID, login?.user.id != expectedUserID { throw ScanError.wrongAccount }
+        let tokenValue: String?
+        if let login { tokenValue = login.token } else { tokenValue = try await credentials.read(.capsuleToken) }
+        guard let token = tokenValue, !token.isEmpty else { throw ScanError.notConnected }
         var request = URLRequest(url: Self.baseURL.appendingPathComponent("wardrobe"))
         request.httpMethod = "POST"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -53,9 +58,7 @@ struct CapsuleDestination: WardrobeDestination {
             let error = Self.mapError(status: result.status, data: result.data)
             if error == .authentication {
                 // Do not erase a replacement token entered while this request was running.
-                if (try? await credentials.read(.capsuleToken)) == token {
-                    try? await credentials.write(nil, for: .capsuleToken)
-                }
+                try? await credentials.clearCapsuleLogin(matching: token)
             }
             throw error
         }

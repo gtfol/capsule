@@ -71,16 +71,16 @@ final class EditorTests: XCTestCase {
         XCTAssertEqual(try services.container.mainContext.fetchCount(FetchDescriptor<WardrobeItem>()), 0)
         let media = services.media as! MemoryMedia
         let files = await media.files; XCTAssertTrue(files.isEmpty)
-        let saved = await editor.save(); XCTAssertTrue(saved)
+        let saved = await editor.saveDraft(); XCTAssertTrue(saved)
         XCTAssertEqual(try services.container.mainContext.fetchCount(FetchDescriptor<WardrobeItem>()), 1)
     }
-    @MainActor func testExtractionFailureFallsBackAndUnnamedLocalSaveWorks() async throws {
+    @MainActor func testExtractionFailureFallsBackAndUnnamedDraftSaveWorks() async throws {
         let services = try services(extractor: FailingExtractor())
         let editor = ItemEditorModel(image: try CoreTests.fixtureImage(width: 100, height: 100), services: services)
         await editor.start()
         XCTAssertEqual(editor.fields.color, "blue"); XCTAssertNil(editor.fields.category)
         XCTAssertFalse(editor.extracting)
-        let saved = await editor.save(); XCTAssertTrue(saved)
+        let saved = await editor.saveDraft(); XCTAssertTrue(saved)
         let item = try XCTUnwrap(editor.record)
         XCTAssertEqual(item.fields.name, "")
         XCTAssertEqual(item.capsuleSaveState, .notSaved)
@@ -88,7 +88,8 @@ final class EditorTests: XCTestCase {
     }
     @MainActor func testAuthenticationFailureKeepsLocalItemAndDisconnects() async throws {
         let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        let credentials = MemoryCredentials(); await credentials.write(UUID().uuidString, for: .capsuleToken)
+        let credentials = MemoryCredentials()
+        try await credentials.storeCapsuleLogin(CapsuleLogin(token: UUID().uuidString, user: CapsuleUser(id: UUID().uuidString, name: "test")))
         let services = AppServices(container: container, media: MemoryMedia(), credentials: credentials, transport: StubHTTP(status: 401))
         await services.refreshCredentials()
         let editor = ItemEditorModel(image: try CoreTests.fixtureImage(width: 100, height: 100), services: services)
@@ -99,5 +100,82 @@ final class EditorTests: XCTestCase {
         XCTAssertEqual(record.capsuleSaveState, .failed)
         XCTAssertEqual(try services.items.record(id: record.id).fields.name, "shirt")
         XCTAssertNotNil(record.capsuleIdempotencyKey)
+    }
+    @MainActor func testDisconnectedSaveCannotPretendItSavedToCapsule() async throws {
+        let services = try services()
+        let editor = ItemEditorModel(image: try CoreTests.fixtureImage(width: 100, height: 100), services: services)
+        editor.fields.name = "shirt"
+        let saved = await editor.save(); XCTAssertFalse(saved)
+        XCTAssertNil(editor.record)
+        XCTAssertEqual(try services.container.mainContext.fetchCount(FetchDescriptor<WardrobeItem>()), 0)
+        let draft = await editor.saveDraft(); XCTAssertTrue(draft)
+    }
+    @MainActor func testSuccessfulSaveKeepsReceiptButRemovesLocalPhotoAndRequest() async throws {
+        let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let vault = MemoryCredentials()
+        let user = CapsuleUser(id: UUID().uuidString, name: "test")
+        try await vault.storeCapsuleLogin(CapsuleLogin(token: UUID().uuidString, user: user))
+        let http = StubHTTP(body: Data("{\"id\":\"\(UUID().uuidString)\"}".utf8))
+        let media = MemoryMedia()
+        let services = AppServices(container: container, media: media, credentials: vault, transport: http)
+        await services.refreshCredentials()
+        let editor = ItemEditorModel(image: try CoreTests.fixtureImage(width: 100, height: 100), services: services)
+        editor.fields.name = "shirt"
+        let saved = await editor.save(); XCTAssertTrue(saved)
+        let receipt = try XCTUnwrap(editor.record)
+        XCTAssertTrue(receipt.capsuleSaveState.completed)
+        XCTAssertEqual(receipt.capsuleUserID, user.id)
+        let files = await media.files; XCTAssertTrue(files.isEmpty)
+        let savedAgain = await editor.save(); XCTAssertTrue(savedAgain)
+        let requests = await http.requests; XCTAssertEqual(requests.count, 1)
+    }
+    @MainActor func testDraftCannotBeSentToAnotherAccount() async throws {
+        let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let vault = MemoryCredentials()
+        try await vault.storeCapsuleLogin(CapsuleLogin(token: UUID().uuidString, user: CapsuleUser(id: "other", name: "test")))
+        let http = StubHTTP()
+        let services = AppServices(container: container, media: MemoryMedia(), credentials: vault, transport: http)
+        await services.refreshCredentials()
+        var item = ItemRecord(localImageReference: UUID().uuidString + ".jpg", fields: ItemFields(name: "shirt"))
+        item.capsuleUserID = "owner"
+        try services.items.save(item)
+        let editor = ItemEditorModel(record: item, services: services)
+        let saved = await editor.save(); XCTAssertFalse(saved)
+        XCTAssertEqual(editor.error, ScanError.wrongAccount.localizedDescription)
+        let requests = await http.requests; XCTAssertTrue(requests.isEmpty)
+        XCTAssertEqual(try services.items.record(id: item.id), item)
+    }
+}
+
+@MainActor final class TestBrowser: BrowserAuthenticating {
+    var cancel = false
+    func authenticate(url: URL, callbackScheme: String) async throws -> URL {
+        if cancel { throw SignInError.cancelled }
+        let state = URLComponents(url: url, resolvingAgainstBaseURL: false)!.queryItems!.first { $0.name == "state" }!.value!
+        return URL(string: "\(callbackScheme)://auth/callback?code=\(try CapsuleSignInRequest().verifier)&state=\(state)")!
+    }
+}
+final class SessionTests: XCTestCase {
+    @MainActor func testSignInRestoresAccountOnRelaunchAndNeverCreatesItems() async throws {
+        let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let vault = MemoryCredentials()
+        let login = CapsuleLogin(token: "capsule_" + (try CapsuleSignInRequest().verifier), user: CapsuleUser(id: UUID().uuidString, name: "test"))
+        let services = AppServices(container: container, media: MemoryMedia(), credentials: vault,
+                                   transport: StubHTTP(body: try JSONEncoder().encode(login)), browser: TestBrowser())
+        await services.signIn()
+        XCTAssertTrue(services.connected); XCTAssertEqual(services.user, login.user)
+        let restarted = AppServices(container: container, media: MemoryMedia(), credentials: vault, transport: StubHTTP(error: URLError(.notConnectedToInternet)))
+        await restarted.refreshCredentials()
+        XCTAssertTrue(restarted.connected); XCTAssertEqual(restarted.user, login.user)
+        XCTAssertEqual(try container.mainContext.fetchCount(FetchDescriptor<WardrobeItem>()), 0)
+    }
+    @MainActor func testCancelledSignInDoesNotConnectOrSaveAnything() async throws {
+        let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let vault = MemoryCredentials(); let http = StubHTTP(); let browser = TestBrowser(); browser.cancel = true
+        let services = AppServices(container: container, media: MemoryMedia(), credentials: vault, transport: http, browser: browser)
+        await services.signIn()
+        XCTAssertFalse(services.connected); XCTAssertNil(services.connectionMessage)
+        let values = await vault.values; XCTAssertTrue(values.isEmpty)
+        let requests = await http.requests; XCTAssertTrue(requests.isEmpty)
     }
 }

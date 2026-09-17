@@ -6,7 +6,6 @@ import SwiftUI
     @Published var priceText: String
     @Published var image: Data?
     @Published var record: ItemRecord?
-    @Published var sendToCapsule: Bool
     @Published var extracting = false
     @Published var saving = false
     @Published var message: String?
@@ -20,7 +19,6 @@ import SwiftUI
         self.image = image; self.record = record; self.services = services
         fields = record?.fields ?? ItemFields()
         priceText = Price.display(record?.fields.price)
-        sendToCapsule = services.connected && record?.capsuleSaveState.completed != true
     }
     var hasUnsavedChanges: Bool {
         guard let record else { return true }
@@ -61,16 +59,21 @@ import SwiftUI
     }
     func stopExtraction() { extractionTask?.cancel(); extracting = false }
 
-    func save() async -> Bool {
+    func saveDraft() async -> Bool { await persist(send: false) }
+    func save() async -> Bool { await persist(send: true) }
+    private func persist(send: Bool) async -> Bool {
         guard !saving else { return false }
+        if record?.capsuleSaveState.completed == true { return true }
         saving = true; error = nil; message = nil
         defer { saving = false }
         var newImageReference: String?
+        let accountID = services.user?.id
         do {
             var reviewed = fields
             reviewed.price = try Price.canonical(priceText)
-            let willSend = sendToCapsule && services.connected && record?.capsuleSaveState.completed != true
-            reviewed = try reviewed.validated(requireName: willSend)
+            if let owner = record?.capsuleUserID, owner != services.user?.id { throw ScanError.wrongAccount }
+            if send && !services.connected { throw ScanError.notConnected }
+            reviewed = try reviewed.validated(requireName: send)
             stopExtraction() // Never let a late response overwrite the reviewed values.
             var item: ItemRecord
             if var existing = record {
@@ -82,12 +85,13 @@ import SwiftUI
                 newImageReference = reference
                 item = ItemRecord(localImageReference: reference, fields: reviewed)
             }
+            item.capsuleUserID = item.capsuleUserID ?? accountID
             let previousRequest = record?.capsuleRequestReference
             try services.items.save(item)
             record = item
             newImageReference = nil
             if let previousRequest, previousRequest != item.capsuleRequestReference { await services.media.remove(previousRequest) }
-            if willSend {
+            if send {
                 do { try await services.send(id: item.id) }
                 catch {
                     record = try services.items.record(id: item.id)

@@ -16,6 +16,7 @@ import SwiftData
     var capsuleSaveState: String
     var capsuleIdempotencyKey: String?
     var capsuleRemoteItemID: String?
+    var capsuleUserID: String?
     var lastCapsuleError: String?
     var capsuleRequestReference: String?
 
@@ -26,6 +27,7 @@ import SwiftData
         color = record.fields.color; size = record.fields.size; price = record.fields.price; currency = record.fields.currency
         capsuleSaveState = record.capsuleSaveState.rawValue; capsuleIdempotencyKey = record.capsuleIdempotencyKey
         capsuleRemoteItemID = record.capsuleRemoteItemID; lastCapsuleError = record.lastCapsuleError
+        capsuleUserID = record.capsuleUserID
         capsuleRequestReference = record.capsuleRequestReference
     }
     var record: ItemRecord {
@@ -33,6 +35,7 @@ import SwiftData
                    fields: ItemFields(name: name, brand: brand, category: GarmentCategory.validated(category), color: color, size: size, price: price, currency: currency),
                    capsuleSaveState: CapsuleSaveState(rawValue: capsuleSaveState) ?? .notSaved,
                    capsuleIdempotencyKey: capsuleIdempotencyKey, capsuleRemoteItemID: capsuleRemoteItemID,
+                   capsuleUserID: capsuleUserID,
                    lastCapsuleError: lastCapsuleError, capsuleRequestReference: capsuleRequestReference)
     }
     func apply(_ record: ItemRecord) {
@@ -41,6 +44,7 @@ import SwiftData
         color = record.fields.color; size = record.fields.size; price = record.fields.price; currency = record.fields.currency
         capsuleSaveState = record.capsuleSaveState.rawValue; capsuleIdempotencyKey = record.capsuleIdempotencyKey
         capsuleRemoteItemID = record.capsuleRemoteItemID; lastCapsuleError = record.lastCapsuleError
+        capsuleUserID = record.capsuleUserID
         capsuleRequestReference = record.capsuleRequestReference
     }
 }

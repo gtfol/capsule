@@ -1,17 +1,20 @@
 import SwiftUI
 import SwiftData
 
-@MainActor struct LibraryView: View {
+@MainActor struct DraftsView: View {
     @EnvironmentObject private var services: AppServices
     @Query(sort: \WardrobeItem.createdAt, order: .reverse) private var items: [WardrobeItem]
+    private var drafts: [WardrobeItem] {
+        items.filter { !$0.record.capsuleSaveState.completed && ($0.capsuleUserID == nil || $0.capsuleUserID == services.user?.id) }
+    }
     var body: some View {
         ScrollView {
-            if items.isEmpty {
-                ContentUnavailableView("no items yet", systemImage: "tshirt", description: Text("take or choose a photo to add an item."))
+            if drafts.isEmpty {
+                ContentUnavailableView("no drafts", systemImage: "tray", description: Text("unfinished scans appear here."))
                     .padding(.top, 60)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 24) {
-                    ForEach(items) { item in
+                    ForEach(drafts) { item in
                         NavigationLink {
                             ItemEditorView(model: ItemEditorModel(record: item.record, services: services))
                         } label: {
@@ -27,7 +30,7 @@ import SwiftData
                 }.padding(16)
             }
         }
-        .navigationTitle("local items")
+        .navigationTitle("drafts")
         .toolbar { NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }.accessibilityLabel("settings") }
     }
 }
