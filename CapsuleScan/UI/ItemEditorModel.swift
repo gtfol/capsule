@@ -48,7 +48,7 @@ import SwiftUI
             catch {
                 guard !Task.isCancelled else { return }
                 draft = (try? await OnDeviceItemExtractor().extract(image: image)) ?? ExtractedDraft()
-                if !Task.isCancelled { message = "some details couldn’t be read. you can fill them in." }
+                if !Task.isCancelled { message = "some details couldn’t be read. enter them below." }
             }
             guard !Task.isCancelled else { return }
             if !edited.contains(.name), let name = draft.name { fields.name = name }

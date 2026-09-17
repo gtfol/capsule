@@ -35,8 +35,8 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 Spacer()
                 Image(systemName: "tshirt").font(.system(size: 72, weight: .ultraLight)).foregroundStyle(.secondary).accessibilityHidden(true)
                 VStack(spacing: 8) {
-                    Text("one garment at a time").font(.title2)
-                    Text("keep it centered, with the whole piece visible.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Text("add an item").font(.title2)
+                    Text("keep the whole item in the frame.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
                 VStack(spacing: 14) {
                     Button {
@@ -57,7 +57,6 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 if processing { ProgressView("preparing photo…").font(.footnote) }
                 if let error { Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
                 Spacer()
-                Text("review before saving. yours, even without capsule.").font(.caption).foregroundStyle(.secondary)
             }
             .padding(24)
             .navigationTitle("capsule scan")

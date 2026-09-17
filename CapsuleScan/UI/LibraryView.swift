@@ -7,7 +7,7 @@ import SwiftData
     var body: some View {
         ScrollView {
             if items.isEmpty {
-                ContentUnavailableView("no items yet", systemImage: "tshirt", description: Text("take a photo to start your capsule scan library."))
+                ContentUnavailableView("no items yet", systemImage: "tshirt", description: Text("take or choose a photo to add an item."))
                     .padding(.top, 60)
             } else {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 24) {

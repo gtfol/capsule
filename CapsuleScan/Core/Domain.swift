@@ -108,17 +108,17 @@ enum ScanError: Error, Equatable, LocalizedError, Sendable {
         case .invalidImage: return "this photo couldn’t be opened. choose another."
         case .imageTooLarge: return "this photo is too large to send. choose a smaller photo."
         case .notConnected: return "connect capsule in settings to send this item."
-        case .authentication: return "re-enter your capsule token in settings. your local item is safe."
-        case .offline: return "you’re offline. your item is saved here. retry when connected."
+        case .authentication: return "re-enter your capsule token in settings. your item is saved on this iphone."
+        case .offline: return "you’re offline. your item is saved on this iphone. retry when connected."
         case .timeout: return "capsule took too long to reply. retry to check this save."
         case .rateLimited: return "too many saves. wait a few minutes, then retry."
-        case .unavailable: return "capsule is unavailable. your item is saved here. try again."
+        case .unavailable: return "capsule is unavailable. your item is saved on this iphone. try again."
         case .idempotencyConflict: return "capsule couldn’t confirm this save. try again."
         case .rejected: return "capsule couldn’t accept this item. review the details and retry."
         case .invalidResponse: return "capsule’s reply couldn’t be read. retry to confirm the save."
         case .storage: return "couldn’t save on this iphone. check available storage and try again."
         case .keychain: return "couldn’t access secure storage. unlock your iphone and try again."
-        case .extraction: return "couldn’t read the details. you can enter them below."
+        case .extraction: return "couldn’t read the details. enter them below."
         }
     }
     static func transport(_ error: Error) -> Self {

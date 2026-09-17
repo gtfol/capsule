@@ -30,7 +30,7 @@ import SwiftUI
             Section {
                 if model.record?.capsuleSaveState.completed == true {
                     Text(model.record!.capsuleSaveState.label)
-                    Text("edits here stay on this iphone.").font(.caption).foregroundStyle(.secondary)
+                    Text("changes are saved on this iphone only.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Toggle("save to capsule", isOn: $model.sendToCapsule).disabled(!services.connected || model.saving)
                     if !services.connected {
@@ -41,7 +41,7 @@ import SwiftUI
                     }
                     if let error = model.record?.lastCapsuleError, model.error == nil { Text(error).font(.footnote).foregroundStyle(.secondary) }
                 }
-            } footer: { Text("always saved on this iphone first.") }
+            } footer: { Text("items are saved on this iphone.") }
             if let error = model.error { Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
             Button {
                 Task { if await model.save() { onSaved(); dismiss() } }
