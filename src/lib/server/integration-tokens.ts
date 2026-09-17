@@ -24,21 +24,27 @@ export async function authenticateToken(db: Pool | PoolClient, hash: string, sco
   return token;
 }
 export async function createIntegrationToken(pool: Pool, userId: string, name: string, scopes: IntegrationScope[], expires: IntegrationExpiry = "90d") {
-  if (!INTEGRATION_EXPIRIES.includes(expires)) throw new IntegrationError("Choose a valid token expiry.");
-  const token = `capsule_${randomBytes(32).toString("base64url")}`;
   const client = await pool.connect();
   try {
     await client.query("begin");
+    const result = await issueIntegrationToken(client,userId,name,scopes,expires);
+    await client.query("commit");
+    return result;
+  } catch(error) { await client.query("rollback"); throw error; }
+  finally { client.release(); }
+}
+// Caller owns the transaction, so a native code exchange and token issuance
+// either both commit or neither does.
+export async function issueIntegrationToken(client: PoolClient, userId: string, name: string, scopes: IntegrationScope[], expires: IntegrationExpiry = "90d") {
+  if (!INTEGRATION_EXPIRIES.includes(expires)) throw new IntegrationError("Choose a valid token expiry.");
+  const token = `capsule_${randomBytes(32).toString("base64url")}`;
     await client.query("select pg_advisory_xact_lock(hashtextextended($1,0))", [`capsule:${userId}`]);
     const count = await client.query<{count: number}>("select count(*)::int as count from capsule_integration_tokens where user_id=$1 and revoked_at is null and (expires_at is null or expires_at > now())", [userId]);
     if (count.rows[0].count >= 10) throw new IntegrationError("Remove an unused token before creating another.", 409, "TOKEN_LIMIT");
     const result = await client.query(`insert into capsule_integration_tokens (id,user_id,name,token_hash,prefix,scopes,expires_at)
       values ($1,$2,$3,$4,$5,$6,case when $7::text is null then null else now()+$7::interval end) returning id,name,prefix,scopes,created_at,expires_at,last_used_at`,
     [randomUUID(), userId, name, digest(token), token.slice(0, 16), scopes, expires === "never" ? null : expires === "1y" ? "1 year" : "90 days"]);
-    await client.query("commit");
     return { ...result.rows[0], token };
-  } catch(error) { await client.query("rollback"); throw error; }
-  finally { client.release(); }
 }
 export function integrationFailure(error: unknown) {
   const known = error instanceof IntegrationError;

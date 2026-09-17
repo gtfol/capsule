@@ -3,6 +3,7 @@ import { isIP } from "node:net";
 import { dbConfigured, getPool } from "./db";
 
 export const REQUEST_LIMITS = {
+  scanAuth: { count: 30, seconds: 600 },
   import: { count: 20, seconds: 600 },
   price: { count: 60, seconds: 600 },
   image: { count: 300, seconds: 60 },
