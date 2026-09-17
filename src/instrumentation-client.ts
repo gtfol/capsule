@@ -9,7 +9,7 @@ const config = readAnalyticsConfig({
   NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
 });
 
-if (config) {
+if (config && !window.location.pathname.startsWith("/scan/")) {
   try {
     posthog.init(config.key, analyticsInitOptions(config.host));
     attachAnalytics(posthog);
