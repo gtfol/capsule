@@ -1,0 +1,47 @@
+src/lib/server/scan-routes.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 1-13
+src/lib/server/integration-tokens.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 30-40
+src/instrumentation-client.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 12
+src/app/scan/connect/page.tsx
+  s_0521f8d73d6032::t_1f88f0983475af 1-14
+src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_1f88f0983475af 1-55
+src/app/api/scan/authorize/route.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 1-4
+docs/scan-sign-in.md
+  s_0521f8d73d6032::t_16c4404c725666 1-15
+src/lib/server/request-limit.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 6
+next.config.ts
+  s_0521f8d73d6032::t_1f88f0983475af 10-13
+src/lib/server/scan-auth.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 2-51,53,56-80
+  s_0521f8d73d6032::t_a3d083403992cd 1,52,54-55
+tests/scan-auth.test.ts
+  s_0521f8d73d6032::t_a3d083403992cd 69
+  s_0521f8d73d6032::t_429b0efdd8fb3d 1-68,70-72
+src/app/api/scan/exchange/route.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 1-4
+public/sw.js
+  s_0521f8d73d6032::t_5b92a033b872ea 20
+src/app/api/scan/session/route.ts
+  s_0521f8d73d6032::t_5b92a033b872ea 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e02cfa6973a6609c612479923717ec55e064b02d",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
