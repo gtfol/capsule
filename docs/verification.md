@@ -2,9 +2,13 @@
 
 ## Automated checks
 
+Release 1.0 (4) adds a **terms** link in Settings to Apple's Standard License Agreement. The iPhone simulator build and unsigned Release archive pass without warnings on Xcode 26.6. Distribution upload is pending renewal of the Xcode account session.
+
+On September 18, 2026, Allen confirmed that camera capture and saving to capsule worked on his physical iPhone, and that both the item and photo appeared in his web wardrobe. This confirms that core live flow; it does not replace the remaining offline/retry, account-deletion, or optional OpenAI checks below.
+
 The App Store preparation for 1.0 (3) passes 40 iPhone tests and 28 macOS core tests. Its Release archive builds without warnings on Xcode 26.6. New coverage verifies that an existing OpenAI key cannot enable photo transmission without explicit consent, consent survives refresh, and removing the key disables processing. The on-device path also returns a color after the same JPEG preparation used by camera/library inputs. Settings now labels that mode **color only**; it does not identify name, brand, or category without OpenAI.
 
-App Review preparation adds public privacy/support links, a web account-deletion shortcut, and an explicit photo-processing consent prompt. Live camera/save verification and App Store submission are still pending.
+App Review preparation adds public privacy/support links, a web account-deletion shortcut, and an explicit photo-processing consent prompt. Build 3 was uploaded successfully. The approved marketing screenshots were uploaded in capture, details, drafts order; submission remains pending.
 
 The interface update for 1.0 (2) passes all 39 iPhone tests and 28 macOS core tests on Xcode 26.6 / iOS 26.5. It bundles Lato and its license, removes the green accent and inset form cards, and moves the photo-details explanation into a tappable popover.
 

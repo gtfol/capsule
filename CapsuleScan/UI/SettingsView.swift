@@ -72,6 +72,7 @@ import SwiftUI
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     Link("privacy", destination: URL(string: "https://github.com/gtfol/capsule-scan/blob/main/docs/privacy.md")!).frame(minHeight: 44)
+                    Link("terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!).frame(minHeight: 44)
                     Link("support", destination: URL(string: "https://github.com/gtfol/capsule-scan/blob/main/docs/support.md")!).frame(minHeight: 44)
                 }.foregroundStyle(CapsuleStyle.secondary)
             }
