@@ -68,6 +68,6 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 - `CapsuleScan/UI`: sign-in, capture, review, drafts, settings.
 - `CapsuleScanTests`: request, error, retry, extraction, image-limit, persistence, and editor regression tests.
 - `scripts/generate-project.py`: optional standard-library-only project generator. The complete generated Xcode project is committed; no generation step is needed to build.
-- `scripts/make-icon.swift`: creates the original code-drawn app icon.
+- `scripts/make-icon.swift`: renders capsule's lowercase black “c” mark on an opaque white app icon.
 
 `ItemExtractor` and `WardrobeDestination` are the extension seams. This version deliberately contains only the sign-in → single photo → reviewed item → capsule save flow.
