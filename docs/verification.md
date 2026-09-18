@@ -2,6 +2,12 @@
 
 ## Automated checks
 
+The interface update for 1.0 (2) passes all 39 iPhone tests and 28 macOS core tests on Xcode 26.6 / iOS 26.5. It bundles Lato and its license, removes the green accent and inset form cards, and moves the photo-details explanation into a tappable popover.
+
+Simulator review covers the signed-out capture screen, settings, info open/close, API-key field, draft grid, review fields, category picker, disabled remote save, and unsaved-edit confirmation. At the largest Dynamic Type setting, the status moves below the settings heading and the information opens as a sheet so its full text remains readable. The simulator's text size was restored afterward.
+
+A real sign-in attempt exposed missing Keychain access in the unsigned simulator build. An isolated system-Keychain regression test reproduces the failure with `CODE_SIGNING_ALLOWED=NO` and passes with ad-hoc signing, including credential creation, reading after reopening the store, updating, and deletion. The simulator build/test script now keeps ad-hoc signing enabled; it requires no development account. The UI no longer assumes every Keychain failure means the phone is locked. TestFlight uses Apple's distribution signing separately.
+
 The sign-in/capture-companion change passes 38 iPhone XCTest tests and 28 shared macOS core tests locally with Xcode 26.6 / iOS 26.5. The iPhone simulator build also passes with compiler warnings treated as errors. Tests cover the PKCE request and callback, cancellation, Keychain session persistence, account-bound drafts, failed-save recovery, exact-body idempotency, request limits, image processing, and success cleanup.
 
 Capsule’s companion server suite verifies code exchange against a disposable local Postgres database: origin/account checks, PKCE, concurrent single-use consumption, expiry, session revocation, restricted scopes, and token revocation. No production wardrobe is modified by these tests.

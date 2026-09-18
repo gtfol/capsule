@@ -119,7 +119,7 @@ enum ScanError: Error, Equatable, LocalizedError, Sendable {
         case .rejected: return "capsule couldn’t accept this item. review the details and retry."
         case .invalidResponse: return "capsule’s reply couldn’t be read. retry to confirm the save."
         case .storage: return "couldn’t save on this iphone. check available storage and try again."
-        case .keychain: return "couldn’t access secure storage. unlock your iphone and try again."
+        case .keychain: return "couldn’t access secure storage. try again."
         case .extraction: return "couldn’t read the details. enter them below."
         }
     }

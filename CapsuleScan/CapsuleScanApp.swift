@@ -11,16 +11,17 @@ import SwiftData
                     CaptureView().environmentObject(services).modelContainer(services.container)
                 } else {
                     VStack(spacing: 16) {
-                        Text("capsule scan").font(.title2)
+                        Text("capsule scan").font(CapsuleStyle.heading)
                         if startupError {
-                            Text("couldn’t open your items. try again.").foregroundStyle(.secondary)
+                            Text("couldn’t open your drafts. try again.").foregroundStyle(CapsuleStyle.secondary)
                             Button("try again", action: start)
                         } else { ProgressView().task { start() } }
                     }.padding()
                 }
             }
             .preferredColorScheme(.dark)
-            .tint(Color(red: 0.72, green: 0.80, blue: 0.68))
+            .font(CapsuleStyle.body)
+            .tint(CapsuleStyle.text)
         }
     }
     @MainActor private func start() {

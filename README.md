@@ -4,6 +4,8 @@ Photograph one garment, review its details, and save it to your [capsule](https:
 
 Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or bundled credentials. Uses your existing capsule account.
 
+The interface follows the shared [design reference](https://github.com/gtfol/ai/blob/889bd107969475a8c269d4428972b47b61b9794d/DESIGN.md): a monochrome canvas, regular typography, open sections, and native controls. Lato Regular is bundled for offline use under the [SIL Open Font License](CapsuleScan/Resources/Lato-OFL.txt), with Dynamic Type support. The font comes from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/lato).
+
 ## Build and run
 
 1. Open `CapsuleScan.xcodeproj` in Xcode 26.6 or newer. Xcode 26.6 works on macOS 26.2–26.x; Xcode 27 requires macOS 26.6 or newer.
@@ -29,6 +31,8 @@ Successful saves leave a small internal receipt to prevent resubmission. They di
 
 Add your own OpenAI API key in Settings to use `gpt-4.1-mini` through the Responses API. Newly selected garment photos are sent directly to OpenAI to draft category, color, name, and an optional visible brand. Usage is billed to your OpenAI account. Requests set `store: false`; provider retention policies still apply.
 
+Settings calls this **photo details**. Tap its information icon for the on-device behavior, model, billing, and key-storage details.
+
 Without a key, Core Image estimates the dominant color in the center of the photo and leaves category unset. If external extraction fails, the app falls back to on-device color and manual editing. Late responses cannot replace fields you already edited.
 
 ## Data and security
@@ -52,6 +56,8 @@ scripts/test-ios.sh
 ```
 
 This builds the iPhone simulator and unsigned physical-device targets, then runs XCTest on an available iPhone simulator. Results are written to `TestResults.xcresult`; move or remove a previous result bundle before repeating. It does not install to or test a physical camera.
+
+Keep simulator signing enabled (the script uses ad-hoc signing, with no Apple account required). `CODE_SIGNING_ALLOWED=NO` removes the simulator’s Keychain identity and prevents sign-in credentials from being saved. The test suite exercises the real system Keychain in an isolated namespace to catch this setup error.
 
 The same networking, extraction, image, and idempotency tests can also run on macOS with the full Xcode developer directory selected:
 

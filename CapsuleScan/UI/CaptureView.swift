@@ -35,44 +35,50 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 if !services.credentialsReady {
                     ProgressView()
                 } else if !services.connected {
-                    Text("sign in to add items to your capsule wardrobe.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                    SignInButton().buttonStyle(.borderedProminent).controlSize(.large)
-                    if let message = services.connectionMessage { Text(message).font(.footnote).foregroundStyle(.secondary) }
+                    Text("add to your capsule wardrobe").font(CapsuleStyle.heading).multilineTextAlignment(.center)
+                    SignInButton().capsulePrimaryAction()
+                    if let message = services.connectionMessage { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
                 } else {
-                Image(systemName: "tshirt").font(.system(size: 72, weight: .ultraLight)).foregroundStyle(.secondary).accessibilityHidden(true)
                 VStack(spacing: 8) {
-                    Text("add an item").font(.title2)
-                    Text("keep the whole item in the frame.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                    Text("add an item").font(CapsuleStyle.heading)
+                    Text("one garment, fully in frame.").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).multilineTextAlignment(.center)
                 }
-                VStack(spacing: 14) {
+                VStack(spacing: 12) {
                     Button {
                         Task {
                             if await camera.requestAccess() { showingCamera = true }
                             else { cameraDenied = true }
                         }
                     } label: { Label("take a photo", systemImage: "camera").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent)
+                    .capsulePrimaryAction()
                     .disabled(processing || !UIImagePickerController.isSourceTypeAvailable(.camera))
                     PhotosPicker(selection: $photo, matching: .images, preferredItemEncoding: .current) {
-                        Label("choose a photo", systemImage: "photo").frame(maxWidth: .infinity)
-                    }.buttonStyle(.bordered).disabled(processing)
+                        Label("choose a photo", systemImage: "photo").frame(maxWidth: .infinity, minHeight: 44)
+                    }.buttonStyle(.plain).disabled(processing)
                     if !UIImagePickerController.isSourceTypeAvailable(.camera) {
-                        Text("camera unavailable. choose a photo instead.").font(.caption).foregroundStyle(.secondary)
+                        Text("camera unavailable. choose a photo.").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
                     }
                 }.controlSize(.large)
-                if processing { ProgressView("preparing photo…").font(.footnote) }
-                if let error { Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
-                if let notice { Text(notice).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
-                Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!).font(.footnote)
+                if processing { ProgressView("preparing photo…").font(CapsuleStyle.caption) }
+                if let error { Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).accessibilityAddTraits(.updatesFrequently) }
+                if let notice { Text(notice).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).accessibilityAddTraits(.updatesFrequently) }
+                Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!).font(CapsuleStyle.caption).frame(minHeight: 44)
                 }
                 Spacer()
             }
-            .padding(24)
+            .padding(.horizontal, 20).padding(.vertical, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .capsuleScreen()
             .navigationTitle("capsule scan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { NavigationLink { DraftsView() } label: { Image(systemName: "tray") }.accessibilityLabel("drafts") }
-                ToolbarItem(placement: .topBarTrailing) { NavigationLink { SettingsView() } label: { Image(systemName: "gearshape") }.accessibilityLabel("settings") }
+                ToolbarItem(placement: .principal) { Text("capsule scan").font(CapsuleStyle.heading) }
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink { DraftsView() } label: { Image(systemName: "tray").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("drafts")
+                }.quietBackground()
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { SettingsView() } label: { Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("settings")
+                }.quietBackground()
             }
             .sheet(isPresented: $showingCamera, onDismiss: {
                 // Present review only after the camera sheet has finished dismissing.

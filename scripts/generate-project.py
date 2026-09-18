@@ -25,10 +25,14 @@ for path in sorted(root.glob('CapsuleScanTests/*.swift')):
     files[rel] = add(rel, {'isa':'PBXFileReference','lastKnownFileType':'sourcecode.swift','path':rel,'sourceTree':'<group>'})
 assets = add('assets', {'isa':'PBXFileReference','lastKnownFileType':'folder.assetcatalog','path':'CapsuleScan/Assets.xcassets','sourceTree':'<group>'})
 info = add('info', {'isa':'PBXFileReference','lastKnownFileType':'text.plist.xml','path':'CapsuleScan/Info.plist','sourceTree':'<group>'})
+bundled = []
+for path in sorted(root.glob('CapsuleScan/Resources/*')):
+    rel = str(path.relative_to(root))
+    bundled.append(add(rel, {'isa':'PBXFileReference','lastKnownFileType':'file','path':rel,'sourceTree':'<group>'}))
 app = add('app-product', {'isa':'PBXFileReference','explicitFileType':'wrapper.application','path':'CapsuleScan.app','sourceTree':'BUILT_PRODUCTS_DIR'})
 tests = add('test-product', {'isa':'PBXFileReference','explicitFileType':'wrapper.cfbundle','path':'CapsuleScanTests.xctest','sourceTree':'BUILT_PRODUCTS_DIR'})
 products = add('products', {'isa':'PBXGroup','children':[app,tests],'name':'Products','sourceTree':'<group>'})
-appgroup = add('app-group', {'isa':'PBXGroup','children':[v for k,v in files.items() if k.startswith('CapsuleScan/')]+[assets,info],'name':'CapsuleScan','sourceTree':'<group>'})
+appgroup = add('app-group', {'isa':'PBXGroup','children':[v for k,v in files.items() if k.startswith('CapsuleScan/')]+[assets,info]+bundled,'name':'CapsuleScan','sourceTree':'<group>'})
 testgroup = add('test-group', {'isa':'PBXGroup','children':[v for k,v in files.items() if k.startswith('CapsuleScanTests/')],'name':'CapsuleScanTests','sourceTree':'<group>'})
 main = add('main-group', {'isa':'PBXGroup','children':[appgroup,testgroup,products],'sourceTree':'<group>'})
 def phase(name, isa, refs):
@@ -36,11 +40,11 @@ def phase(name, isa, refs):
     return add(name, {'isa':isa,'buildActionMask':'2147483647','files':builds,'runOnlyForDeploymentPostprocessing':'0'})
 appSources = phase('app-sources','PBXSourcesBuildPhase',[v for k,v in files.items() if k.startswith('CapsuleScan/')])
 testSources = phase('test-sources','PBXSourcesBuildPhase',[v for k,v in files.items() if k.startswith('CapsuleScanTests/')])
-resources = phase('resources','PBXResourcesBuildPhase',[assets])
+resources = phase('resources','PBXResourcesBuildPhase',[assets]+bundled)
 appFrameworks = phase('app-frameworks','PBXFrameworksBuildPhase',[])
 testFrameworks = phase('test-frameworks','PBXFrameworksBuildPhase',[])
 common = {'COPY_PHASE_STRIP':'NO','LM_SKIP_METADATA_EXTRACTION':'YES','CLANG_ENABLE_MODULES':'YES','CLANG_ENABLE_OBJC_ARC':'YES','GCC_C_LANGUAGE_STANDARD':'gnu17','CLANG_CXX_LANGUAGE_STANDARD':'gnu++20','IPHONEOS_DEPLOYMENT_TARGET':'17.0','SDKROOT':'iphoneos','SWIFT_VERSION':'6.0','SWIFT_STRICT_CONCURRENCY':'complete','ENABLE_USER_SCRIPT_SANDBOXING':'YES','GCC_WARN_ABOUT_RETURN_TYPE':'YES_ERROR','GCC_WARN_UNINITIALIZED_AUTOS':'YES_AGGRESSIVE','CLANG_WARN_DOCUMENTATION_COMMENTS':'YES','CLANG_WARN_UNREACHABLE_CODE':'YES','SWIFT_TREAT_WARNINGS_AS_ERRORS':'YES'}
-appSettings = {'PRODUCT_NAME':'$(TARGET_NAME)','PRODUCT_BUNDLE_IDENTIFIER':'dev.gtfol.capsulescan','TARGETED_DEVICE_FAMILY':'1','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD':'NO','CODE_SIGN_STYLE':'Automatic','INFOPLIST_FILE':'CapsuleScan/Info.plist','GENERATE_INFOPLIST_FILE':'NO','ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon','MARKETING_VERSION':'1.0','CURRENT_PROJECT_VERSION':'1','LD_RUNPATH_SEARCH_PATHS':['$(inherited)','@executable_path/Frameworks']}
+appSettings = {'PRODUCT_NAME':'$(TARGET_NAME)','PRODUCT_BUNDLE_IDENTIFIER':'dev.gtfol.capsulescan','TARGETED_DEVICE_FAMILY':'1','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','SUPPORTS_MACCATALYST':'NO','SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD':'NO','SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD':'NO','CODE_SIGN_STYLE':'Automatic','INFOPLIST_FILE':'CapsuleScan/Info.plist','GENERATE_INFOPLIST_FILE':'NO','ASSETCATALOG_COMPILER_APPICON_NAME':'AppIcon','MARKETING_VERSION':'1.0','CURRENT_PROJECT_VERSION':'2','LD_RUNPATH_SEARCH_PATHS':['$(inherited)','@executable_path/Frameworks']}
 testSettings = {'PRODUCT_NAME':'$(TARGET_NAME)','PRODUCT_BUNDLE_IDENTIFIER':'dev.gtfol.capsulescan.tests','TARGETED_DEVICE_FAMILY':'1','SUPPORTED_PLATFORMS':'iphoneos iphonesimulator','CODE_SIGN_STYLE':'Automatic','GENERATE_INFOPLIST_FILE':'YES','TEST_HOST':'$(BUILT_PRODUCTS_DIR)/CapsuleScan.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/CapsuleScan','BUNDLE_LOADER':'$(TEST_HOST)','LD_RUNPATH_SEARCH_PATHS':['$(inherited)','@executable_path/Frameworks','@loader_path/Frameworks']}
 def configs(name, settings):
     refs=[]

@@ -8,7 +8,8 @@ protocol CredentialStore: Sendable {
 }
 
 actor KeychainStore: CredentialStore {
-    private let service = "dev.gtfol.capsulescan.credentials"
+    private let service: String
+    init(service: String = "dev.gtfol.capsulescan.credentials") { self.service = service }
     func read(_ credential: Credential) throws -> String? {
         var query = base(credential)
         query[kSecReturnData as String] = true

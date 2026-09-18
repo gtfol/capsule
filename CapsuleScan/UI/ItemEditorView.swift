@@ -8,14 +8,14 @@ import SwiftUI
     @State private var confirmDiscard = false
 
     var body: some View {
-        Form {
+        List {
             if let data = model.image, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300)
-                    .accessibilityLabel("garment photo").listRowBackground(Color.clear)
+                    .accessibilityLabel("garment photo").listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
-            if model.extracting { HStack { ProgressView(); Text("reading details…").font(.footnote).foregroundStyle(.secondary) } }
-            if let message = model.message { Text(message).font(.footnote).foregroundStyle(.secondary) }
-            Section("item") {
+            if model.extracting { HStack { ProgressView(); Text("reading details…").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }.listRowSeparator(.hidden) }
+            if let message = model.message { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).listRowSeparator(.hidden) }
+            Section {
                 LabeledContent("name") { TextField("name", text: binding(\.name, field: .name)).multilineTextAlignment(.trailing).accessibilityLabel("name") }
                 LabeledContent("brand") { TextField("brand", text: binding(\.brand, field: .brand)).multilineTextAlignment(.trailing).accessibilityLabel("brand") }
                 Picker("category", selection: Binding(get: { model.fields.category }, set: { model.touched(.category); model.fields.category = $0 })) {
@@ -26,28 +26,45 @@ import SwiftUI
                 LabeledContent("size") { TextField("size", text: $model.fields.size).multilineTextAlignment(.trailing).accessibilityLabel("size") }
                 LabeledContent("price") { TextField("optional", text: $model.priceText).keyboardType(.decimalPad).multilineTextAlignment(.trailing).accessibilityLabel("price") }
                 LabeledContent("currency") { TextField("usd", text: $model.fields.currency).textInputAutocapitalization(.characters).autocorrectionDisabled().multilineTextAlignment(.trailing).accessibilityLabel("currency") }
-            }.disabled(model.saving)
-            Section {
+            } header: { Text("item").font(CapsuleStyle.heading).foregroundStyle(CapsuleStyle.text).textCase(nil) }
+            .listRowBackground(Color.clear)
+            .listRowSeparatorTint(CapsuleStyle.divider)
+            .listSectionSeparator(.hidden)
+            .disabled(model.saving)
+            Group {
                 if !services.connected {
                     SignInButton()
                 } else if model.fields.category == nil {
-                    Text("choose a category, or capsule will use tops.").font(.caption).foregroundStyle(.secondary)
+                    Text("capsule uses tops if no category is chosen.").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
                 }
-                if let error = model.record?.lastCapsuleError, model.error == nil { Text(error).font(.footnote).foregroundStyle(.secondary) }
-                if let message = services.connectionMessage { Text(message).font(.footnote).foregroundStyle(.secondary) }
-            }
-            if let error = model.error { Text(error).font(.footnote).foregroundStyle(.secondary).accessibilityAddTraits(.updatesFrequently) }
+                if let error = model.record?.lastCapsuleError, model.error == nil { Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
+                if let message = services.connectionMessage { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
+            }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+            if let error = model.error { Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).accessibilityAddTraits(.updatesFrequently).listRowSeparator(.hidden) }
             Button {
                 Task { if await model.save() { onSaved(model.record?.capsuleSaveState ?? .saved); dismiss() } }
             } label: {
-                HStack { Spacer(); if model.saving { ProgressView() }; Text(model.saving ? "saving…" : model.record?.capsuleSaveState == .failed ? "retry save to capsule" : "save to capsule"); Spacer() }
-            }.disabled(!services.connected || model.saving || (model.image == nil && model.record == nil))
+                HStack { Spacer(); if model.saving { ProgressView().tint(CapsuleStyle.canvas) }; Text(model.saving ? "saving…" : model.record?.capsuleSaveState == .failed ? "retry save to capsule" : "save to capsule"); Spacer() }
+            }
+            .capsulePrimaryAction()
+            .listRowBackground(Color.clear).listRowSeparator(.hidden)
+            .disabled(!services.connected || model.saving || (model.image == nil && model.record == nil))
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .capsuleScreen()
         .scrollDismissesKeyboard(.interactively)
         .navigationTitle(model.record == nil ? "review item" : "edit item")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("close") { if model.hasUnsavedChanges { confirmDiscard = true } else { dismiss() } }.disabled(model.saving) } }
+        .toolbar {
+            ToolbarItem(placement: .principal) { Text(model.record == nil ? "review item" : "edit item").font(CapsuleStyle.heading) }
+            ToolbarItem(placement: .cancellationAction) {
+                Button { if model.hasUnsavedChanges { confirmDiscard = true } else { dismiss() } } label: {
+                    Image(systemName: "xmark").font(.system(size: 14)).frame(width: 44, height: 44)
+                }.accessibilityLabel("close").disabled(model.saving)
+            }.quietBackground()
+        }
         .confirmationDialog("leave without saving changes?", isPresented: $confirmDiscard, titleVisibility: .visible) {
             Button("save draft") { Task { if await model.saveDraft() { onSaved(.notSaved); dismiss() } } }
             Button("discard changes", role: .destructive) { dismiss() }
