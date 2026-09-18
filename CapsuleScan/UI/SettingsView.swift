@@ -24,8 +24,6 @@ import SwiftUI
                                 .foregroundStyle(CapsuleStyle.secondary)
                                 .frame(minHeight: 44).disabled(services.authenticating)
                         }
-                        Link("delete account", destination: URL(string: "https://capsule.gtfol.dev/?view=settings")!)
-                            .foregroundStyle(CapsuleStyle.secondary).frame(minHeight: 44)
                     } else {
                         SignInButton().frame(minHeight: 44)
                     }
@@ -75,6 +73,10 @@ import SwiftUI
                     Link("terms", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!).frame(minHeight: 44)
                     Link("support", destination: URL(string: "https://github.com/gtfol/capsule-scan/blob/main/docs/support.md")!).frame(minHeight: 44)
                 }.foregroundStyle(CapsuleStyle.secondary)
+                if services.user != nil {
+                    Link("delete account", destination: URL(string: "https://capsule.gtfol.dev/?view=settings")!)
+                        .foregroundStyle(CapsuleStyle.secondary).frame(minHeight: 44)
+                }
             }
             .buttonStyle(.plain)
             .padding(.horizontal, 20).padding(.vertical, 24)
