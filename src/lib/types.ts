@@ -81,4 +81,4 @@ export interface SyncResponse {
   hasMore: boolean;
 }
 export interface SyncUser { id: string; email: string; name: string; }
-export interface SyncProviders { google: boolean; email: boolean; }
+export interface SyncProviders { google: boolean; apple: boolean; email: boolean; }

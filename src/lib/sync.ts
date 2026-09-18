@@ -49,7 +49,7 @@ export function selectSyncBatch(changes: SyncChange[]): SyncChange[] {
 
 export const useSyncStore = create<SyncState>((set, get) => ({
   enabled: false,
-  providers: { google: false, email: false },
+  providers: { google: false, apple: false, email: false },
   status: "loading",
   user: null,
   error: null,
@@ -66,7 +66,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         if (!response.ok) throw new Error("Unable to check sync availability.");
         const data = await response.json();
         const enabled = data.enabled === true;
-        set({ enabled, providers: { google: enabled && data.providers?.google === true, email: enabled && data.providers?.email === true }, status: enabled ? "signed-out" : "disabled" });
+        set({ enabled, providers: { google: enabled && data.providers?.google === true, apple: enabled && data.providers?.apple === true, email: enabled && data.providers?.email === true }, status: enabled ? "signed-out" : "disabled" });
         if (enabled) await get().refreshSession();
       } catch {
         set({ status: navigator.onLine ? "error" : "offline", error: "Sync is unavailable. Your wardrobe is saved in this browser." });

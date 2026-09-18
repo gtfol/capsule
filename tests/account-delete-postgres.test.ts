@@ -19,7 +19,15 @@ test("account deletion cascades through private records and revokes only owned l
       await pool.query("insert into capsule_render_keys (user_id,encrypted_key) values ($1,'encrypted')", [id]);
     }
     for (const id of [share, wrongShare]) await pool.query("insert into capsule_shares (id,token_hash,snapshot) values ($1,$2,'{}')",[id,hash]);
-    await removeAccount(owner, [{ id:share,hash }, { id:wrongShare,hash:'b'.repeat(64) }]);
+    const appleToken = crypto.randomUUID();
+    await pool.query('insert into public."account" (id,"accountId","providerId","userId","refreshToken") values ($1,$1,\'apple\',$2,$3)', [crypto.randomUUID(), owner, appleToken]);
+    await assert.rejects(removeAccount(owner, [], async () => { throw new Error("Apple unavailable"); }));
+    assert.equal((await pool.query('select count(*)::int as count from public."user" where id=$1', [owner])).rows[0].count, 1);
+    let revoked = false;
+    await removeAccount(owner, [{ id:share,hash }, { id:wrongShare,hash:'b'.repeat(64) }], async (accounts) => {
+      assert.deepEqual(accounts, [{ refreshToken: appleToken, accessToken: null }]); revoked = true;
+    });
+    assert.equal(revoked, true);
     for(const table of ['user','session','account']) assert.equal((await pool.query(`select count(*)::int as count from public."${table}" where id=$1`, [owner])).rows[0].count,0);
     for(const table of ['capsule_records','capsule_render_keys']) {
       assert.equal((await pool.query(`select count(*)::int as count from ${table} where user_id=$1`, [owner])).rows[0].count,0);

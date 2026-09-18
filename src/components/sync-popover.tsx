@@ -14,7 +14,7 @@ export function SyncPopover({ appearance = "icon", disabled = false }: { appeara
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  async function google() { setWorking(true); setError(""); try { const result = await authClient.signIn.social({ provider: "google", callbackURL: window.location.href }); if (result.error) throw new Error(result.error.message || "Sign-in could not start."); } catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in could not start."); } finally { setWorking(false); } }
+  async function social(provider: "google" | "apple") { setWorking(true); setError(""); try { const result = await authClient.signIn.social({ provider, callbackURL: window.location.href }); if (result.error) throw new Error(result.error.message || "Sign-in could not start."); } catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in could not start."); } finally { setWorking(false); } }
   async function emailAuth(event: React.FormEvent) { event.preventDefault(); setWorking(true); setError(""); try { const result = register ? await authClient.signUp.email({ email, password, name: name.trim() || email.split("@")[0] }) : await authClient.signIn.email({ email, password }); if (result.error) throw new Error(result.error.message || "Sign-in failed."); setPassword(""); await sync.refreshSession(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in failed."); } finally { setWorking(false); } }
   const optionClass = "w-full rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted disabled:opacity-40";
   return <Popover>
@@ -28,7 +28,8 @@ export function SyncPopover({ appearance = "icon", disabled = false }: { appeara
         <button type="button" className={optionClass} disabled={working} onClick={async () => { setWorking(true); try { await sync.signOut(); } catch { setError("Could not sign out. Try again."); } finally { setWorking(false); } }}>Sign out</button>
       </div> : <div className="flex flex-col gap-1">
         <p className="px-1 text-xs text-muted-foreground">Sync is optional. Without it, everything stays in this browser.</p>
-        {sync.enabled && sync.providers.google && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void google()}>{working ? "Connecting…" : "Continue with Google"}</button>}
+        {sync.enabled && sync.providers.google && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void social("google")}>{working ? "Connecting…" : "Continue with Google"}</button>}
+        {sync.enabled && sync.providers.apple && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void social("apple")}>{working ? "Connecting…" : "Continue with Apple"}</button>}
         {sync.enabled && sync.providers.email && !showEmail && <button type="button" className={optionClass} onClick={() => setShowEmail(true)}>Continue with email</button>}
         {sync.enabled && sync.providers.email && showEmail && <form className="space-y-3 px-1 pt-2" onSubmit={emailAuth}>
           {register && <label className="field-label">Name<Input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>}
@@ -37,7 +38,7 @@ export function SyncPopover({ appearance = "icon", disabled = false }: { appeara
           <button className={optionClass} type="submit" disabled={working}>{working ? "Connecting…" : register ? "Create account" : "Sign in"}</button>
           <button type="button" className="text-xs text-muted-foreground" onClick={() => setRegister(!register)}>{register ? "Use an existing account" : "Create an account"}</button>
         </form>}
-        {sync.enabled && !sync.providers.google && !sync.providers.email && <p className="px-1 text-xs text-muted-foreground">Sign-in is not configured yet.</p>}
+        {sync.enabled && !sync.providers.google && !sync.providers.apple && !sync.providers.email && <p className="px-1 text-xs text-muted-foreground">Sign-in is not configured yet.</p>}
         {!sync.enabled && sync.status !== "error" && sync.status !== "offline" && <p className="px-1 text-xs text-muted-foreground">Sync is not configured yet.</p>}
       </div>}
       {(error || sync.error) && <p className="mt-2 px-1 text-xs leading-relaxed" role="alert">{error || sync.error}</p>}
