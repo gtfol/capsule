@@ -1,0 +1,47 @@
+src/lib/server/auth.ts
+  s_0521f8d73d6032::t_bf524f591f9cc0 3,6,14,20,27,31-34,38-39
+tests/account-delete-postgres.test.ts
+  s_0521f8d73d6032::t_de74e3393fb3bd 22-30
+docs/apple-sign-in.md
+  s_0521f8d73d6032::t_eccccde11d2c70 1-32
+.env.example
+  s_0521f8d73d6032::t_bf524f591f9cc0 13-17
+src/lib/server/apple-auth.ts
+  s_0521f8d73d6032::t_5832fb5815738c 4
+  s_0521f8d73d6032::t_bf524f591f9cc0 1-3,5-33
+src/lib/sync.ts
+  s_0521f8d73d6032::t_bf524f591f9cc0 52,69
+src/lib/server/account-api.ts
+  s_0521f8d73d6032::t_de74e3393fb3bd 9,15
+  s_0521f8d73d6032::t_bf524f591f9cc0 5,14
+src/lib/types.ts
+  s_0521f8d73d6032::t_bf524f591f9cc0 84
+tests/apple-auth.test.ts
+  s_0521f8d73d6032::t_eccccde11d2c70 1-52
+package-lock.json
+  s_0521f8d73d6032::t_e1d6dbbe0631f1 22
+package.json
+  s_0521f8d73d6032::t_e771d6c0360ac6 25
+src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_58f327432d8f0c 5,22,25,45-46,52
+src/components/shared-copy-actions.tsx
+  s_0521f8d73d6032::t_a11944839684c3 80,84,136-137,146
+src/components/sync-popover.tsx
+  s_0521f8d73d6032::t_0ace7d6754beb9 17,31-32,41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "4df95e72232220a6d09248818234c33f2a40b272",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
