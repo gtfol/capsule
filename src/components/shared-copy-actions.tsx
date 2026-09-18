@@ -77,11 +77,11 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
     return () => { cancelled = true; alive.current = false; };
   }, [reload]);
 
-  async function google() {
+  async function social(provider: "google" | "apple") {
     if (actionRunning.current) return;
     actionRunning.current = true; setWorking(true); setError("");
     try {
-      const response = await authClient.signIn.social({ provider: "google", callbackURL: sharedCopyReturnUrl(window.location.href, { destination, selection }) });
+      const response = await authClient.signIn.social({ provider, callbackURL: sharedCopyReturnUrl(window.location.href, { destination, selection }) });
       if (response.error) throw new Error(response.error.message || "Sign-in could not start.");
     } catch (cause) { if (alive.current) setError(cause instanceof Error ? cause.message : "Sign-in could not start."); }
     finally { actionRunning.current = false; if (alive.current) setWorking(false); }
@@ -133,7 +133,8 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
         : <Button type="button" disabled={working} className="w-full" onClick={() => void add()}>{working ? <><Loader2 size={13} className="animate-spin" aria-hidden="true" />Adding…</> : `Add ${preview.added} ${noun}`}</Button>}
     </div> : <div className="flex flex-col gap-1">
       <p className="px-1 text-xs leading-relaxed text-muted-foreground">Sign in to add {count === 1 ? "this piece" : `these ${count} pieces`} to your {destination}.</p>
-      {sync.enabled && sync.providers.google && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void google()}>{working ? "Connecting…" : "Continue with Google"}</button>}
+      {sync.enabled && sync.providers.google && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void social("google")}>{working ? "Connecting…" : "Continue with Google"}</button>}
+      {sync.enabled && sync.providers.apple && <button type="button" className={optionClass} disabled={working || sync.status === "offline"} onClick={() => void social("apple")}>{working ? "Connecting…" : "Continue with Apple"}</button>}
       {sync.enabled && sync.providers.email && !showEmail && <button type="button" className={optionClass} disabled={working} onClick={() => setShowEmail(true)}>Continue with email</button>}
       {sync.enabled && sync.providers.email && showEmail && <form className="space-y-3 px-1 pt-2" onSubmit={emailAuth}>
         {register && <label className="field-label">Name<Input value={name} disabled={working} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label>}
@@ -142,7 +143,7 @@ function CopyConfirmation({ shareId, snapshot, selection, destination }: Omit<Pr
         <button className={optionClass} type="submit" disabled={working}>{working ? "Connecting…" : register ? "Create account" : "Sign in"}</button>
         <button type="button" disabled={working} className="text-xs text-muted-foreground" onClick={() => setRegister(!register)}>{register ? "Use an existing account" : "Create an account"}</button>
       </form>}
-      {(!sync.enabled || (!sync.providers.google && !sync.providers.email)) && <p className="mt-2 px-1 text-xs text-muted-foreground">Sign-in is not available right now.</p>}
+      {(!sync.enabled || (!sync.providers.google && !sync.providers.apple && !sync.providers.email)) && <p className="mt-2 px-1 text-xs text-muted-foreground">Sign-in is not available right now.</p>}
       {sync.status === "error" && <button type="button" className={optionClass} onClick={() => { setLoading(true); setError(""); setReload((value) => value + 1); }}>Try again</button>}
     </div>}
     {(error || (!loading && sync.error && !sync.user)) && <p className="mt-3 px-1 text-xs leading-relaxed" role="alert">{error || sync.error}</p>}

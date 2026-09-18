@@ -2,14 +2,17 @@ import { getAuth } from "./auth";
 import { getPool } from "./db";
 import { readLimitedJson } from "./render";
 import { hashShareToken, validateShareId } from "./shares";
+import { revokeAppleAccess, type AppleAccountTokens } from "./apple-auth";
 
 type Link = { id: string; hash: string };
 type Dependencies = { userId: (request: Request) => Promise<string | null>; remove: (userId: string, links: Link[]) => Promise<void> };
-export async function removeAccount(userId: string, links: Link[]) {
+export async function removeAccount(userId: string, links: Link[], revoke = revokeAppleAccess) {
   const client = await getPool().connect();
   try {
     await client.query("begin");
     await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [`capsule:${userId}`]);
+    const appleAccounts = await client.query<AppleAccountTokens>('select "refreshToken", "accessToken" from public."account" where "userId" = $1 and "providerId" = \'apple\' for update', [userId]);
+    await revoke(appleAccounts.rows);
     for (const link of links) {
       // A revoked placeholder also blocks a late response from an in-flight share creation.
       await client.query(`insert into public.capsule_shares (id, token_hash, snapshot, expires_at, revoked_at, updated_at)
