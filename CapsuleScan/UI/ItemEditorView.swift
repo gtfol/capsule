@@ -13,7 +13,7 @@ import SwiftUI
                 Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 300)
                     .accessibilityLabel("garment photo").listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
-            if model.extracting { HStack { ProgressView(); Text("reading details…").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }.listRowSeparator(.hidden) }
+            if model.extracting { HStack { ProgressView(); Text(services.visionEnabled ? "reading details…" : "reading color…").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }.listRowSeparator(.hidden) }
             if let message = model.message { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).listRowSeparator(.hidden) }
             Section {
                 LabeledContent("name") { TextField("name", text: binding(\.name, field: .name)).multilineTextAlignment(.trailing).accessibilityLabel("name") }

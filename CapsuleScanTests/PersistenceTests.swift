@@ -156,6 +156,32 @@ final class EditorTests: XCTestCase {
     }
 }
 final class SessionTests: XCTestCase {
+    @MainActor func testPhotoDetailsRequiresConsentAndRemovalDisablesIt() async throws {
+        let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let vault = MemoryCredentials()
+        await vault.write(UUID().uuidString, for: .visionAPIKey)
+        let http = StubHTTP()
+        let services = AppServices(container: container, media: MemoryMedia(), credentials: vault, transport: http)
+        await services.refreshCredentials()
+        XCTAssertTrue(services.hasVisionKey)
+        XCTAssertFalse(services.visionEnabled)
+        // Existing installations must not send photos just because a key was saved earlier.
+        let image = try await services.images.jpeg(CoreTests.fixtureImage(width: 300, height: 400), maxEdge: 1600, quality: 0.85)
+        let draft = try await services.extractor().extract(image: image.data)
+        XCTAssertEqual(draft.color, "blue")
+        let requests = await http.requests
+        XCTAssertTrue(requests.isEmpty)
+        try await services.enableVision(key: nil)
+        XCTAssertTrue(services.visionEnabled)
+        await services.refreshCredentials()
+        XCTAssertTrue(services.visionEnabled)
+        try await services.removeVisionKey()
+        XCTAssertFalse(services.visionEnabled)
+        XCTAssertFalse(services.hasVisionKey)
+        let consent = await vault.read(.visionPhotoConsent)
+        XCTAssertNil(consent)
+    }
+
     @MainActor func testSignInRestoresAccountOnRelaunchAndNeverCreatesItems() async throws {
         let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         let vault = MemoryCredentials()

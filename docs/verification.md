@@ -2,6 +2,10 @@
 
 ## Automated checks
 
+The App Store preparation for 1.0 (3) passes 40 iPhone tests and 28 macOS core tests. Its Release archive builds without warnings on Xcode 26.6. New coverage verifies that an existing OpenAI key cannot enable photo transmission without explicit consent, consent survives refresh, and removing the key disables processing. The on-device path also returns a color after the same JPEG preparation used by camera/library inputs. Settings now labels that mode **color only**; it does not identify name, brand, or category without OpenAI.
+
+App Review preparation adds public privacy/support links, a web account-deletion shortcut, and an explicit photo-processing consent prompt. Live camera/save verification and App Store submission are still pending.
+
 The interface update for 1.0 (2) passes all 39 iPhone tests and 28 macOS core tests on Xcode 26.6 / iOS 26.5. It bundles Lato and its license, removes the green accent and inset form cards, and moves the photo-details explanation into a tappable popover.
 
 Simulator review covers the signed-out capture screen, settings, info open/close, API-key field, draft grid, review fields, category picker, disabled remote save, and unsaved-edit confirmation. At the largest Dynamic Type setting, the status moves below the settings heading and the information opens as a sheet so its full text remains readable. The simulator's text size was restored afterward.

@@ -16,6 +16,7 @@ import SwiftData
     @Published private(set) var credentialsReady = false
     @Published private(set) var authenticating = false
     @Published private(set) var visionEnabled = false
+    @Published private(set) var hasVisionKey = false
     @Published var connectionMessage: String?
     var connected: Bool { user != nil && !authenticationRejected }
 
@@ -39,9 +40,12 @@ import SwiftData
                 try await credentials.write(nil, for: .capsuleToken)
             }
             user = authenticationRejected ? nil : login?.user
-            visionEnabled = !(try await credentials.read(.visionAPIKey) ?? "").isEmpty
+            hasVisionKey = !(try await credentials.read(.visionAPIKey) ?? "").isEmpty
+            let visionConsent = try await credentials.read(.visionPhotoConsent)
+            visionEnabled = hasVisionKey && visionConsent == "openai-photos-v1"
         } catch {
             user = nil
+            visionEnabled = false; hasVisionKey = false
             connectionMessage = "sign in to capsule to continue."
         }
     }
@@ -72,8 +76,24 @@ import SwiftData
             authenticationRejected = false; user = nil
         } catch { connectionMessage = "couldn’t sign out. check your connection and try again." }
     }
-    func setCredential(_ value: String?, for kind: Credential) async throws {
-        try await credentials.write(value?.trimmingCharacters(in: .whitespacesAndNewlines), for: kind)
+    // Call only after the user explicitly agrees to send garment photos to OpenAI.
+    // Consent is cleared first so a partial write always leaves extraction on device.
+    func enableVision(key: String?) async throws {
+        visionEnabled = false
+        try await credentials.write(nil, for: .visionPhotoConsent)
+        if let key {
+            let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { throw ScanError.keychain }
+            try await credentials.write(trimmed, for: .visionAPIKey)
+        }
+        guard !(try await credentials.read(.visionAPIKey) ?? "").isEmpty else { throw ScanError.keychain }
+        try await credentials.write("openai-photos-v1", for: .visionPhotoConsent)
+        await refreshCredentials()
+    }
+    func removeVisionKey() async throws {
+        visionEnabled = false
+        try await credentials.write(nil, for: .visionPhotoConsent)
+        try await credentials.write(nil, for: .visionAPIKey)
         await refreshCredentials()
     }
     func extractor() -> any ItemExtractor {

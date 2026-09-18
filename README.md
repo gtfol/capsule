@@ -31,7 +31,7 @@ Successful saves leave a small internal receipt to prevent resubmission. They di
 
 Add your own OpenAI API key in Settings to use `gpt-4.1-mini` through the Responses API. Newly selected garment photos are sent directly to OpenAI to draft category, color, name, and an optional visible brand. Usage is billed to your OpenAI account. Requests set `store: false`; provider retention policies still apply.
 
-Settings calls this **photo details**. Tap its information icon for the on-device behavior, model, billing, and key-storage details.
+Settings calls this **photo details** and shows **color only** when OpenAI processing is disabled. Tap its information icon for the on-device behavior, model, billing, and key-storage details. Saving a key requires explicit permission to send photos to OpenAI; previously saved keys also require this consent before photo processing is enabled.
 
 Without a key, Core Image estimates the dominant color in the center of the photo and leaves category unset. If external extraction fails, the app falls back to on-device color and manual editing. Late responses cannot replace fields you already edited.
 

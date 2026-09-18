@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-enum Credential: String, Sendable { case capsuleToken, capsuleSession, visionAPIKey }
+enum Credential: String, Sendable { case capsuleToken, capsuleSession, visionAPIKey, visionPhotoConsent }
 protocol CredentialStore: Sendable {
     func read(_ credential: Credential) async throws -> String?
     func write(_ value: String?, for credential: Credential) async throws
