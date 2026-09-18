@@ -2,7 +2,11 @@
 
 ## Automated checks
 
-Release 1.0 (4) adds a **terms** link in Settings to Apple's Standard License Agreement. The iPhone simulator build and unsigned Release archive pass without warnings on Xcode 26.6. Distribution upload is pending renewal of the Xcode account session.
+Release 1.0 (5) adds on-device foreground isolation for new photos, a cropped white JPEG preview, and an original/cutout choice before the first save. It also includes the account-deletion link at the bottom of Settings. All 47 iPhone simulator tests and 31 macOS core tests pass on Xcode 26.6 with no compiler warnings. Regression tests cover white compositing, crop padding, JPEG/upload size limits, invalid input, original-image fallback, explicit-save persistence, reopening a cutout draft, cancellation, and ignoring late cutouts after saving.
+
+The real Vision engine was also exercised on macOS using the existing sweater gallery asset: it produced a 1276 × 1279 JPEG (396,290 bytes), and the output was visually inspected. That already isolated source is a smoke check, not evidence of accuracy on real camera backgrounds. Physical-iPhone segmentation quality, especially sleeves/straps and similarly colored floors or bedding, still needs verification before submission. Foreground detection can include nearby objects or a wearer; it is not clothing classification.
+
+Release 1.0 (4) adds a **terms** link in Settings to Apple's Standard License Agreement. The iPhone simulator build and unsigned Release archive pass without warnings on Xcode 26.6. Distribution upload completed successfully after renewal of the Xcode account session.
 
 On September 18, 2026, Allen confirmed that camera capture and saving to capsule worked on his physical iPhone, and that both the item and photo appeared in his web wardrobe. This confirms that core live flow; it does not replace the remaining offline/retry, account-deletion, or optional OpenAI checks below.
 
@@ -29,6 +33,7 @@ Use a physical iPhone with iOS 17 or newer and a development signing team:
 - Fresh install: choose **sign in to capsule**, complete the existing web login, confirm the connection, and return to capture. Cancel sign-in once and confirm it can be retried.
 - Relaunch: capture opens without another login. Settings shows the account and **sign out**; there is no integration-token field.
 - Allow camera access, photograph one garment, review all fields, and tap **save to capsule**. Verify the photo and fields in the capsule web app. Success returns to capture and removes the scan from drafts.
+- On build 5 or newer, photograph a laid-out garment on a contrasting surface. Verify the cutout retains edges and removes the surface, compare **original / cutout**, and confirm the chosen photo appears in capsule. Try a cluttered or low-contrast scene and use the original if the mask is wrong. Test in airplane mode: isolation should still run without a key or server request. Choosing **use original** during processing must prevent a late cutout from replacing it.
 - Deny camera access: verify the Settings link and photo-library alternative. Cancel each picker without creating a draft.
 - Choose a high-resolution portrait/landscape photo; confirm orientation. Close the review, choose **save draft**, restart, and reopen it under the tray button.
 - In airplane mode after sign-in, attempt a save and confirm the failed draft remains. Restore the connection and retry; check there is only one remote item.

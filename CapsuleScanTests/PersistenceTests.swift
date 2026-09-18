@@ -50,11 +50,91 @@ actor DelayedExtractor: ItemExtractor {
 struct FailingExtractor: ItemExtractor {
     func extract(image: Data) async throws -> ExtractedDraft { throw ScanError.extraction }
 }
+struct FailingIsolator: ImageIsolating {
+    func isolate(_ image: Data) async throws -> ProcessedImage { throw IsolationError.noSubject }
+}
+struct StubIsolator: ImageIsolating {
+    let output: Data
+    func isolate(_ image: Data) async throws -> ProcessedImage { ProcessedImage(data: output, width: 100, height: 100) }
+}
+actor DelayedIsolator: ImageIsolating {
+    private var waiter: CheckedContinuation<ProcessedImage, Never>?
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    func isolate(_ image: Data) async -> ProcessedImage {
+        await withCheckedContinuation { continuation in
+            waiter = continuation
+            startWaiters.forEach { $0.resume() }; startWaiters.removeAll()
+        }
+    }
+    func waitUntilStarted() async {
+        if waiter != nil { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+    func finish(_ image: Data) {
+        waiter?.resume(returning: ProcessedImage(data: image, width: 100, height: 100)); waiter = nil
+    }
+}
 
 final class EditorTests: XCTestCase {
-    @MainActor private func services(extractor: (any ItemExtractor)? = nil) throws -> AppServices {
+    @MainActor private func services(extractor: (any ItemExtractor)? = nil, isolation: any ImageIsolating = FailingIsolator()) throws -> AppServices {
         let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        return AppServices(container: container, media: MemoryMedia(), credentials: MemoryCredentials(), transport: StubHTTP(), extractor: extractor)
+        return AppServices(container: container, media: MemoryMedia(), credentials: MemoryCredentials(), transport: StubHTTP(), extractor: extractor, isolation: isolation)
+    }
+    @MainActor func testCutoutIsOnlyWrittenAfterSaveAndOriginalCanBeSelected() async throws {
+        let original = try CoreTests.fixtureImage(width: 100, height: 100)
+        let cutout = try CoreTests.fixtureImage(width: 50, height: 80)
+        let services = try services(isolation: StubIsolator(output: cutout))
+        let editor = ItemEditorModel(image: original, services: services)
+        await editor.start()
+        XCTAssertEqual(editor.image, cutout); XCTAssertTrue(editor.usingCutout)
+        let media = services.media as! MemoryMedia
+        let before = await media.files; XCTAssertTrue(before.isEmpty)
+        XCTAssertEqual(try services.container.mainContext.fetchCount(FetchDescriptor<WardrobeItem>()), 0)
+        editor.selectCutout(false); XCTAssertEqual(editor.image, original)
+        editor.selectCutout(true); XCTAssertEqual(editor.image, cutout)
+        let saved = await editor.saveDraft(); XCTAssertTrue(saved)
+        let record = try XCTUnwrap(editor.record)
+        let stored = try await media.read(record.localImageReference)
+        XCTAssertEqual(stored, cutout)
+        let reopened = ItemEditorModel(record: record, services: services)
+        await reopened.start()
+        XCTAssertEqual(reopened.image, cutout)
+    }
+    @MainActor func testIsolationFailureKeepsOriginalAndStillAllowsSave() async throws {
+        let original = try CoreTests.fixtureImage(width: 100, height: 100)
+        let services = try services()
+        let editor = ItemEditorModel(image: original, services: services)
+        await editor.start()
+        XCTAssertEqual(editor.image, original); XCTAssertFalse(editor.isolating)
+        XCTAssertNotNil(editor.isolationMessage); XCTAssertEqual(editor.fields.color, "blue")
+        let saved = await editor.saveDraft(); XCTAssertTrue(saved)
+        let stored = try await services.media.read(XCTUnwrap(editor.record).localImageReference)
+        XCTAssertEqual(stored, original)
+    }
+    @MainActor func testLateCutoutCannotReplaceSavedOriginal() async throws {
+        let original = try CoreTests.fixtureImage(width: 100, height: 100)
+        let isolation = DelayedIsolator()
+        let services = try services(isolation: isolation)
+        let editor = ItemEditorModel(image: original, services: services)
+        let task = Task { await editor.start() }
+        await isolation.waitUntilStarted()
+        let saved = await editor.saveDraft(); XCTAssertTrue(saved)
+        await isolation.finish(Data([1, 2, 3])); await task.value
+        XCTAssertEqual(editor.image, original); XCTAssertNil(editor.cutout)
+        let stored = try await services.media.read(XCTUnwrap(editor.record).localImageReference)
+        XCTAssertEqual(stored, original)
+    }
+    @MainActor func testUseOriginalDuringIsolationIgnoresLateResult() async throws {
+        let original = try CoreTests.fixtureImage(width: 100, height: 100)
+        let isolation = DelayedIsolator()
+        let services = try services(isolation: isolation)
+        let editor = ItemEditorModel(image: original, services: services)
+        let task = Task { await editor.start() }
+        await isolation.waitUntilStarted()
+        editor.selectCutout(false)
+        await isolation.finish(Data([1, 2, 3])); await task.value
+        XCTAssertEqual(editor.image, original); XCTAssertFalse(editor.usingCutout)
+        XCTAssertFalse(editor.isolating); XCTAssertNil(editor.cutout)
     }
     @MainActor func testLateExtractionCannotOverwriteUserEditsOrSaveAutomatically() async throws {
         let extractor = DelayedExtractor()

@@ -6,6 +6,7 @@ import SwiftData
     let items: SwiftDataItemStore
     let media: any MediaStoring
     let images: any ImageProcessing
+    let isolation: any ImageIsolating
     let credentials: any CredentialStore
     let transport: any HTTPTransport
     private var activeSaves: Set<UUID> = []
@@ -22,7 +23,9 @@ import SwiftData
 
     init(container: ModelContainer, media: any MediaStoring, images: any ImageProcessing = ImageProcessor(),
          credentials: any CredentialStore = KeychainStore(), transport: any HTTPTransport = HTTPClient(),
-         extractor: (any ItemExtractor)? = nil, browser: any BrowserAuthenticating = BrowserSignIn()) {
+         extractor: (any ItemExtractor)? = nil, browser: any BrowserAuthenticating = BrowserSignIn(),
+         isolation: any ImageIsolating = VisionImageIsolator()) {
+        self.isolation = isolation
         self.extractionOverride = extractor; self.browser = browser
         self.container = container; self.media = media; self.images = images; self.credentials = credentials; self.transport = transport
         items = SwiftDataItemStore(context: container.mainContext)

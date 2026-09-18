@@ -14,6 +14,24 @@ import SwiftUI
                     .accessibilityLabel("garment photo").listRowBackground(Color.clear).listRowSeparator(.hidden)
             }
             if model.extracting { HStack { ProgressView(); Text(services.visionEnabled ? "reading details…" : "reading color…").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }.listRowSeparator(.hidden) }
+            if model.isolating {
+                HStack {
+                    ProgressView()
+                    Text("removing background…").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
+                    Spacer()
+                    Button("use original") { model.selectCutout(false) }.font(CapsuleStyle.caption)
+                }.listRowBackground(Color.clear).listRowSeparator(.hidden)
+            } else if model.cutout != nil, model.record == nil {
+                Picker("photo", selection: Binding(get: { model.usingCutout }, set: { model.selectCutout($0) })) {
+                    Text("original").tag(false)
+                    Text("cutout").tag(true)
+                }.pickerStyle(.segmented).disabled(model.saving)
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
+            }
+            if let message = model.isolationMessage {
+                Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
+                    .listRowBackground(Color.clear).listRowSeparator(.hidden)
+            }
             if let message = model.message { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).listRowSeparator(.hidden) }
             Section {
                 LabeledContent("name") { TextField("name", text: binding(\.name, field: .name)).multilineTextAlignment(.trailing).accessibilityLabel("name") }

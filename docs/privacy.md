@@ -1,10 +1,10 @@
 # capsule scan privacy policy
 
-Effective September 17, 2026. capsule scan is operated by gtfol, LLC. Contact [team@gtfol.dev](mailto:team@gtfol.dev) about privacy or your data.
+Effective September 18, 2026. capsule scan is operated by gtfol, LLC. Contact [team@gtfol.dev](mailto:team@gtfol.dev) about privacy or your data.
 
 ## on your iPhone
 
-capsule scan processes the photo you take or select, creates a resized JPEG, and removes original location and camera metadata from that JPEG. On-device color estimation does not send the photo to a server. The system photo picker provides access only to photos you select; the app does not request access to your entire photo library.
+capsule scan processes the photo you take or select, creates a resized JPEG, and removes original location and camera metadata from that JPEG. Foreground isolation and color estimation run on your device without sending the photo to a server. You can choose the original photo or the cutout before saving. The system photo picker provides access only to photos you select; the app does not request access to your entire photo library.
 
 Unfinished scans and failed uploads can be saved locally as drafts, with their photos and item details. Successful uploads remove the local photo and upload body, retaining a small receipt to prevent duplicate submissions. Credentials are stored in this device's Keychain, not in the item database or source code.
 

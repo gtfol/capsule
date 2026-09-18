@@ -17,6 +17,10 @@ First launch opens **sign in to capsule**. The system browser uses capsule’s e
 
 Choose one photo, edit the draft, then tap **save to capsule**. A name is required. After saving, return to capture or open your wardrobe on the web. There is no separate local wardrobe or local/remote toggle.
 
+New camera and library photos are processed with Apple's on-device Vision foreground mask. The review shows a cropped cutout on white, with a little padding. Choose **original** or **cutout** before saving; **use original** also lets you skip processing while it runs. Nothing is written until you save. If isolation fails, the original photo stays available and details can still be edited. The selected version is kept in drafts and sent to capsule; reopening a draft does not reprocess it.
+
+This is foreground isolation, not garment classification. Use one garment laid out clearly; nearby objects or a person wearing the garment may also be included. No account, API key, or server request is needed for this processing. Check edges on the review screen before saving. The original/cutout choice is available for a new scan, before its first draft or upload save.
+
 ## Sign-in and drafts
 
 The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and restricted `wardrobe:write` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.

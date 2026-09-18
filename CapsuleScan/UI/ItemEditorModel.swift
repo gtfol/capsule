@@ -7,16 +7,22 @@ import SwiftUI
     @Published var image: Data?
     @Published var record: ItemRecord?
     @Published var extracting = false
+    @Published private(set) var isolating = false
+    @Published private(set) var usingCutout = false
+    @Published private(set) var cutout: Data?
+    @Published private(set) var isolationMessage: String?
     @Published var saving = false
     @Published var message: String?
     @Published var error: String?
     private var edited: Set<Field> = []
     private var extractionTask: Task<Void, Never>?
+    private var isolationTask: Task<Void, Never>?
+    private var originalImage: Data?
     private var started = false
     private let services: AppServices
 
     init(image: Data? = nil, record: ItemRecord? = nil, services: AppServices) {
-        self.image = image; self.record = record; self.services = services
+        self.image = image; self.originalImage = image; self.record = record; self.services = services
         fields = record?.fields ?? ItemFields()
         priceText = Price.display(record?.fields.price)
     }
@@ -38,6 +44,20 @@ import SwiftUI
             return
         }
         guard let image else { return }
+        isolating = true
+        isolationTask = Task {
+            do {
+                let result = try await services.isolation.isolate(image)
+                guard !Task.isCancelled else { return }
+                cutout = result.data
+                self.image = result.data
+                usingCutout = true
+            } catch {
+                guard !Task.isCancelled else { return }
+                isolationMessage = "couldn’t isolate this item. using the original photo."
+            }
+            isolating = false
+        }
         extracting = true
         let extractor = services.extractor()
         extractionTask = Task {
@@ -56,8 +76,23 @@ import SwiftUI
             extracting = false
         }
         await extractionTask?.value
+        await isolationTask?.value
     }
-    func stopExtraction() { extractionTask?.cancel(); extracting = false }
+    func selectCutout(_ enabled: Bool) {
+        guard !saving, record == nil else { return }
+        if enabled {
+            guard let cutout else { return }
+            image = cutout
+        } else {
+            isolationTask?.cancel(); isolating = false
+            image = originalImage
+        }
+        usingCutout = enabled
+    }
+    func stopExtraction() {
+        extractionTask?.cancel(); extracting = false
+        isolationTask?.cancel(); isolating = false
+    }
 
     func saveDraft() async -> Bool { await persist(send: false) }
     func save() async -> Bool { await persist(send: true) }
