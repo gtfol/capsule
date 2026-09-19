@@ -18,4 +18,4 @@ Sign in to your capsule account before capturing an item. Review the fields and 
 
 Manage your wardrobe or delete your capsule account at [capsule settings](https://capsule.gtfol.dev/?view=settings). You may need to sign in in your browser. Account deletion removes cloud account data; local drafts remain on this iPhone until the app is deleted.
 
-See the [privacy policy](privacy.md) for details about storage and photo processing.
+See the [privacy policy](https://capsule.gtfol.dev/privacy) for details about storage and photo processing.
