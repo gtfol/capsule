@@ -1,0 +1,29 @@
+src/components/legal-page.tsx
+  s_0521f8d73d6032::t_23a17ec22357ce 1-17
+src/app/terms/page.tsx
+  s_0521f8d73d6032::t_23a17ec22357ce 1-22
+  s_0521f8d73d6032::t_f0d66f15e6426e 23
+src/components/settings.tsx
+  s_0521f8d73d6032::t_23a17ec22357ce 4,92
+public/sw.js
+  s_0521f8d73d6032::t_23a17ec22357ce 20
+src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_23a17ec22357ce 1-43
+  s_0521f8d73d6032::t_f450828cdc3037 44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f3e57c3b838f6a8a55a9b22fa74c23d4af2c275a",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
