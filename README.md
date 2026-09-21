@@ -6,6 +6,8 @@ Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or
 
 The interface follows the shared [design reference](https://github.com/gtfol/ai/blob/889bd107969475a8c269d4428972b47b61b9794d/DESIGN.md): a monochrome canvas, regular typography, open sections, and native controls. Lato Regular is bundled for offline use under the [SIL Open Font License](CapsuleScan/Resources/Lato-OFL.txt), with Dynamic Type support. The font comes from [Google Fonts](https://github.com/google/fonts/tree/main/ofl/lato).
 
+[Support](https://gtfol.dev/contact) · [Privacy](https://capsule.gtfol.dev/privacy) · [Terms](https://capsule.gtfol.dev/terms)
+
 ## Build and run
 
 1. Open `CapsuleScan.xcodeproj` in Xcode 26.6 or newer. Xcode 26.6 works on macOS 26.2–26.x; Xcode 27 requires macOS 26.6 or newer.
