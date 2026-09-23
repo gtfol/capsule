@@ -12,7 +12,7 @@ import SwiftUI
                     WardrobeGrid(client: client, add: { capture = true }).id(user.id)
                 } else {
                     VStack(spacing: 20) {
-                        Text("capsule scan").font(CapsuleStyle.heading)
+                        Text("capsule").font(CapsuleStyle.heading)
                         SignInButton().capsulePrimaryAction()
                         if let message = services.connectionMessage { Text(message).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
                     }.padding(20).frame(maxWidth: .infinity, maxHeight: .infinity)

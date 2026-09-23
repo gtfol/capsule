@@ -43,7 +43,7 @@ def phone(canvas, filename, xy, width, angle=0):
 def base(number,title,subtitle,dark=False):
     canvas=Image.new('RGBA',SIZE,'#080808' if dark else '#ffffff')
     fg='#eeeeee' if dark else '#111111'; secondary='#aaaaaa' if dark else '#686868'
-    text(canvas,(102,102),'capsule scan',36,fg)
+    text(canvas,(102,102),'capsule',36,fg)
     text(canvas,(940,111),f'0{number} / '+{1:'capture',2:'details',3:'drafts'}[number],27,secondary)
     ImageDraw.Draw(canvas).line((102,182,1140,182),fill='#2c2c2c' if dark else '#e5e5e5',width=2)
     text(canvas,(102,285),title,104,fg,spacing=3)
@@ -86,12 +86,12 @@ if files:
     sheet.save(out/'gallery-preview.png')
     # The browser preview uses the actual exports so its layout cannot drift.
     tiles = '\n'.join(
-        f'<a class="tile" data-slide="{i}" href="exports/{path.name}"><img src="exports/{path.name}" alt="capsule scan App Store panel {i}"></a>'
+        f'<a class="tile" data-slide="{i}" href="exports/{path.name}"><img src="exports/{path.name}" alt="capsule App Store panel {i}"></a>'
         for i, path in enumerate(files, 1)
     )
     (ROOT/'index.html').write_text('''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>capsule scan — App Store gallery</title>
+<title>capsule — App Store gallery</title>
 <style>
 @font-face{font-family:Lato;src:url(assets/Lato-Regular.ttf)}
 *{box-sizing:border-box}body{margin:0;padding:24px;background:#e5e5e5;color:#111;font:16px Lato,Arial,sans-serif}
@@ -99,7 +99,7 @@ header{margin-bottom:24px}.gallery{display:flex;gap:24px;align-items:flex-start;
 .tile{display:block;width:min(372px,100%)}img{display:block;width:100%;height:auto}
 body.single{padding:0;background:white}.single header,.single .tile{display:none}
 .single .tile.selected{display:block;width:1242px}
-</style></head><body><header>capsule scan / app store · 1242 × 2688</header><main class="gallery">'''
+</style></head><body><header>capsule / app store · 1242 × 2688</header><main class="gallery">'''
         + tiles + '''</main><script>
 const slide=new URLSearchParams(location.search).get('slide');
 if(slide){document.body.classList.add('single');document.querySelector('[data-slide="'+CSS.escape(slide)+'"]')?.classList.add('selected')}

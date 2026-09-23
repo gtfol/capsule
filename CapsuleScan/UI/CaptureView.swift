@@ -72,10 +72,10 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
             .padding(.horizontal, 20).padding(.vertical, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .capsuleScreen()
-            .navigationTitle(inWardrobe ? "add to wardrobe" : "capsule scan")
+            .navigationTitle(inWardrobe ? "add to wardrobe" : "capsule")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) { Text(inWardrobe ? "add to wardrobe" : "capsule scan").font(CapsuleStyle.heading) }
+                ToolbarItem(placement: .principal) { Text(inWardrobe ? "add to wardrobe" : "capsule").font(CapsuleStyle.heading) }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink { DraftsView() } label: { Image(systemName: "tray").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("drafts")
                 }.quietBackground()

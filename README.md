@@ -1,4 +1,4 @@
-# capsule scan
+# capsule
 
 Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe on iPhone, or photograph a garment to add it.
 

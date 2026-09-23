@@ -11,7 +11,7 @@ import SwiftData
                     WardrobeView().environmentObject(services).modelContainer(services.container)
                 } else {
                     VStack(spacing: 16) {
-                        Text("capsule scan").font(CapsuleStyle.heading)
+                        Text("capsule").font(CapsuleStyle.heading)
                         if startupError {
                             Text("couldn’t open your drafts. try again.").foregroundStyle(CapsuleStyle.secondary)
                             Button("try again", action: start)

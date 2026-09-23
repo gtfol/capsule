@@ -1,4 +1,4 @@
-# capsule scan App Store gallery
+# capsule App Store gallery
 
 Designed screenshots, 1242 × 2688 RGB PNG. Lato, monochrome canvases, restrained headings, real app UI, and garment photos supplied from Allen's capsule wardrobe for this listing.
 

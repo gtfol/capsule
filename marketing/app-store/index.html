@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>capsule scan — App Store gallery</title>
+<title>capsule — App Store gallery</title>
 <style>
 @font-face{font-family:Lato;src:url(assets/Lato-Regular.ttf)}
 *{box-sizing:border-box}body{margin:0;padding:24px;background:#e5e5e5;color:#111;font:16px Lato,Arial,sans-serif}
@@ -8,9 +8,9 @@ header{margin-bottom:24px}.gallery{display:flex;gap:24px;align-items:flex-start;
 .tile{display:block;width:min(372px,100%)}img{display:block;width:100%;height:auto}
 body.single{padding:0;background:white}.single header,.single .tile{display:none}
 .single .tile.selected{display:block;width:1242px}
-</style></head><body><header>capsule scan / app store · 1242 × 2688</header><main class="gallery"><a class="tile" data-slide="1" href="exports/01-photo-to-wardrobe.png"><img src="exports/01-photo-to-wardrobe.png" alt="capsule scan App Store panel 1"></a>
-<a class="tile" data-slide="2" href="exports/02-editable-details.png"><img src="exports/02-editable-details.png" alt="capsule scan App Store panel 2"></a>
-<a class="tile" data-slide="3" href="exports/03-drafts.png"><img src="exports/03-drafts.png" alt="capsule scan App Store panel 3"></a></main><script>
+</style></head><body><header>capsule / app store · 1242 × 2688</header><main class="gallery"><a class="tile" data-slide="1" href="exports/01-photo-to-wardrobe.png"><img src="exports/01-photo-to-wardrobe.png" alt="capsule App Store panel 1"></a>
+<a class="tile" data-slide="2" href="exports/02-editable-details.png"><img src="exports/02-editable-details.png" alt="capsule App Store panel 2"></a>
+<a class="tile" data-slide="3" href="exports/03-drafts.png"><img src="exports/03-drafts.png" alt="capsule App Store panel 3"></a></main><script>
 const slide=new URLSearchParams(location.search).get('slide');
 if(slide){document.body.classList.add('single');document.querySelector('[data-slide="'+CSS.escape(slide)+'"]')?.classList.add('selected')}
 </script></body></html>
