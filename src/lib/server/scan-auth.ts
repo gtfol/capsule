@@ -10,7 +10,7 @@ export const scanAuthorization = z.object({code_challenge:opaque,state:opaque,ac
 const authorizeBody = scanAuthorization.extend({expectedUserId:z.string().min(1).max(256)}).strict();
 const exchangeBody = z.object({code:opaque,code_verifier:z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/)}).strict();
 export type ScanBrowserSession = {user:{id:string;name:string};session:{id:string}};
-const invalidCode = () => new IntegrationError("sign-in expired. return to capsule scan and try again.",400,"INVALID_CODE");
+const invalidCode = () => new IntegrationError("sign-in expired. return to the capsule app and try again.",400,"INVALID_CODE");
 const headers = {"Cache-Control":"private, no-store", "Referrer-Policy":"no-referrer"};
 
 export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Promise<ScanBrowserSession | null>) {
@@ -42,7 +42,7 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
     async exchange(request: Request) {
       try {
         // The exchange belongs to the native client, never a cross-origin webpage.
-        if (request.headers.has("origin") || request.headers.get("sec-fetch-site") === "cross-site") throw new IntegrationError("return to capsule scan to finish signing in.",403);
+        if (request.headers.has("origin") || request.headers.get("sec-fetch-site") === "cross-site") throw new IntegrationError("return to the capsule app to finish signing in.",403);
         const parsed = exchangeBody.safeParse(await body(request));
         if (!parsed.success) throw invalidCode();
         const challenge = createHash("sha256").update(parsed.data.code_verifier).digest("base64url");
@@ -56,7 +56,7 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
           const user = (await client.query<{id:string;name:string}>(`select u.id,u.name from "user" u join "session" s on s."userId"=u.id where u.id=$1 and s.id=$2 and s."expiresAt">now()`,[grant.userId,grant.sessionId])).rows[0];
           if (!user) throw invalidCode();
           const scopes = grant.access === "wardrobe" ? ["items:read", "wardrobe:write", "wardrobe:delete"] as const : ["wardrobe:write"] as const;
-          const token = await issueIntegrationToken(client,user.id,"capsule scan",[...scopes],"1y");
+          const token = await issueIntegrationToken(client,user.id,"capsule",[...scopes],"1y");
           await client.query(`delete from "verification" where id=$1`,[rows[0].id]);
           await client.query("commit");
           return Response.json({token:token.token,user,scopes,expiresAt:token.expires_at},{headers});

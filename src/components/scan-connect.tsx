@@ -17,7 +17,7 @@ export function ScanConnect({authorization,user,providers}:{authorization:{code_
       const url = new URL(result.callbackURL);
       if (url.protocol !== "dev.gtfol.capsulescan:" || url.host !== "auth" || url.pathname !== "/callback") throw new Error();
       window.location.assign(url.toString());
-    } catch { setError("couldn’t connect. return to capsule scan and try again."); setBusy(false); }
+    } catch { setError("couldn’t connect. return to the capsule app and try again."); setBusy(false); }
   }
   async function social(provider: "google" | "apple") {
     setBusy(true); setError("");
@@ -35,8 +35,8 @@ export function ScanConnect({authorization,user,providers}:{authorization:{code_
     } catch { setError("couldn’t sign in. check your details and try again."); setBusy(false); }
   }
   return <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6 py-12">
-    <h1 className="text-lg">capsule scan</h1>
-    <p className="text-sm text-muted-foreground">{user ? (authorization.access === "wardrobe" ? "view, add, edit, and delete wardrobe pieces from this iphone." : "allow capsule scan to add items to your wardrobe.") : "sign in to save your scans to capsule."}</p>
+    <h1 className="text-lg">capsule</h1>
+    <p className="text-sm text-muted-foreground">{user ? (authorization.access === "wardrobe" ? "view, add, edit, and delete wardrobe pieces from this iphone." : "allow the capsule app to add items to your wardrobe.") : "sign in to save your scans to capsule."}</p>
     {user ? <>
       <button className={button} disabled={busy} onClick={()=>void connect()}>{busy ? "connecting…" : `continue${user.name ? ` as ${user.name}` : ""}`}</button>
       <button className="text-sm text-muted-foreground" disabled={busy} onClick={async()=>{setBusy(true);try { const result=await authClient.signOut();if(result.error) throw new Error();window.location.reload(); } catch {setBusy(false);setError("couldn’t switch accounts. try again.");}}}>use another account</button>

@@ -4,20 +4,20 @@ import { LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "privacy · capsule",
-  description: "How capsule and capsule scan store and use your data.",
+  description: "How capsule on the web and iPhone store and use your data.",
   alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {
   return <LegalPage title="privacy policy">
-    <p>This policy covers capsule at capsule.gtfol.dev and the capsule scan iPhone app, operated by gtfol, LLC. Contact <a href="mailto:team@gtfol.dev">team@gtfol.dev</a> about privacy or your data.</p>
+    <p>This policy covers capsule at capsule.gtfol.dev and the capsule iPhone app, operated by gtfol, LLC. Contact <a href="mailto:team@gtfol.dev">team@gtfol.dev</a> about privacy or your data.</p>
     <section><h2>on your device</h2>
       <p>The web app stores your wardrobe, wishlist, photos, outfits, and preferences in this browser. You can use it without an account. Local storage can be lost if you clear browser data or your device removes it.</p>
-      <p>capsule scan processes photos you take or select, resizes them, and removes original location and camera metadata from its JPEGs. Foreground isolation and color estimation happen on device. The photo picker gives access only to selected photos. Unfinished scans and failed uploads can remain as local drafts; successful uploads remove the local photo and request body, keeping a small receipt to prevent duplicate saves. App credentials stay in Keychain. Device backups may include local app data.</p>
+      <p>The capsule iPhone app processes photos you take or select, resizes them, and removes original location and camera metadata from its JPEGs. Foreground isolation and color estimation happen on device. The photo picker gives access only to selected photos. Unfinished scans and failed uploads can remain as local drafts; successful uploads remove the local photo and request body, keeping a small receipt to prevent duplicate saves. App credentials stay in Keychain. Device backups may include local app data.</p>
     </section>
     <section><h2>accounts and sync</h2>
-      <p>Signing in gives us your account identifier, name, email address, and authentication information from your sign-in provider. capsule scan uses the same capsule account. We use this information to authenticate you and operate account features.</p>
-      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. capsule scan sends the reviewed photo and item details when you select save to capsule. Your web model photo stays in this browser unless you send it for an outfit render.</p>
+      <p>Signing in gives us your account identifier, name, email address, and authentication information from your sign-in provider. The capsule iPhone app uses the same capsule account. We use this information to authenticate you and operate account features.</p>
+      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. The capsule iPhone app sends the reviewed photo and item details when you select save to capsule. Your web model photo stays in this browser unless you send it for an outfit render.</p>
     </section>
     <section><h2>imports, sharing, and integrations</h2>
       <p>Pasting a product URL or refetching a price sends that URL to our server and the listing site so we can retrieve product information and images. External image hosts can receive requests when their photos are displayed.</p>
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <p>An integration token lets an AI agent or other tool access synced data within its permissions. Revoke tokens in Settings. Unsynced browser data is not available through the integration API.</p>
     </section>
     <section><h2>optional OpenAI processing</h2>
-      <p>In capsule scan, adding a key and explicitly allowing photo processing sends newly selected garment photos directly to OpenAI to suggest details. Requests disable Responses API storage, but OpenAI’s provider retention policies still apply. Remove the key to stop this processing.</p>
+      <p>In the capsule iPhone app, adding a key and explicitly allowing photo processing sends newly selected garment photos directly to OpenAI to suggest details. Requests disable Responses API storage, but OpenAI’s provider retention policies still apply. Remove the key to stop this processing.</p>
       <p>In the web app, selecting Render outfit sends your model photo, selected garment images, and render instructions through our server to OpenAI. Your own key authorizes the request, and OpenAI bills your account. Guest keys remain in memory for the page session. Keys saved to a capsule account are encrypted in our database; the server decrypts them when needed for rendering. Native app keys stay in Keychain.</p>
       <p>See <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> for its handling of data.</p>
     </section>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>retention and your choices</h2>
       <p>Use <Link href="/?view=settings">Settings</Link> to export the data available in your browser, remove saved keys, revoke integrations, clear guest data, or delete your account. Account deletion removes account records and synced content. It revokes share links managed by the current browser; links created in other browsers must be removed there. Offline copies, separate guest data, native drafts, and copies saved by other people remain on their devices.</p>
-      <p>In capsule scan, Settings links directly to web account deletion. You may need to sign in there. Signing out revokes the app connection but does not delete your wardrobe. Local drafts remain until removed with the app.</p>
+      <p>In the capsule iPhone app, Settings links directly to web account deletion. You may need to sign in there. Signing out revokes the app connection but does not delete your wardrobe. Local drafts remain until removed with the app.</p>
       <p>We retain cloud content while needed to provide the features you use, until you delete it or an applicable share expires. Limited security records, backups, or records required by law may persist under provider retention practices. We may disclose information when legally required or necessary to protect users and the service. Providers may process data outside your country.</p>
       <p>Contact <a href="mailto:team@gtfol.dev">team@gtfol.dev</a> to request access, correction, deletion, or other privacy rights available where you live. We may need to verify your identity. We do not knowingly collect children’s personal information; contact us if you believe a child has provided it.</p>
     </section>
