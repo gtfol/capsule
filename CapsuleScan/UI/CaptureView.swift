@@ -16,6 +16,9 @@ struct CameraAuthorization: CameraAuthorizing {
 private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
 
 @MainActor struct CaptureView: View {
+    var inWardrobe = false
+    var onUploaded: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var services: AppServices
     @Environment(\.scenePhase) private var scenePhase
     @State private var photo: PhotosPickerItem?
@@ -62,22 +65,24 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 if processing { ProgressView("preparing photo…").font(CapsuleStyle.caption) }
                 if let error { Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).accessibilityAddTraits(.updatesFrequently) }
                 if let notice { Text(notice).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).accessibilityAddTraits(.updatesFrequently) }
-                Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!).font(CapsuleStyle.caption).frame(minHeight: 44)
+                if !inWardrobe { Link("open wardrobe", destination: URL(string: "https://capsule.gtfol.dev/?view=wardrobe")!).font(CapsuleStyle.caption).frame(minHeight: 44) }
                 }
                 Spacer()
             }
             .padding(.horizontal, 20).padding(.vertical, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .capsuleScreen()
-            .navigationTitle("capsule scan")
+            .navigationTitle(inWardrobe ? "add to wardrobe" : "capsule scan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) { Text("capsule scan").font(CapsuleStyle.heading) }
+                ToolbarItem(placement: .principal) { Text(inWardrobe ? "add to wardrobe" : "capsule scan").font(CapsuleStyle.heading) }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink { DraftsView() } label: { Image(systemName: "tray").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("drafts")
                 }.quietBackground()
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { SettingsView() } label: { Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("settings")
+                    if inWardrobe {
+                        Button { dismiss() } label: { Image(systemName: "xmark").font(.system(size: 14)).frame(width: 44, height: 44) }.accessibilityLabel("close")
+                    } else { NavigationLink { SettingsView() } label: { Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("settings") }
                 }.quietBackground()
             }
             .sheet(isPresented: $showingCamera, onDismiss: {
@@ -91,6 +96,7 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                 NavigationStack {
                     ItemEditorView(model: ItemEditorModel(image: draft.image, services: services)) { state in
                         notice = state == .notSaved ? "draft saved" : state.label
+                        if state.completed { onUploaded() }
                     }
                 }
             }

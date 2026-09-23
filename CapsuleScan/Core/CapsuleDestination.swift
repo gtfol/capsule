@@ -22,7 +22,7 @@ final class HTTPClient: HTTPTransport, @unchecked Sendable {
     }
     func send(_ request: URLRequest) async throws -> HTTPResult {
         let (data, response) = try await session.data(for: request)
-        guard let response = response as? HTTPURLResponse, data.count <= 1_000_000 else { throw ScanError.invalidResponse }
+        guard let response = response as? HTTPURLResponse, data.count <= 8_500_000 else { throw ScanError.invalidResponse }
         return HTTPResult(data: data, status: response.statusCode)
     }
 }

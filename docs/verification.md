@@ -1,5 +1,13 @@
 # verification
 
+## Native wardrobe — build 8
+
+The native wardrobe reads server records online and supports filtering, detail editing, front/back/side uploads/capture, background removal, explicit saves and deletion. It does not create an offline wardrobe store. The shared core suite passes 38 tests and the iPhone suite passes 59 tests, including pagination through empty pages, account changes during requests, bearer isolation, unchanged-photo preservation, exact-body retries, edited retry key rotation, and revision conflicts. The API suite passes 315 tests, including new account/photo/deletion checks against disposable Postgres (two unrelated database suites are skipped).
+
+The unsigned iPhone Release archive also builds without compiler warnings. A disposable preview with approved gallery images was inspected on the gallery iPhone and iPhone 17 Pro Max simulators. Checks covered the grid, category filtering and empty state, front/back/side selection, edit fields and keyboard dismissal, unsaved-change confirmation, a simulated failed save retaining edits, and entry into capture. No production wardrobe was modified. Build 8 uploaded successfully to App Store Connect on September 23; Apple processing and internal-group assignment are tracked separately.
+
+Before release, verify a real-account sign-in upgrade, native grid photos, an edit appearing on web after its normal sync, a web edit causing a native revision conflict, and explicit deletion propagating to web. Existing physical capture verification below predates this feature.
+
 ## Automated checks
 
 Release 1.0 (5) adds on-device foreground isolation for new photos, a cropped white JPEG preview, and an original/cutout choice before the first save. It also includes the account-deletion link at the bottom of Settings. All 47 iPhone simulator tests and 31 macOS core tests pass on Xcode 26.6 with no compiler warnings. Regression tests cover white compositing, crop padding, JPEG/upload size limits, invalid input, original-image fallback, explicit-save persistence, reopening a cutout draft, cancellation, and ignoring late cutouts after saving.

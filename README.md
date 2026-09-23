@@ -1,6 +1,6 @@
 # capsule scan
 
-Photograph one garment, review its details, and save it to your [capsule](https://capsule.gtfol.dev) wardrobe.
+Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe on iPhone, or photograph a garment to add it.
 
 Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or bundled credentials. Uses your existing capsule account.
 
@@ -15,9 +15,13 @@ The interface follows the shared [design reference](https://github.com/gtfol/ai/
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
 4. For a physical device, select your development team under Signing & Capabilities. Change the placeholder bundle identifier `dev.gtfol.capsulescan` if your team requires a unique identifier.
 
-First launch opens **sign in to capsule**. The system browser uses capsule’s existing Google login (or email login when enabled). Confirm the connection and return to the app; future launches open capture directly.
+First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
 
-Choose one photo, edit the draft, then tap **save to capsule**. A name is required. After saving, return to capture or open your wardrobe on the web. There is no separate local wardrobe or local/remote toggle.
+The grid loads the signed-in account’s server wardrobe, supports category filters and pull-to-refresh, and opens an editable item sheet. Edit name, brand, category, color, size, decimal price, currency, description, and purchase link. Select front/back/side, upload or capture a replacement, remove a view, or run on-device background removal. Save and delete require an explicit tap. Revision conflicts keep your edits and offer an explicit reload; failed saves retry the same body and key until you change the form.
+
+Tap **+** to capture or choose a photo, review the draft, then tap **save to capsule**. A name is required. A successful upload returns to the native wardrobe. Unfinished scans are still available under the tray button on the capture screen.
+
+The wardrobe is online-only: it is not replicated in SwiftData and there is no background sync queue. Refresh reads current server records; saves go directly to the existing REST API. In-memory photos are account/revision scoped and bounded to 24 MB / 32 entries. Network errors show a retry action; already loaded records may remain visible until refreshed. Local scan drafts retain their existing recovery behavior.
 
 New camera and library photos are processed with Apple's on-device Vision foreground mask. The review shows a cropped cutout on white, with a little padding. Choose **original** or **cutout** before saving; **use original** also lets you skip processing while it runs. Nothing is written until you save. If isolation fails, the original photo stays available and details can still be edited. The selected version is kept in drafts and sent to capsule; reopening a draft does not reprocess it.
 
@@ -25,7 +29,7 @@ This is foreground isolation, not garment classification. Use one garment laid o
 
 ## Sign-in and drafts
 
-The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and restricted `wardrobe:write` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
+The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, and native-only `wardrobe:delete` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
 
 The web handoff must be deployed before using this app. See capsule’s `docs/scan-sign-in.md` for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
 
@@ -82,4 +86,4 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 - `scripts/generate-project.py`: optional standard-library-only project generator. The complete generated Xcode project is committed; no generation step is needed to build.
 - `scripts/make-icon.swift`: renders capsule's lowercase black “c” mark on an opaque white app icon.
 
-`ItemExtractor` and `WardrobeDestination` are the extension seams. This version deliberately contains only the sign-in → single photo → reviewed item → capsule save flow.
+`ItemExtractor` and `WardrobeDestination` are the extension seams. Wishlist, outfits, and sharing will follow as separate features.

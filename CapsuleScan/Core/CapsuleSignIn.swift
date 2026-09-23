@@ -3,7 +3,7 @@ import CryptoKit
 import Security
 
 struct CapsuleUser: Codable, Equatable, Sendable { let id: String; let name: String }
-struct CapsuleLogin: Codable, Equatable, Sendable { let token: String; let user: CapsuleUser }
+struct CapsuleLogin: Codable, Equatable, Sendable { let token: String; let user: CapsuleUser; var scopes: [String]? = nil }
 enum SignInError: Error, LocalizedError, Sendable {
     case cancelled, invalidCallback, unavailable, tokenLimit
     var errorDescription: String? {
@@ -25,7 +25,7 @@ struct CapsuleSignInRequest: Sendable {
     var challenge: String { Self.base64url(Data(SHA256.hash(data: Data(verifier.utf8)))) }
     var url: URL {
         var url = URLComponents(string: "https://capsule.gtfol.dev/scan/connect")!
-        url.queryItems = [URLQueryItem(name: "code_challenge", value: challenge), URLQueryItem(name: "state", value: state)]
+        url.queryItems = [URLQueryItem(name: "code_challenge", value: challenge), URLQueryItem(name: "state", value: state), URLQueryItem(name: "access", value: "wardrobe")]
         return url.url!
     }
     func code(from callback: URL) throws -> String {

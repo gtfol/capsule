@@ -13,12 +13,17 @@ import SwiftData
     private let browser: any BrowserAuthenticating
     private let extractionOverride: (any ItemExtractor)?
     private var authenticationRejected = false
+    @Published var wardrobeReloadID = UUID()
     @Published private(set) var user: CapsuleUser?
     @Published private(set) var credentialsReady = false
     @Published private(set) var authenticating = false
     @Published private(set) var visionEnabled = false
     @Published private(set) var hasVisionKey = false
     @Published var connectionMessage: String?
+    var wardrobe: (any WardrobeServing)? {
+        guard let user, connected else { return nil }
+        return CapsuleWardrobeClient(credentials: credentials, transport: transport, expectedUserID: user.id)
+    }
     var connected: Bool { user != nil && !authenticationRejected }
 
     init(container: ModelContainer, media: any MediaStoring, images: any ImageProcessing = ImageProcessor(),
@@ -63,6 +68,7 @@ import SwiftData
             try await credentials.storeCapsuleLogin(login) // Token and account commit atomically in Keychain.
             try? await credentials.write(nil, for: .capsuleToken)
             authenticationRejected = false; user = login.user
+            wardrobeReloadID = UUID()
         } catch SignInError.cancelled { }
         catch { connectionMessage = (error as? SignInError)?.localizedDescription ?? ScanError.keychain.localizedDescription }
     }
@@ -77,6 +83,7 @@ import SwiftData
                 try await credentials.clearCapsuleLogin(matching: token)
             }
             authenticationRejected = false; user = nil
+            await WardrobePhotoCache.shared.clear()
         } catch { connectionMessage = "couldn’t sign out. check your connection and try again." }
     }
     // Call only after the user explicitly agrees to send garment photos to OpenAI.
@@ -116,6 +123,7 @@ import SwiftData
             try await saves.send(id: id)
             let completed = try items.record(id: id)
             if completed.capsuleSaveState.completed {
+                wardrobeReloadID = UUID()
                 // Keep a small success receipt to prevent resubmission, not a second wardrobe.
                 await media.remove(completed.localImageReference)
                 if let request = completed.capsuleRequestReference { await media.remove(request) }

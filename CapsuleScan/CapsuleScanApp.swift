@@ -8,7 +8,7 @@ import SwiftData
         WindowGroup {
             Group {
                 if let services {
-                    CaptureView().environmentObject(services).modelContainer(services.container)
+                    WardrobeView().environmentObject(services).modelContainer(services.container)
                 } else {
                     VStack(spacing: 16) {
                         Text("capsule scan").font(CapsuleStyle.heading)
