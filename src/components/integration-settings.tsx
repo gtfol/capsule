@@ -55,7 +55,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
   }
   return <div className="mt-3 text-[13px]">
     {tokens.map(token=><div key={token.id} className="mb-3 flex items-start justify-between gap-4">
-      <div><p>{token.name}</p><p className="mt-1 text-[11px] text-subtle">{!token.expires_at ? "Never expires" : Date.parse(token.expires_at)<now ? "Expired" : `Expires ${new Date(token.expires_at).toLocaleDateString()}`} · {token.scopes.map(scope=>choices.find(choice=>choice.scope===scope)?.label).join(", ")}</p></div>
+      <div><p>{token.name}</p><p className="mt-1 text-[11px] text-subtle">{!token.expires_at ? "Never expires" : Date.parse(token.expires_at)<now ? "Expired" : `Expires ${new Date(token.expires_at).toLocaleDateString()}`} · {token.scopes.map(scope=>(scope as string) === "wardrobe:delete" ? "Delete wardrobe pieces" : choices.find(choice=>choice.scope===scope)?.label).join(", ")}</p></div>
       {revoking===token.id ? <div className="flex items-center gap-2"><button type="button" className="text-[11px]" disabled={busy||disabled} onClick={()=>void mutate(token.id)}>Revoke access</button><IconAction icon={X} label="Cancel revocation" disabled={busy} onClick={()=>setRevoking(null)} /></div> : <IconAction icon={Trash2} label={`Revoke ${token.name}`} disabled={busy||disabled} onClick={()=>setRevoking(token.id)} />}
     </div>)}
     {secret && <div className="ph-no-capture mb-4" data-private="true">

@@ -56,6 +56,12 @@ test("native sign-in: origin/account checks, PKCE, atomic single-use exchange, e
     const sessionRequest = (method="GET") => new Request("https://capsule.test/api/scan/session",{method,headers:{authorization:`Bearer ${login.token}`}});
     assert.deepEqual((await (await auth.session(sessionRequest())).json()).user,user);
     assert.equal((await exchange(code)).status,400);
+    // The expanded native access is explicit and bound into the one-use grant.
+    const expanded = await authorize({...authorization,access:"wardrobe"});
+    const expandedCode = new URL((await expanded.json()).callbackURL).searchParams.get("code")!;
+    const wardrobeLogin = await (await exchange(expandedCode)).json();
+    assert.deepEqual(wardrobeLogin.scopes,["items:read","wardrobe:write","wardrobe:delete"]);
+    assert.deepEqual((await authenticateToken(pool,digest(wardrobeLogin.token),["wardrobe:delete"])).scopes,wardrobeLogin.scopes);
     const expired = await grant();
     await pool.query('update "verification" set "expiresAt"=now()-interval \'1 second\' where identifier=$1',[`capsule-scan:${digest(expired)}`]);
     assert.equal((await exchange(expired)).status,400);
