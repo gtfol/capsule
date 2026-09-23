@@ -1,0 +1,45 @@
+db/migrations/20260922_native_wardrobe.sql
+  s_0521f8d73d6032::t_dafe33f38bf875 1-5
+db/schema.sql
+  s_0521f8d73d6032::t_9b2f7b586b9b00 167
+docs/integrations.md
+  s_0521f8d73d6032::t_9af8c95ce7ce2f 34,260,285-290
+docs/scan-sign-in.md
+  s_0521f8d73d6032::t_28192cc32d420e 5-9,13,16-23
+src/app/api/v1/wardrobe/[id]/photos/[view]/route.ts
+  s_0521f8d73d6032::t_cbda6922eb651e 1-6
+src/app/api/v1/wardrobe/[id]/route.ts
+  s_0521f8d73d6032::t_f94a2fb78a050d 5-7
+src/components/integration-settings.tsx
+  s_0521f8d73d6032::t_299b5ab6001e36 58
+src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_f18f463c9abadf 5,39
+src/lib/server/integration-api.ts
+  s_0521f8d73d6032::t_3fd17790621499 28,30,87,90-108,114,116,118,130-138
+src/lib/server/integration-routes.ts
+  s_0521f8d73d6032::t_1a98e44ce83c56 8,11
+src/lib/server/integration-tokens.ts
+  s_0521f8d73d6032::t_fa44dc043737dd 5
+src/lib/server/scan-auth.ts
+  s_0521f8d73d6032::t_97279827e71beb 9,36,54,58-59,62,77
+tests/native-wardrobe.test.ts
+  s_0521f8d73d6032::t_69abe2b29a4c7a 1-52
+tests/scan-auth.test.ts
+  s_0521f8d73d6032::t_fc779aae307eee 59-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2916019639e5e747cb44bf30a4680d46413eb32b",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
