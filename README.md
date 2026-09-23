@@ -13,7 +13,7 @@ The interface follows the shared [design reference](https://github.com/gtfol/ai/
 1. Open `CapsuleScan.xcodeproj` in Xcode 26.6 or newer. Xcode 26.6 works on macOS 26.2–26.x; Xcode 27 requires macOS 26.6 or newer.
 2. Select the **CapsuleScan** scheme and an iPhone simulator. Install an iOS runtime under Xcode Settings → Components if needed.
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
-4. For a physical device, select your development team under Signing & Capabilities. Change the placeholder bundle identifier `dev.gtfol.capsulescan` if your team requires a unique identifier.
+4. For a physical device, select your development team under Signing & Capabilities. The app uses bundle identifier `dev.gtfol.capsule`.
 
 First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
 
