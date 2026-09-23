@@ -1,0 +1,27 @@
+src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_710d51222911a1 7,13,16,19-20,28,38
+src/app/scan/connect/page.tsx
+  s_0521f8d73d6032::t_cf15559a38201b 8,11
+src/app/terms/page.tsx
+  s_0521f8d73d6032::t_4dfd283e0e0df3 7,13-14,17,20
+src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_db2edd72602050 20,38-39
+src/lib/server/scan-auth.ts
+  s_0521f8d73d6032::t_1c2cf87b366801 13,45,59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "00f4c4b57b23e30df684f4e047c188d5ea03acb0",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
