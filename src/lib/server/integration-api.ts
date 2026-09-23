@@ -25,9 +25,9 @@ export function canonical(value: unknown): string {
 }
 const uuid = (value: string) => z.uuid().safeParse(value).success;
 const reply = (body: unknown, headers?: Record<string,string>) => Response.json(body, {headers: {"Cache-Control":"no-store", ...headers}});
-const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, backImageUrl: row.record.backImageUrl ?? "", sideImageUrl: row.record.sideImageUrl ?? "", photos: {front:!!(row.record.imageUrl || row.record.imageData),back:!!(row.record.backImageUrl || row.record.backImageData),side:!!(row.record.sideImageUrl || row.record.sideImageData)}, price: row.record.price, currency: row.record.currency });
+const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, backImageUrl: row.record.backImageUrl ?? "", sideImageUrl: row.record.sideImageUrl ?? "", description:row.record.description, createdAt:row.record.createdAt, updatedAt:row.record.updatedAt, photos: {front:!!(row.record.imageUrl || row.record.imageData),back:!!(row.record.backImageUrl || row.record.backImageData),side:!!(row.record.sideImageUrl || row.record.sideImageData)}, price: row.record.price, currency: row.record.currency });
 // Lookup and deduplication do not load embedded photos or full price histories.
-const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','backImageUrl',record->'backImageUrl','sideImageUrl',record->'sideImageUrl','imageData',case when coalesce(record->>'imageData','')<>'' then 'present' else '' end,'backImageData',case when coalesce(record->>'backImageData','')<>'' then 'present' else '' end,'sideImageData',case when coalesce(record->>'sideImageData','')<>'' then 'present' else '' end,'price',record->'price','currency',record->'currency') as record`;
+const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','backImageUrl',record->'backImageUrl','sideImageUrl',record->'sideImageUrl','imageData',case when coalesce(record->>'imageData','')<>'' then 'present' else '' end,'backImageData',case when coalesce(record->>'backImageData','')<>'' then 'present' else '' end,'sideImageData',case when coalesce(record->>'sideImageData','')<>'' then 'present' else '' end,'price',record->'price','currency',record->'currency','description',record->'description','createdAt',record->'createdAt','updatedAt',record->'updatedAt') as record`;
 
 async function existingPieces(client: PoolClient, userId: string, collection: string): Promise<Row[]> {
   return (await client.query<Row>(`select collection, ${metadata}, revision from capsule_records where user_id=$1 and collection=$2 and coalesce((record->>'deletedAt')::bigint,0)=0`, [userId, collection])).rows;
@@ -84,19 +84,38 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
       } catch(error) { return integrationFailure(error); }
     },
-    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe", id?: string) {
+    async wardrobeItem(request: Request, id: string, view?: string) {
       try {
         const hash = bearerHash(request);
-        const scopes: IntegrationScope[] = kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [(kind === "wishlist" || kind === "update-wishlist") ? "wishlist:write" : "wardrobe:write"];
+        const scopes: IntegrationScope[] = ["items:read"];
+        const token = await authenticateToken(pool,hash,scopes);
+        await rate(token.user_id,false);
+        if (!uuid(id) || (view !== undefined && !["front","back","side"].includes(view))) throw new IntegrationError("Invalid piece or photo.");
+        return await locked(hash,token.user_id,scopes,async client => {
+          const row = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='items' and id=$2 and coalesce((record->>'deletedAt')::bigint,0)=0",[token.user_id,id])).rows[0];
+          if (!row) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
+          if (!view) return reply({item:summary(row)});
+          const field = view === "front" ? "imageData" : view === "back" ? "backImageData" : "sideImageData";
+          const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.record[field] ?? "");
+          if (!match) throw new IntegrationError("This photo is unavailable.",404,"NOT_FOUND");
+          return new Response(Buffer.from(match[2],"base64"),{headers:{"Content-Type":match[1],"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+        });
+      } catch(error) { return integrationFailure(error); }
+    },
+    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe" | "delete-wardrobe", id?: string) {
+      try {
+        const hash = bearerHash(request);
+        const scopes: IntegrationScope[] = kind === "delete-wardrobe" ? ["wardrobe:delete"] : kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [(kind === "wishlist" || kind === "update-wishlist") ? "wishlist:write" : "wardrobe:write"];
         const token = await authenticateToken(pool,hash,scopes);
         await rate(token.user_id,true);
         const key = request.headers.get("idempotency-key") ?? "";
         if (!/^[A-Za-z0-9._:-]{8,200}$/.test(key)) throw new IntegrationError("Send an Idempotency-Key of 8–200 letters, digits, dots, colons, underscores or hyphens.",400,"IDEMPOTENCY_KEY_REQUIRED");
         if (!request.headers.get("content-type")?.includes("application/json")) throw new IntegrationError("Send a JSON request.",415);
+        const deleting = kind === "delete-wardrobe";
         const updating = kind === "update-wishlist" || kind === "update-wardrobe";
-        if ((kind === "purchase" || updating) && (!id || !uuid(id))) throw new IntegrationError("Invalid item ID.");
+        if ((kind === "purchase" || updating || deleting) && (!id || !uuid(id))) throw new IntegrationError("Invalid item ID.");
         let parsed: CreateInput | PurchaseInput | UpdateInput;
-        try { const raw = await readLimitedJson(request.body,MAX_SYNC_BYTES); parsed = kind === "purchase" ? purchaseSchema.parse(raw) : updating ? updateSchema.parse(raw) : createSchema.parse(raw); }
+        try { const raw = await readLimitedJson(request.body,MAX_SYNC_BYTES); parsed = deleting ? z.object({expectedRevision:z.number().int().positive().safe()}).strict().parse(raw) : kind === "purchase" ? purchaseSchema.parse(raw) : updating ? updateSchema.parse(raw) : createSchema.parse(raw); }
         catch { throw new IntegrationError("Invalid or oversized request body. Check the integration documentation."); }
         const requestHash = digest(canonical({kind,id:id ?? null,body:parsed}));
         let imported: ProductImport | undefined;
@@ -108,7 +127,15 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
             return reply(saved.rows[0].response,{"Idempotency-Replayed":"true"});
           }
           let response: MutationResult;
-          if (kind === "purchase") {
+          if (deleting) {
+            const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='items' and id=$2",[token.user_id,id])).rows[0];
+            if (!source || source.record.deletedAt) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
+            if ((parsed as PurchaseInput).expectedRevision !== Number(source.revision)) throw new IntegrationError("This piece changed. Reload it before deleting.",409,"REVISION_CONFLICT");
+            const now = Date.now();
+            const record = {...source.record,deletedAt:now,updatedAt:now};
+            const removed = await client.query<{revision:string}>("update capsule_records set record=$3::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection='items' and id=$2 returning revision",[token.user_id,id,JSON.stringify(record)]);
+            response = result(record.id,"items",Number(removed.rows[0].revision),false);
+          } else if (kind === "purchase") {
             const input = parsed as PurchaseInput;
             const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='wishlist' and id=$2",[token.user_id,id])).rows[0];
             if (!source || source.record.deletedAt) throw new IntegrationError("This wishlist item is missing or already removed. Look up the wardrobe item before retrying with a new key.",404,"NOT_FOUND");

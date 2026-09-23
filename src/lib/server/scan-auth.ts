@@ -6,7 +6,7 @@ import { authenticateToken, bearerHash, digest, IntegrationError, integrationFai
 
 export const SCAN_CALLBACK = "dev.gtfol.capsulescan://auth/callback";
 const opaque = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-export const scanAuthorization = z.object({code_challenge:opaque,state:opaque}).strict();
+export const scanAuthorization = z.object({code_challenge:opaque,state:opaque,access:z.enum(["capture","wardrobe"]).default("capture")}).strict();
 const authorizeBody = scanAuthorization.extend({expectedUserId:z.string().min(1).max(256)}).strict();
 const exchangeBody = z.object({code:opaque,code_verifier:z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/)}).strict();
 export type ScanBrowserSession = {user:{id:string;name:string};session:{id:string}};
@@ -33,7 +33,7 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
         // namespace. Only the code hash is stored; no bearer token is in a URL.
         await pool.query(`delete from "verification" where identifier like 'capsule-scan:%' and "expiresAt" <= now()`);
         await pool.query(`insert into "verification" (id,identifier,value,"expiresAt","createdAt","updatedAt") values ($1,$2,$3,now()+interval '2 minutes',now(),now())`,
-          [randomUUID(),`capsule-scan:${digest(code)}`,JSON.stringify({userId:session.user.id,sessionId:session.session.id,challenge:parsed.data.code_challenge})]);
+          [randomUUID(),`capsule-scan:${digest(code)}`,JSON.stringify({userId:session.user.id,sessionId:session.session.id,challenge:parsed.data.code_challenge,access:parsed.data.access})]);
         const callback = new URL(SCAN_CALLBACK);
         callback.searchParams.set("code",code); callback.searchParams.set("state",parsed.data.state);
         return Response.json({callbackURL:callback.toString()},{headers});
@@ -51,14 +51,15 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
           await client.query("begin");
           const {rows} = await client.query<{id:string;value:string}>(`select id,value from "verification" where identifier=$1 and "expiresAt">now() for update`,[`capsule-scan:${digest(parsed.data.code)}`]);
           if (rows.length !== 1) throw invalidCode();
-          const grant = z.object({userId:z.string().min(1),sessionId:z.string().min(1),challenge:opaque}).parse(JSON.parse(rows[0].value));
+          const grant = z.object({userId:z.string().min(1),sessionId:z.string().min(1),challenge:opaque,access:z.enum(["capture","wardrobe"]).default("capture")}).parse(JSON.parse(rows[0].value));
           if (!timingSafeEqual(Buffer.from(grant.challenge),Buffer.from(challenge))) throw invalidCode();
           const user = (await client.query<{id:string;name:string}>(`select u.id,u.name from "user" u join "session" s on s."userId"=u.id where u.id=$1 and s.id=$2 and s."expiresAt">now()`,[grant.userId,grant.sessionId])).rows[0];
           if (!user) throw invalidCode();
-          const token = await issueIntegrationToken(client,user.id,"capsule scan",["wardrobe:write"],"1y");
+          const scopes = grant.access === "wardrobe" ? ["items:read", "wardrobe:write", "wardrobe:delete"] as const : ["wardrobe:write"] as const;
+          const token = await issueIntegrationToken(client,user.id,"capsule scan",[...scopes],"1y");
           await client.query(`delete from "verification" where id=$1`,[rows[0].id]);
           await client.query("commit");
-          return Response.json({token:token.token,user,expiresAt:token.expires_at},{headers});
+          return Response.json({token:token.token,user,scopes,expiresAt:token.expires_at},{headers});
         } catch(error) { await client.query("rollback"); throw error; }
         finally { client.release(); }
       } catch(error) { return integrationFailure(error); }
@@ -73,7 +74,7 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
         }
         const user = (await pool.query<{id:string;name:string}>(`select id,name from "user" where id=$1`,[token.user_id])).rows[0];
         if (!user) throw new IntegrationError("sign in again.",401);
-        return Response.json({user},{headers});
+        return Response.json({user,scopes:token.scopes},{headers});
       } catch(error) { return integrationFailure(error); }
     },
   };

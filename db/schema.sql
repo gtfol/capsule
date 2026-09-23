@@ -164,7 +164,7 @@ create table if not exists public.capsule_integration_tokens (
   name text not null check (length(name) between 1 and 80),
   token_hash text unique not null check (token_hash ~ '^[a-f0-9]{64}$'),
   prefix text not null,
-  scopes text[] not null check (cardinality(scopes) > 0 and scopes <@ array['items:read','wishlist:write','wardrobe:write']::text[]),
+  scopes text[] not null check (cardinality(scopes) > 0 and scopes <@ array['items:read','wishlist:write','wardrobe:write','wardrobe:delete']::text[]),
   created_at timestamptz not null default now(),
   expires_at timestamptz,
   revoked_at timestamptz,

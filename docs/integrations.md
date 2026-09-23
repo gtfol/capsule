@@ -31,7 +31,7 @@ No account password, OpenAI key, OAuth session cookie, or Supabase key is needed
 | `wardrobe:write` | Create and edit wardrobe items, including front/back/side photos |
 | Both write permissions | Move a wishlist item to the wardrobe |
 
-Tokens cannot delete pieces, render outfits, read model photos/API keys, manage
+AI-agent tokens cannot delete pieces, render outfits, read model photos/API keys, manage
 share links, or create other integration tokens. A write permission permits the
 corresponding endpoint to return its resulting item ID even without read access.
 
@@ -257,7 +257,7 @@ Response: `{ "items": [...], "cursor": 125, "hasMore": false,
 "sync": { "status": "cloud_snapshot" } }`. Summaries include `id`, `collection`,
 `revision`, `name`, `brand`, `category`, `size`, `color`, `url`, `imageUrl`, `price`,
 `currency`, `backImageUrl`, `sideImageUrl`, and `photos: {front, back, side}`
-booleans indicating which views exist, including uploaded photos. Deleted items,
+booleans indicating which views exist, including uploaded photos. Summaries also include `description`, `createdAt`, and `updatedAt`. Deleted items,
 outfits, embedded image bytes and history are excluded.
 For URL searches, Capsule scans 100 live records per page: **continue while
 `hasMore` is true, even if a page's `items` is empty**. Results are only this token's
@@ -282,3 +282,9 @@ across its tokens. Replays count toward the limit. Up to 10 active tokens.
 Integration endpoints use bearer authentication only; token management uses the
 signed-in Capsule browser session and same-origin checks. The optional
 [hosted MCP bridge](mcp.md) wraps the two create endpoints and verifies each write.
+
+## Native wardrobe reads
+
+`GET /wardrobe/{id}` returns `{item: <summary>}` for a live owned wardrobe piece. `GET /wardrobe/{id}/photos/{view}` returns uploaded JPEG/PNG/WebP bytes for `front`, `back`, or `side` (404 if that view is URL-backed or absent). Both require `items:read` and return private, uncached responses. URL-backed photos remain in the summary URL fields.
+
+The native sign-in flow has a separate, explicitly approved `wardrobe:delete` permission for revision-checked deletion. This permission cannot be requested through AI-agent token creation. See [native sign-in](scan-sign-in.md).
