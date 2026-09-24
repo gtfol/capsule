@@ -1,0 +1,87 @@
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_54b57d80488a3e 8-13,26-31,206-211,308-313,349-352,361-364,487-490,557-560,564,567-583,587,746,797
+  s_0521f8d73d6032::t_6cbf675a67604d 164-169,248-253,334,340,453-456,484,515-518,542,671,691
+apps/ios/CapsuleScan.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  s_ed36ef5ee1b507::t_87414ceaa1116d 1-15
+apps/ios/CapsuleScan/Analytics/PostHogAnalytics.swift
+  s_0521f8d73d6032::t_9e245d77e3818e 1-36,41-58
+  s_0521f8d73d6032::t_a7cf2fc203ab78 37-40
+apps/ios/CapsuleScan/AppServices.swift
+  s_0521f8d73d6032::t_dd17a061644320 5-6,47-48,56-58,61,63-65,98,115,157,165
+  s_0521f8d73d6032::t_bb7ef8fad41a8b 62
+apps/ios/CapsuleScan/CapsuleScanApp.swift
+  s_0521f8d73d6032::t_af006a5b893630 32
+apps/ios/CapsuleScan/Core/Analytics.swift
+  s_0521f8d73d6032::t_c6aa104ce88ac7 1-52,54-104
+  s_0521f8d73d6032::t_0dad491a77e577 53
+apps/ios/CapsuleScan/Resources/PrivacyInfo.xcprivacy
+  s_0521f8d73d6032::t_75f26e96f8be4b 1-133
+apps/ios/CapsuleScan/UI/CaptureView.swift
+  s_0521f8d73d6032::t_539fc937a628ef 118,123,130-133
+apps/ios/CapsuleScan/UI/DraftsView.swift
+  s_0521f8d73d6032::t_de8310eb4560e6 39
+apps/ios/CapsuleScan/UI/ItemEditorModel.swift
+  s_0521f8d73d6032::t_714869031b8bb3 55
+apps/ios/CapsuleScan/UI/OutfitModel.swift
+  s_0521f8d73d6032::t_3b9b6d04c455da 48,54-55,101,130,156,163
+  s_0521f8d73d6032::t_d3eee6a7ff5670 10,25
+apps/ios/CapsuleScan/UI/OutfitsView.swift
+  s_0521f8d73d6032::t_5bd45acf52e737 48
+  s_0521f8d73d6032::t_2c746f14fbe4b0 43,59-61,68,70-71,271
+apps/ios/CapsuleScan/UI/SettingsView.swift
+  s_0521f8d73d6032::t_524e1199c6af2c 80-83,103
+apps/ios/CapsuleScan/UI/WardrobeModel.swift
+  s_0521f8d73d6032::t_4740ddd746e420 56,63-64,111,131-137,168,196
+  s_0521f8d73d6032::t_4e17e218b3e44a 11,29
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_b0044d3759dcb0 71,78-81,156
+  s_0521f8d73d6032::t_73007635b0a6dd 151,159-161,175,177-183
+apps/ios/CapsuleScanTests/AnalyticsTests.swift
+  s_0521f8d73d6032::t_2688452d68b664 1-22,24,26-108
+  s_0521f8d73d6032::t_463cdc2adbbf23 23,25
+apps/ios/README.md
+  s_0521f8d73d6032::t_3668e1d5873317 76,108-112,114-117
+  s_0521f8d73d6032::t_fffa2b13a00196 113
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_d1779c6800fc98 44-47,65,69
+  s_0521f8d73d6032::t_5359d125e981c5 50
+apps/web/src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_324930fcef8af9 34
+  s_0521f8d73d6032::t_c57e0aec1dd499 12
+apps/web/src/components/legal-page.tsx
+  s_0521f8d73d6032::t_5ed9ead40c6975 3,8
+apps/ios/CapsuleScan/UI/RemotePhoto.swift
+  s_0521f8d73d6032::t_d82815912be5b9 1-178
+apps/ios/CapsuleScan/UI/WardrobeDetailView.swift
+  s_0521f8d73d6032::t_a856dd25444829 109
+apps/ios/CapsuleScanTests/OutfitModelTests.swift
+  s_0521f8d73d6032::t_600de715641b44 89
+apps/ios/CapsuleScanTests/PhotoLoadingTests.swift
+  s_0521f8d73d6032::t_b39d964ea68246 1-127
+apps/ios/CapsuleScanTests/WardrobeModelTests.swift
+  s_0521f8d73d6032::t_4bedde7503c3fb 43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "96000d8bba038cea9078088496f1b3e4dd60fd45",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    },
+    "s_ed36ef5ee1b507": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d08a-bb45-7cc2-b052-ae3dfead9767",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
