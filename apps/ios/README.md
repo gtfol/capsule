@@ -1,6 +1,6 @@
 # capsule
 
-Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe on iPhone, or photograph a garment to add it.
+Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe and wishlist on iPhone, or photograph a garment to add it.
 
 Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or bundled credentials. Uses your existing capsule account.
 
@@ -15,7 +15,7 @@ The interface follows the shared [design reference](https://github.com/gtfol/ai/
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
 4. For a physical device, select your development team under Signing & Capabilities. The app uses bundle identifier `dev.gtfol.capsule`.
 
-First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
+First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe and wishlist access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
 
 The grid loads the signed-in account’s server wardrobe, supports category filters and pull-to-refresh, and opens an editable item sheet. Edit name, brand, category, color, size, decimal price, currency, description, and purchase link. Select front/back/side, upload or capture a replacement, remove a view, or run on-device background removal. Save and delete require an explicit tap. Revision conflicts keep your edits and offer an explicit reload; failed saves retry the same body and key until you change the form.
 
@@ -27,9 +27,17 @@ New camera and library photos are processed with Apple's on-device Vision foregr
 
 This is foreground isolation, not garment classification. Use one garment laid out clearly; nearby objects or a person wearing the garment may also be included. No account, API key, or server request is needed for this processing. Check edges on the review screen before saving. The original/cutout choice is available for a new scan, before its first draft or upload save.
 
+## Wishlist
+
+Switch to **wishlist** in the bottom navigation. Browse by category and sort by recent additions, rating, or biggest price drop. Add a piece with **+**, edit its details and front/back/side photos, and tap **save to wishlist**. Half-star ratings can be cleared by tapping the same value again; VoiceOver supports adjustable ratings.
+
+Saved items show an interactive price dot chart with date/source details and a currency selector when needed. Refetch a listing or add an alternative to record a new quote. Unavailable listings are marked without erasing history. Current price chooses the cheapest healthy source in the item's currency. Save edits before checking prices or confirming **move to wardrobe**. The move is atomic and duplicate-aware; deleting a piece also updates the web app.
+
+Wishlist requires a fresh sign-in for its additional permissions. Everything uses the signed-in account's online records, with no offline wishlist copy or background price checks. Shopping-link import and Share Sheet support are separate work.
+
 ## Sign-in and drafts
 
-The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, and native-only `wardrobe:delete` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
+The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, `wishlist:write`, and native-only `wardrobe:delete` / `wishlist:delete` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
 
 The web handoff must be deployed before using this app. See the [web sign-in protocol](../web/docs/scan-sign-in.md) for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
 

@@ -20,6 +20,11 @@ import SwiftData
     @Published private(set) var visionEnabled = false
     @Published private(set) var hasVisionKey = false
     @Published var connectionMessage: String?
+    @Published private(set) var wishlistEnabled = false
+    var wishlist: (any WardrobeServing)? {
+        guard let user, connected, wishlistEnabled else { return nil }
+        return CapsuleWardrobeClient(credentials: credentials, transport: transport, expectedUserID: user.id, collection: .wishlist)
+    }
     var wardrobe: (any WardrobeServing)? {
         guard let user, connected else { return nil }
         return CapsuleWardrobeClient(credentials: credentials, transport: transport, expectedUserID: user.id)
@@ -48,6 +53,7 @@ import SwiftData
                 try await credentials.write(nil, for: .capsuleToken)
             }
             user = authenticationRejected ? nil : login?.user
+            wishlistEnabled = login?.scopes?.contains("wishlist:write") == true && login?.scopes?.contains("wishlist:delete") == true
             hasVisionKey = !(try await credentials.read(.visionAPIKey) ?? "").isEmpty
             let visionConsent = try await credentials.read(.visionPhotoConsent)
             visionEnabled = hasVisionKey && visionConsent == "openai-photos-v1"
@@ -68,6 +74,7 @@ import SwiftData
             try await credentials.storeCapsuleLogin(login) // Token and account commit atomically in Keychain.
             try? await credentials.write(nil, for: .capsuleToken)
             authenticationRejected = false; user = login.user
+            wishlistEnabled = login.scopes?.contains("wishlist:write") == true && login.scopes?.contains("wishlist:delete") == true
             wardrobeReloadID = UUID()
         } catch SignInError.cancelled { }
         catch { connectionMessage = (error as? SignInError)?.localizedDescription ?? ScanError.keychain.localizedDescription }

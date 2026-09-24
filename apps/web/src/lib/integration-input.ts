@@ -15,7 +15,16 @@ export const integrationFieldsSchema = z.object({
   imageUrl: link.optional(), backImageUrl: link.optional(), sideImageUrl: link.optional(),
   imageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), backImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(), sideImageData: z.string().max(MAX_ITEM_IMAGE_CHARS).optional(),
 }).strict();
-export const integrationCreateSchema = integrationFieldsSchema.extend({fetch: z.boolean().default(true)}).refine(value => value.url || value.name, "Provide a product URL or item name.")
+const createFields = {fetch: z.boolean().default(true)};
+const rating = z.number().min(0.5).max(5).multipleOf(0.5).nullable().optional();
+export const integrationWishlistCreateSchema = integrationFieldsSchema.extend({...createFields,rating}).refine(value => value.url || value.name, "Provide a product URL or item name.")
+  .refine(value => (value.fetch && value.url) || value.name, "A name is required when page fetching is disabled.");
+export const integrationCreateSchema = integrationFieldsSchema.extend(createFields).refine(value => value.url || value.name, "Provide a product URL or item name.")
   .refine(value => (value.fetch && value.url) || value.name, "A name is required when page fetching is disabled.");
 export const integrationUpdateSchema = integrationFieldsSchema.extend({expectedRevision:z.number().int().positive().safe()}).refine(value => Object.keys(value).length > 1, "Provide a field to update.");
+export const integrationWishlistUpdateSchema = integrationFieldsSchema.extend({
+  expectedRevision:z.number().int().positive().safe(),
+  rating,
+}).refine(value => Object.keys(value).length > 1, "Provide a field to update.");
+export const integrationPriceCheckSchema = z.object({expectedRevision:z.number().int().positive().safe(),url:link.refine(value=>value.length>0)}).strict();
 export const integrationPurchaseSchema = z.object({size: z.string().max(100).optional(), color: z.string().max(200).optional(), price: price.optional(), currency: currency.optional(), expectedRevision: z.number().int().nonnegative().optional()}).strict();

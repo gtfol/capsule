@@ -4,12 +4,23 @@ import SwiftUI
     @EnvironmentObject private var services: AppServices
     @Environment(\.scenePhase) private var scenePhase
     @State private var capture = false
+    @State private var collection: CapsuleCollection = .wardrobe
+    @State private var newWishlistItem: RemoteWardrobeItem?
     var body: some View {
         NavigationStack {
             Group {
                 if !services.credentialsReady { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if let client = services.wardrobe, let user = services.user {
-                    WardrobeGrid(client: client, add: { capture = true }).id(user.id)
+                    if collection == .wardrobe {
+                        WardrobeGrid(client: client, collection: collection, add: { capture = true }).id(user.id + collection.rawValue)
+                    } else if let wishlist = services.wishlist {
+                        WardrobeGrid(client: wishlist, collection: collection, add: { newWishlistItem = .empty() }).id(user.id + collection.rawValue)
+                    } else {
+                        VStack(spacing: 16) {
+                            Text("sign in again to connect your wishlist.").font(CapsuleStyle.caption)
+                            SignInButton()
+                        }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 } else {
                     VStack(spacing: 20) {
                         Text("capsule").font(CapsuleStyle.heading)
@@ -19,16 +30,35 @@ import SwiftUI
                 }
             }
             .capsuleScreen()
-            .navigationTitle("wardrobe")
+            .navigationTitle(collection.rawValue)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) { Text("wardrobe").font(CapsuleStyle.heading) }
+                ToolbarItem(placement: .principal) { Text(collection.rawValue).font(CapsuleStyle.heading) }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink { SettingsView() } label: { Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("settings")
                 }.quietBackground()
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { capture = true } label: { Image(systemName: "plus").font(.system(size: 16)).frame(width: 44, height: 44) }.accessibilityLabel("add to wardrobe").disabled(!services.connected)
+                    Button { if collection == .wishlist { newWishlistItem = .empty() } else { capture = true } } label: { Image(systemName: "plus").font(.system(size: 16)).frame(width: 44, height: 44) }.accessibilityLabel("add to \(collection.rawValue)").disabled(!services.connected || (collection == .wishlist && !services.wishlistEnabled))
                 }.quietBackground()
+            }
+            .safeAreaInset(edge: .bottom) {
+                if services.connected {
+                    HStack(spacing: 32) {
+                        ForEach(CapsuleCollection.allCases) { tab in
+                            Button { collection = tab } label: {
+                                Text(tab.rawValue).font(CapsuleStyle.caption)
+                                    .foregroundStyle(collection == tab ? CapsuleStyle.text : CapsuleStyle.secondary).frame(minHeight: 44)
+                            }.buttonStyle(.plain).accessibilityAddTraits(collection == tab ? .isSelected : [])
+                        }
+                    }.frame(maxWidth: .infinity).background(CapsuleStyle.canvas)
+                }
+            }
+            .sheet(item: $newWishlistItem, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
+                if let client = services.wishlist {
+                    NavigationStack {
+                        WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: .wishlist), client: client)
+                    }
+                }
             }
             .sheet(isPresented: $capture) {
                 CaptureView(inWardrobe: true, onUploaded: { capture = false })
@@ -46,15 +76,25 @@ import SwiftUI
     @StateObject private var model = WardrobeModel()
     @State private var category: GarmentCategory?
     @State private var selected: RemoteWardrobeItem?
+    @State private var sort: WishlistSort = .recent
     let client: any WardrobeServing
+    let collection: CapsuleCollection
     let add: () -> Void
-    private var filtered: [RemoteWardrobeItem] { model.items.filter { category == nil || $0.category == category } }
+    private var filtered: [RemoteWardrobeItem] { sort.sorted(model.items.filter { category == nil || $0.category == category }) }
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 24) {
                     categoryButton("all", value: nil)
                     ForEach(GarmentCategory.allCases) { categoryButton($0.rawValue, value: $0) }
+                }.padding(.horizontal, 20)
+            }
+            if collection == .wishlist {
+                HStack {
+                    Spacer()
+                    Menu {
+                        Picker("sort", selection: $sort) { ForEach(WishlistSort.allCases) { Text($0.rawValue).tag($0) } }
+                    } label: { Label(sort.rawValue, systemImage: "arrow.up.arrow.down").font(CapsuleStyle.caption).frame(minHeight: 44) }
                 }.padding(.horizontal, 20)
             }
             if let error = model.error {
@@ -68,7 +108,7 @@ import SwiftUI
                 if model.loading && !model.loaded { ProgressView().padding(.top, 48) }
                 else if model.loaded && filtered.isEmpty {
                     VStack(spacing: 12) {
-                        Text(category == nil ? "your wardrobe is empty" : "no \(category!.rawValue) yet").font(CapsuleStyle.heading)
+                        Text(category == nil ? "your \(collection.rawValue) is empty" : "no \(category!.rawValue) yet").font(CapsuleStyle.heading)
                         Button("add an item", action: add).font(CapsuleStyle.body).frame(minHeight: 44)
                     }.frame(maxWidth: .infinity).padding(.top, 48)
                 } else {
@@ -76,9 +116,16 @@ import SwiftUI
                         ForEach(filtered) { item in
                             Button { selected = item } label: {
                                 VStack(alignment: .leading, spacing: 6) {
-                                    WardrobePhoto(item: item, view: item.primaryView, client: client)
+                                    WardrobePhoto(item: item, view: item.primaryView, client: client, collection: collection)
                                         .aspectRatio(3 / 4, contentMode: .fit)
                                     Text(item.name).font(CapsuleStyle.body).lineLimit(2)
+                                    if collection == .wishlist {
+                                        HStack {
+                                            Text(WishlistDisplay.price(item.price, currency: item.currency)).font(CapsuleStyle.caption)
+                                            if item.link_broken == true { Image(systemName: "exclamationmark.triangle").font(.system(size: 12)).accessibilityLabel("listing unavailable") }
+                                        }
+                                        RatingStars(rating: item.rating).font(.system(size: 11))
+                                    }
                                     Text(item.brand.isEmpty ? item.category.rawValue : item.brand).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).lineLimit(1)
                                 }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                             }.buttonStyle(.plain)
@@ -91,7 +138,7 @@ import SwiftUI
         .task(id: services.wardrobeReloadID) { await model.load(client: client) }
         .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
             NavigationStack {
-                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation), client: client)
+                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection), client: client)
             }
         }
     }
@@ -129,6 +176,7 @@ actor WardrobePhotoCache {
     let item: RemoteWardrobeItem
     let view: GarmentView
     let client: any WardrobeServing
+    var collection: CapsuleCollection = .wardrobe
     @State private var image: UIImage?
     @State private var failed = false
     @State private var attempt = 0
@@ -142,10 +190,10 @@ actor WardrobePhotoCache {
             else { Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
         }
         .clipped()
-        .task(id: "\(services.user?.id ?? ""):\(item.id):\(item.revision):\(view.rawValue):\(attempt)") {
+        .task(id: "\(services.user?.id ?? ""):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(attempt)") {
             image = nil; failed = false
             guard item.hasPhoto(view), let userID = services.user?.id else { return }
-            let key = "\(userID):\(item.id):\(item.revision):\(view.rawValue)"
+            let key = "\(userID):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue)"
             do {
                 let data = try await WardrobePhotoCache.shared.load(key: key) { try await client.photo(item: item, view: view) }
                 guard !Task.isCancelled, services.user?.id == userID else { return }

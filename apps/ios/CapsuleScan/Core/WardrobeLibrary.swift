@@ -1,5 +1,16 @@
 import Foundation
 
+enum CapsuleCollection: String, CaseIterable, Identifiable, Sendable {
+    case wardrobe, wishlist
+    var id: String { rawValue }
+}
+struct WishlistSource: Codable, Equatable, Sendable {
+    var url: String; var price: String; var currency: String; var fetched_at: Double?; var link_broken: Bool
+}
+struct WishlistPrice: Codable, Equatable, Identifiable, Sendable {
+    var price: Decimal; var currency: String; var source_url: String; var fetched_at: Double
+    var id: String { "\(source_url):\(fetched_at):\(price)" }
+}
 // Server records are kept in memory. SwiftData remains limited to unfinished scans.
 struct RemoteWardrobeItem: Codable, Equatable, Identifiable, Sendable {
     let id: String
@@ -19,6 +30,12 @@ struct RemoteWardrobeItem: Codable, Equatable, Identifiable, Sendable {
     var photos: PhotoAvailability
     var createdAt: Double
     var updatedAt: Double
+    var rating: Decimal? = nil
+    var link_broken: Bool? = nil
+    var currentSourceUrl: String? = nil
+    var priceDrop: Decimal? = nil
+    var sources: [WishlistSource]? = nil
+    var priceHistory: [WishlistPrice]? = nil
     struct PhotoAvailability: Codable, Equatable, Sendable { var front: Bool; var back: Bool; var side: Bool }
     var fields: ItemFields { ItemFields(name: name, brand: brand, category: category, color: color, size: size, price: price.isEmpty ? nil : price, currency: currency) }
     func hasPhoto(_ view: GarmentView) -> Bool {
@@ -43,11 +60,11 @@ enum WardrobeError: Error, LocalizedError, Equatable {
     case reconnect, offline, unavailable, conflict, missing, invalid, rateLimited
     var errorDescription: String? {
         switch self {
-        case .reconnect: "sign in again to open your wardrobe."
+        case .reconnect: "sign in again to continue."
         case .offline: "connect to the internet and try again."
         case .unavailable: "couldn’t reach capsule. try again."
         case .conflict: "this piece changed elsewhere. reload it before saving."
-        case .missing: "this piece was removed from your wardrobe."
+        case .missing: "this piece was removed."
         case .invalid: "check the item details and try again."
         case .rateLimited: "too many requests. wait a moment and try again."
         }
@@ -59,11 +76,20 @@ protocol WardrobeServing: Sendable {
     func photo(item: RemoteWardrobeItem, view: GarmentView) async throws -> Data
     func update(id: String, mutation: WardrobeMutation) async throws
     func remove(id: String, mutation: WardrobeMutation) async throws
+    func create(mutation: WardrobeMutation) async throws -> String
+    func purchase(id: String, mutation: WardrobeMutation) async throws -> String
+    func checkPrice(id: String, mutation: WardrobeMutation) async throws -> Bool
+}
+extension WardrobeServing {
+    func create(mutation: WardrobeMutation) async throws -> String { throw WardrobeError.invalid }
+    func purchase(id: String, mutation: WardrobeMutation) async throws -> String { throw WardrobeError.invalid }
+    func checkPrice(id: String, mutation: WardrobeMutation) async throws -> Bool { throw WardrobeError.invalid }
 }
 struct CapsuleWardrobeClient: WardrobeServing {
     let credentials: any CredentialStore
     let transport: any HTTPTransport
     let expectedUserID: String
+    var collection: CapsuleCollection = .wardrobe
     private func request(_ path: String, query: [URLQueryItem] = [], method: String = "GET", mutation: WardrobeMutation? = nil) async throws -> HTTPResult {
         guard let login = try await credentials.capsuleLogin(), login.user.id == expectedUserID else { throw WardrobeError.reconnect }
         var components = URLComponents(url: CapsuleDestination.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
@@ -99,19 +125,19 @@ struct CapsuleWardrobeClient: WardrobeServing {
         return result
     }
     func page(cursor: Int64) async throws -> WardrobePage {
-        let response = try await request("items", query: [.init(name: "collection", value: "wardrobe"), .init(name: "cursor", value: String(cursor))])
+        let response = try await request("items", query: [.init(name: "collection", value: collection.rawValue), .init(name: "cursor", value: String(cursor))])
         guard let page = try? JSONDecoder().decode(WardrobePage.self, from: response.data), !page.hasMore || page.cursor > cursor else { throw WardrobeError.unavailable }
         return page
     }
     func item(id: String) async throws -> RemoteWardrobeItem {
         struct Envelope: Decodable { let item: RemoteWardrobeItem }
-        let response = try await request("wardrobe/\(id)")
+        let response = try await request("\(collection.rawValue)/\(id)")
         guard let result = try? JSONDecoder().decode(Envelope.self, from: response.data), result.item.id == id else { throw WardrobeError.unavailable }
         return result.item
     }
     func photo(item: RemoteWardrobeItem, view: GarmentView) async throws -> Data {
         // A cached/cutout photo takes precedence over its original product URL.
-        do { return try await request("wardrobe/\(item.id)/photos/\(view.rawValue)").data }
+        do { return try await request("\(collection.rawValue)/\(item.id)/photos/\(view.rawValue)").data }
         catch WardrobeError.missing {
             let url = item.photoURL(view)
             guard !url.isEmpty else { throw WardrobeError.missing }
@@ -129,9 +155,34 @@ struct CapsuleWardrobeClient: WardrobeServing {
             struct Sync: Decodable { let status: String; let revision: Int64 }
             let id: String; let sync: Sync
         }
-        let result = try await request("wardrobe/\(id)", method: method, mutation: mutation)
+        let result = try await request("\(collection.rawValue)/\(id)", method: method, mutation: mutation)
         guard let receipt = try? JSONDecoder().decode(Receipt.self, from: result.data), receipt.id == id,
               receipt.sync.status == "saved_to_cloud", receipt.sync.revision > 0 else { throw WardrobeError.unavailable }
+    }
+    private struct Receipt: Decodable {
+        struct Sync: Decodable { let status: String; let revision: Int64 }
+        let id: String; let collection: String; let sync: Sync; let priceFetched: Bool?
+    }
+    private func action(path: String, mutation: WardrobeMutation, expectedCollection: CapsuleCollection, expectedID: String? = nil) async throws -> Receipt {
+        let response = try await request(path, method: "POST", mutation: mutation)
+        guard let receipt = try? JSONDecoder().decode(Receipt.self, from: response.data),
+              UUID(uuidString: receipt.id) != nil, receipt.collection == expectedCollection.rawValue,
+              expectedID == nil || receipt.id == expectedID,
+              receipt.sync.status == "saved_to_cloud", receipt.sync.revision > 0 else { throw WardrobeError.unavailable }
+        return receipt
+    }
+    func create(mutation: WardrobeMutation) async throws -> String {
+        try await action(path: collection.rawValue, mutation: mutation, expectedCollection: collection).id
+    }
+    func purchase(id: String, mutation: WardrobeMutation) async throws -> String {
+        guard collection == .wishlist else { throw WardrobeError.invalid }
+        return try await action(path: "wishlist/\(id)/purchase", mutation: mutation, expectedCollection: .wardrobe).id
+    }
+    func checkPrice(id: String, mutation: WardrobeMutation) async throws -> Bool {
+        guard collection == .wishlist else { throw WardrobeError.invalid }
+        let receipt = try await action(path: "wishlist/\(id)/price", mutation: mutation, expectedCollection: .wishlist, expectedID: id)
+        guard let fetched = receipt.priceFetched else { throw WardrobeError.unavailable }
+        return fetched
     }
     func update(id: String, mutation: WardrobeMutation) async throws { try await write(id: id, method: "PATCH", mutation: mutation) }
     func remove(id: String, mutation: WardrobeMutation) async throws { try await write(id: id, method: "DELETE", mutation: mutation) }
@@ -141,10 +192,13 @@ struct WardrobeEdit: Equatable, Sendable {
     var fields: ItemFields
     var description: String
     var url: String
+    var rating: Decimal? = nil
+    private var initialPrice: String?
+    private var initialCurrency: String
     // Only changed views are included; an empty string explicitly removes a view.
     var photos: [GarmentView: String] = [:]
-    init(item: RemoteWardrobeItem) { fields = item.fields; description = item.description; url = item.url }
-    func encoded(revision: Int64) throws -> Data {
+    init(item: RemoteWardrobeItem) { fields = item.fields; description = item.description; url = item.url; rating = item.rating; initialPrice = item.fields.price; initialCurrency = item.currency }
+    func encoded(revision: Int64, collection: CapsuleCollection = .wardrobe) throws -> Data {
         let fields = try fields.validated(requireName: true)
         let link = url.trimmingCharacters(in: .whitespacesAndNewlines)
         if !link.isEmpty {
@@ -152,9 +206,29 @@ struct WardrobeEdit: Equatable, Sendable {
         }
         guard description.count <= 20_000, link.count <= 8_000 else { throw WardrobeError.invalid }
         var values: [String: Any] = ["expectedRevision": revision, "name": fields.name, "brand": fields.brand, "category": fields.category?.rawValue ?? "tops", "size": fields.size, "color": fields.color, "price": fields.price ?? "", "currency": fields.currency, "description": description, "url": link]
+        if revision == 0 { values.removeValue(forKey: "expectedRevision"); values["fetch"] = false }
+        if collection == .wishlist {
+            if revision > 0 {
+                if fields.price == (try? Price.canonical(initialPrice ?? "", locale: Locale(identifier: "en_US_POSIX"))) { values.removeValue(forKey: "price") }
+                if fields.currency == initialCurrency { values.removeValue(forKey: "currency") }
+            }
+            if let rating {
+                guard rating >= Decimal(string: "0.5")!, rating <= 5, (rating * 2).isWholeNumber else { throw WardrobeError.invalid }
+                values["rating"] = NSDecimalNumber(decimal: rating)
+            } else { values["rating"] = NSNull() }
+        }
         for (view, photo) in photos { values[view.dataField] = photo }
         let body = try JSONSerialization.data(withJSONObject: values, options: [.sortedKeys, .withoutEscapingSlashes])
         guard body.count < CapsulePayloadBuilder.maximumBodyBytes, photos.values.reduce(0, { $0 + $1.count }) <= 2_800_000 else { throw ScanError.imageTooLarge }
         return body
+    }
+}
+
+extension Decimal {
+    var isWholeNumber: Bool { var value = self; var rounded = Decimal(); NSDecimalRound(&rounded, &value, 0, .plain); return rounded == self }
+}
+extension RemoteWardrobeItem {
+    static func empty() -> Self {
+        .init(id: UUID().uuidString, revision: 0, name: "", brand: "", category: .tops, size: "", color: "", price: "", currency: Locale.current.currency?.identifier ?? "USD", description: "", url: "", imageUrl: "", backImageUrl: "", sideImageUrl: "", photos: .init(front: false, back: false, side: false), createdAt: 0, updatedAt: 0)
     }
 }

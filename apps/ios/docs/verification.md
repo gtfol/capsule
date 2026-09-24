@@ -51,3 +51,11 @@ Use a physical iPhone with iOS 17 or newer and a development signing team:
 - With an optional OpenAI key, verify extraction for one photo. Remove the key and verify on-device extraction still works.
 
 Physical camera behavior, Google login with a real account, and live wardrobe/OpenAI requests cannot be verified by mocked unit tests or an unsigned build.
+
+## Native wishlist — September 23, 2026
+
+- Added online wishlist grid, manual create/edit with all photo views, half-star ratings, sort options, interactive price history, on-demand source checks, and atomic move to wardrobe.
+- Passed 44 core tests and 69 simulator tests on Xcode 26.6 / iPhone 17 Pro simulator; simulator and unsigned device builds succeeded.
+- Web API: 317 tests passed, 2 unrelated database tests skipped; integration/PKCE/price/move/delete checks ran against an isolated local PostgreSQL database. Lint, TypeScript, and production build passed.
+- Explicit native wishlist scope migration is saved and applied in Supabase under `20260924_native_wishlist.sql` (snippet `ee0d5011-4a91-4935-865b-efd11597b31d`). Existing grants are unchanged.
+- Still requires physical-device checks for choosing/taking all photo views, half-star taps, chart scrubbing, and reconnecting a previous wardrobe-only installation. No new build has been submitted to App Review as part of this code PR.
