@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <LegalPage title="privacy policy">
+  return <LegalPage title="privacy policy" effectiveDate="September 24, 2026">
     <p>This policy covers capsule at capsule.gtfol.dev and the capsule iPhone app, operated by gtfol, LLC. Contact <a href="mailto:team@gtfol.dev">team@gtfol.dev</a> about privacy or your data.</p>
     <section><h2>on your device</h2>
       <p>The web app stores your wardrobe, wishlist, photos, outfits, and preferences in this browser. You can use it without an account. Local storage can be lost if you clear browser data or your device removes it.</p>

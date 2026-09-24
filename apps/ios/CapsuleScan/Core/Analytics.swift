@@ -50,6 +50,7 @@ enum AnalyticsPrivacy {
         var clean: [String: Any] = ["platform": "ios", "$geoip_disable": true]
         let metadata: Set<String> = ["$app_version", "$app_build", "$os_name", "$os_version", "$device_model", "$lib", "$lib_version"]
         for (key, value) in properties {
+            if key == "$app_build", let build = value as? Int, (0...1_000_000).contains(build) { clean[key] = build }
             if metadata.contains(key), let text = value as? String, text.count <= 80,
                text.range(of: "^[A-Za-z0-9 ._(),-]+$", options: .regularExpression) != nil { clean[key] = text }
             if ["$is_testflight", "$is_identified", "$process_person_profile"].contains(key), let flag = value as? Bool { clean[key] = flag }

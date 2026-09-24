@@ -20,9 +20,9 @@ final class AnalyticsTests: XCTestCase {
             "imageData": "data:image/jpeg;base64,secret", "token": "secret", "item_id": "secret",
             "$set": ["email": "private@example.test"], "$set_once": ["$initial_current_url": privateValue],
             "$current_url": privateValue, "$screen_name": privateValue, "$device_name": "someone's iphone",
-            "$app_version": "1.2", "$geoip_disable": false]
+            "$app_version": "1.2", "$app_build": 17, "$geoip_disable": false]
         let clean = try XCTUnwrap(AnalyticsPrivacy.sanitized(event: "piece_added", properties: input))
-        XCTAssertEqual(Set(clean.keys), ["collection", "duplicate", "$app_version", "platform", "$geoip_disable"])
+        XCTAssertEqual(Set(clean.keys), ["collection", "duplicate", "$app_version", "$app_build", "platform", "$geoip_disable"])
         XCTAssertEqual(clean["$geoip_disable"] as? Bool, true)
         XCTAssertFalse(String(describing: clean).contains("secret"))
         XCTAssertNil(AnalyticsPrivacy.sanitized(event: "$snapshot", properties: input))
