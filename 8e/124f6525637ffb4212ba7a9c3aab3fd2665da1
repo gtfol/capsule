@@ -1,0 +1,21 @@
+.github/workflows/ios.yml
+  s_0521f8d73d6032::t_b561ae9de4e8d6 34-37
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_8d6436df2d0a11 226,384
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8e124f6525637ffb4212ba7a9c3aab3fd2665da1",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
