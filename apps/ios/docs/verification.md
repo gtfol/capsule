@@ -7,7 +7,7 @@
 - The iPhone simulator build and unsigned iPhone Release archive pass without compiler warnings.
 - Web checks: 320 tests passed, two unrelated database suites skipped. Native outfit/PKCE checks ran against disposable local PostgreSQL; OpenAI was mocked. Lint, TypeScript and the production web build passed.
 - Inspected rendered SwiftUI layouts at 390- and 430-point widths using disposable fixtures. The render action stays visible beneath the scrolling wardrobe; the model-photo placeholder reuses the approved web silhouette.
-- Production requires `db/migrations/20260924_native_outfits.sql` before the new native sign-in grant is deployed. Existing connections retain their current permissions and reconnect explicitly.
+- Saved and applied `db/migrations/20260924_native_outfits.sql` in Capsule Supabase (snippet `1e547e30-3b47-4f4b-93ad-27d73b9620cc`). Existing connections retain their current permissions and reconnect explicitly. Build 1.2 (13) uploaded successfully to App Store Connect; processing and internal-group availability are verified separately.
 - Still requires a physical-device check of model-photo camera/library selection and saving an outfit image to Photos, plus one real-account render and verification on the web. Automated checks do not make a paid OpenAI request. App Review's existing 1.0 (10) is unchanged.
 
 ## Native wardrobe — build 8
