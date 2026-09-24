@@ -1,0 +1,57 @@
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_40ad9f643c0be5 594,614
+apps/ios/CapsuleScan/Core/CapsuleDestination.swift
+  s_0521f8d73d6032::t_b6db4fae7059e1 103,121
+apps/ios/CapsuleScan/Core/Extraction.swift
+  s_0521f8d73d6032::t_e6d6e565dd0653 68
+apps/ios/CapsuleScan/Core/Images.swift
+  s_0521f8d73d6032::t_cf019d9ee95bf8 11-18,21-31,35-50,88,108
+apps/ios/CapsuleScan/Core/Isolation.swift
+  s_0521f8d73d6032::t_cb692993205624 29-31,38-40,43-47,49-60,62-63
+apps/ios/CapsuleScan/Core/Outfits.swift
+  s_0521f8d73d6032::t_76661643172fa4 60
+apps/ios/CapsuleScan/Core/WardrobeLibrary.swift
+  s_0521f8d73d6032::t_136a49fa462c30 97,147
+apps/ios/CapsuleScan/UI/ItemEditorModel.swift
+  s_0521f8d73d6032::t_67d8b67a9f0bce 119
+apps/ios/CapsuleScan/UI/OutfitModel.swift
+  s_0521f8d73d6032::t_e2a63054630ddd 6,25
+apps/ios/CapsuleScan/UI/OutfitsView.swift
+  s_0521f8d73d6032::t_99c8e534b10c4c 59,65,78,82
+apps/ios/CapsuleScan/UI/WardrobeDetailView.swift
+  s_0521f8d73d6032::t_df4092562555a4 124
+apps/ios/CapsuleScan/UI/WardrobeModel.swift
+  s_0521f8d73d6032::t_1f86cb8d3810ed 7,29,73-76,81-83,94,105,107-108
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_6d6344048c6554 156,165-175,203,217,220
+apps/ios/CapsuleScanTests/IsolationTests.swift
+  s_0521f8d73d6032::t_5f190177f7263c 11,14-19,21-22,24-28,30,32-46,48-63,66-69
+apps/ios/CapsuleScanTests/OutfitModelTests.swift
+  s_0521f8d73d6032::t_b8501ab390eccc 24,38-46
+apps/ios/CapsuleScanTests/OutfitTests.swift
+  s_0521f8d73d6032::t_d1fb0e7cc7eb72 28
+apps/ios/CapsuleScanTests/WardrobeModelTests.swift
+  s_0521f8d73d6032::t_fa4f2c93004ceb 30-64
+apps/ios/CapsuleScanTests/WardrobeTests.swift
+  s_0521f8d73d6032::t_8c06ef8b1c7802 49,65
+apps/ios/README.md
+  s_0521f8d73d6032::t_fbe71b081e6d95 20
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_9aaf2913946d4d 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "38b5e2d7c6abcbada5d2b2bfb49b4596d26774b2",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
