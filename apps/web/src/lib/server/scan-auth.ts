@@ -6,7 +6,7 @@ import { authenticateToken, bearerHash, digest, IntegrationError, integrationFai
 
 export const SCAN_CALLBACK = "dev.gtfol.capsulescan://auth/callback";
 const opaque = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-export const scanAuthorization = z.object({code_challenge:opaque,state:opaque,access:z.enum(["capture","wardrobe","wishlist"]).default("capture")}).strict();
+export const scanAuthorization = z.object({code_challenge:opaque,state:opaque,access:z.enum(["capture","wardrobe","wishlist","outfits"]).default("capture")}).strict();
 const authorizeBody = scanAuthorization.extend({expectedUserId:z.string().min(1).max(256)}).strict();
 const exchangeBody = z.object({code:opaque,code_verifier:z.string().regex(/^[A-Za-z0-9._~-]{43,128}$/)}).strict();
 export type ScanBrowserSession = {user:{id:string;name:string};session:{id:string}};
@@ -51,11 +51,11 @@ export function createScanAuth(pool: Pool, sessionFor: (request: Request) => Pro
           await client.query("begin");
           const {rows} = await client.query<{id:string;value:string}>(`select id,value from "verification" where identifier=$1 and "expiresAt">now() for update`,[`capsule-scan:${digest(parsed.data.code)}`]);
           if (rows.length !== 1) throw invalidCode();
-          const grant = z.object({userId:z.string().min(1),sessionId:z.string().min(1),challenge:opaque,access:z.enum(["capture","wardrobe","wishlist"]).default("capture")}).parse(JSON.parse(rows[0].value));
+          const grant = z.object({userId:z.string().min(1),sessionId:z.string().min(1),challenge:opaque,access:z.enum(["capture","wardrobe","wishlist","outfits"]).default("capture")}).parse(JSON.parse(rows[0].value));
           if (!timingSafeEqual(Buffer.from(grant.challenge),Buffer.from(challenge))) throw invalidCode();
           const user = (await client.query<{id:string;name:string}>(`select u.id,u.name from "user" u join "session" s on s."userId"=u.id where u.id=$1 and s.id=$2 and s."expiresAt">now()`,[grant.userId,grant.sessionId])).rows[0];
           if (!user) throw invalidCode();
-          const scopes = grant.access === "wishlist" ? ["items:read", "wardrobe:write", "wardrobe:delete", "wishlist:write", "wishlist:delete"] as const : grant.access === "wardrobe" ? ["items:read", "wardrobe:write", "wardrobe:delete"] as const : ["wardrobe:write"] as const;
+          const scopes = grant.access === "outfits" ? ["items:read", "wardrobe:write", "wardrobe:delete", "wishlist:write", "wishlist:delete", "outfits:read", "outfits:write", "outfits:delete"] as const : grant.access === "wishlist" ? ["items:read", "wardrobe:write", "wardrobe:delete", "wishlist:write", "wishlist:delete"] as const : grant.access === "wardrobe" ? ["items:read", "wardrobe:write", "wardrobe:delete"] as const : ["wardrobe:write"] as const;
           const token = await issueIntegrationToken(client,user.id,"capsule",[...scopes],"1y");
           await client.query(`delete from "verification" where id=$1`,[rows[0].id]);
           await client.query("commit");

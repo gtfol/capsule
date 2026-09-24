@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 
-export function ScanConnect({authorization,user,providers}:{authorization:{code_challenge:string;state:string;access?:"capture"|"wardrobe"|"wishlist"};user:{id:string;name:string}|null;providers:{google:boolean;apple:boolean;email:boolean}}) {
+export function ScanConnect({authorization,user,providers}:{authorization:{code_challenge:string;state:string;access?:"capture"|"wardrobe"|"wishlist"|"outfits"};user:{id:string;name:string}|null;providers:{google:boolean;apple:boolean;email:boolean}}) {
   const [busy,setBusy] = useState(false);
   const [error,setError] = useState("");
   const [email,setEmail] = useState("");
@@ -36,7 +36,7 @@ export function ScanConnect({authorization,user,providers}:{authorization:{code_
   }
   return <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-6 py-12">
     <h1 className="text-lg">capsule</h1>
-    <p className="text-sm text-muted-foreground">{user ? (authorization.access === "wishlist" ? "view, add, edit, and delete wardrobe and wishlist pieces from this iphone." : authorization.access === "wardrobe" ? "view, add, edit, and delete wardrobe pieces from this iphone." : "allow the capsule app to add items to your wardrobe.") : "sign in to save your scans to capsule."}</p>
+    <p className="text-sm text-muted-foreground">{user ? (authorization.access === "outfits" ? "manage your wardrobe, wishlist, and outfits. render with your account’s OpenAI key and manage that key in settings." : authorization.access === "wishlist" ? "view, add, edit, and delete wardrobe and wishlist pieces from this iphone." : authorization.access === "wardrobe" ? "view, add, edit, and delete wardrobe pieces from this iphone." : "allow the capsule app to add items to your wardrobe.") : "sign in to save your scans to capsule."}</p>
     {user ? <>
       <button className={button} disabled={busy} onClick={()=>void connect()}>{busy ? "connecting…" : `continue${user.name ? ` as ${user.name}` : ""}`}</button>
       <button className="text-sm text-muted-foreground" disabled={busy} onClick={async()=>{setBusy(true);try { const result=await authClient.signOut();if(result.error) throw new Error();window.location.reload(); } catch {setBusy(false);setError("couldn’t switch accounts. try again.");}}}>use another account</button>

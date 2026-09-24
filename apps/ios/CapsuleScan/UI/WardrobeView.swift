@@ -1,10 +1,16 @@
 import SwiftUI
 
+private enum LibraryTab: String, CaseIterable, Identifiable {
+    case wardrobe, wishlist, outfits
+    var id: String { rawValue }
+}
+
 @MainActor struct WardrobeView: View {
     @EnvironmentObject private var services: AppServices
     @Environment(\.scenePhase) private var scenePhase
     @State private var capture = false
-    @State private var collection: CapsuleCollection = .wardrobe
+    @State private var collection: LibraryTab = .wardrobe
+    @State private var newOutfit = false
     @State private var newWishlistItem: RemoteWardrobeItem?
     var body: some View {
         NavigationStack {
@@ -12,9 +18,15 @@ import SwiftUI
                 if !services.credentialsReady { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if let client = services.wardrobe, let user = services.user {
                     if collection == .wardrobe {
-                        WardrobeGrid(client: client, collection: collection, add: { capture = true }).id(user.id + collection.rawValue)
+                        WardrobeGrid(client: client, collection: .wardrobe, add: { capture = true }).id(user.id + collection.rawValue)
+                    } else if collection == .outfits {
+                        if let outfits = services.outfits {
+                            OutfitsView(client: outfits, wardrobe: client, creating: $newOutfit).id(user.id)
+                        } else {
+                            VStack(spacing: 16) { Text("sign in again to connect your outfits.").font(CapsuleStyle.caption); SignInButton() }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     } else if let wishlist = services.wishlist {
-                        WardrobeGrid(client: wishlist, collection: collection, add: { newWishlistItem = .empty() }).id(user.id + collection.rawValue)
+                        WardrobeGrid(client: wishlist, collection: .wishlist, add: { newWishlistItem = .empty() }).id(user.id + collection.rawValue)
                     } else {
                         VStack(spacing: 16) {
                             Text("sign in again to connect your wishlist.").font(CapsuleStyle.caption)
@@ -38,13 +50,13 @@ import SwiftUI
                     NavigationLink { SettingsView() } label: { Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 44, height: 44) }.accessibilityLabel("settings")
                 }.quietBackground()
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { if collection == .wishlist { newWishlistItem = .empty() } else { capture = true } } label: { Image(systemName: "plus").font(.system(size: 16)).frame(width: 44, height: 44) }.accessibilityLabel("add to \(collection.rawValue)").disabled(!services.connected || (collection == .wishlist && !services.wishlistEnabled))
+                    Button { if collection == .outfits { newOutfit = true } else if collection == .wishlist { newWishlistItem = .empty() } else { capture = true } } label: { Image(systemName: "plus").font(.system(size: 16)).frame(width: 44, height: 44) }.accessibilityLabel("add to \(collection.rawValue)").disabled(!services.connected || (collection == .wishlist && !services.wishlistEnabled) || (collection == .outfits && !services.outfitsEnabled))
                 }.quietBackground()
             }
             .safeAreaInset(edge: .bottom) {
                 if services.connected {
                     HStack(spacing: 32) {
-                        ForEach(CapsuleCollection.allCases) { tab in
+                        ForEach(LibraryTab.allCases) { tab in
                             Button { collection = tab } label: {
                                 Text(tab.rawValue).font(CapsuleStyle.caption)
                                     .foregroundStyle(collection == tab ? CapsuleStyle.text : CapsuleStyle.secondary).frame(minHeight: 44)

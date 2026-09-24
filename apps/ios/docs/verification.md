@@ -1,5 +1,15 @@
 # verification
 
+## Native outfits — 1.2 (13)
+
+- Added the online outfit grid, detail/rename/delete, wardrobe-piece selection, reusable account-scoped model photo, encrypted account rendering-key settings, and explicit OpenAI render confirmation. Saved outfits use the same records as the web app.
+- Passed 49 shared core tests and 78 iPhone simulator tests on Xcode 26.6 / iOS 26.5. Recovery tests cover a timed-out paid render, restarting the app, a failed result fetch, account isolation, and revision-safe edits without repeating provider requests.
+- The iPhone simulator build and unsigned iPhone Release archive pass without compiler warnings.
+- Web checks: 320 tests passed, two unrelated database suites skipped. Native outfit/PKCE checks ran against disposable local PostgreSQL; OpenAI was mocked. Lint, TypeScript and the production web build passed.
+- Inspected rendered SwiftUI layouts at 390- and 430-point widths using disposable fixtures. The render action stays visible beneath the scrolling wardrobe; the model-photo placeholder reuses the approved web silhouette.
+- Production requires `db/migrations/20260924_native_outfits.sql` before the new native sign-in grant is deployed. Existing connections retain their current permissions and reconnect explicitly.
+- Still requires a physical-device check of model-photo camera/library selection and saving an outfit image to Photos, plus one real-account render and verification on the web. Automated checks do not make a paid OpenAI request. App Review's existing 1.0 (10) is unchanged.
+
 ## Native wardrobe — build 8
 
 The native wardrobe reads server records online and supports filtering, detail editing, front/back/side uploads/capture, background removal, explicit saves and deletion. It does not create an offline wardrobe store. The shared core suite passes 38 tests and the iPhone suite passes 59 tests, including pagination through empty pages, account changes during requests, bearer isolation, unchanged-photo preservation, exact-body retries, edited retry key rotation, and revision conflicts. The API suite passes 315 tests, including new account/photo/deletion checks against disposable Postgres (two unrelated database suites are skipped).

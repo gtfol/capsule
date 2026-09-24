@@ -1,6 +1,6 @@
 # capsule
 
-Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe and wishlist on iPhone, or photograph a garment to add it.
+Browse and edit your [capsule](https://capsule.gtfol.dev) wardrobe, wishlist, and outfits on iPhone, or photograph a garment to add it.
 
 Native SwiftUI + SwiftData, iOS 17+, iPhone only. No third-party dependencies or bundled credentials. Uses your existing capsule account.
 
@@ -15,7 +15,7 @@ The interface follows the shared [design reference](https://github.com/gtfol/ai/
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
 4. For a physical device, select your development team under Signing & Capabilities. The app uses bundle identifier `dev.gtfol.capsule`.
 
-First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe and wishlist access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
+First launch opens **sign in to capsule**, then the native wardrobe grid. The system browser uses capsule’s existing Google login (or email login when enabled). Approve wardrobe, wishlist, and outfit access and return to the app. Older capture-only connections must sign in once more; their permissions are never expanded silently.
 
 The grid loads the signed-in account’s server wardrobe, supports category filters and pull-to-refresh, and opens an editable item sheet. Edit name, brand, category, color, size, decimal price, currency, description, and purchase link. Select front/back/side, upload or capture a replacement, remove a view, or run on-device background removal. Save and delete require an explicit tap. Revision conflicts keep your edits and offer an explicit reload; failed saves retry the same body and key until you change the form.
 
@@ -35,9 +35,19 @@ Saved items show an interactive price dot chart with date/source details and a c
 
 Wishlist requires a fresh sign-in for its additional permissions. Everything uses the signed-in account's online records, with no offline wishlist copy or background price checks. Shopping-link import and Share Sheet support are separate work.
 
+## Outfits
+
+Switch to **outfits** to browse the same saved looks as the web app. Create an outfit from one to six owned pieces, a reusable full-body model photo, and optional styling notes. An explicit confirmation sends those images to OpenAI and saves the result to your account. The current server-configured model is shown before rendering. Rename or remove an outfit, open its wardrobe pieces, or save its image to Photos. Sharing remains a separate feature.
+
+The model photo is stored on this iPhone, scoped to the signed-in account, and can be replaced or removed. It is not background-removed. **Settings → outfit rendering** manages the same encrypted account API key used by the web app; the key is never downloaded to the phone. This is separate from the optional Keychain key for photo-detail extraction.
+
+Rendering uses durable server receipts: retries and status checks for a single attempt never call the paid provider twice. The phone keeps only the account-scoped attempt UUID to recover after a network interruption or restart, not an offline upload queue. An interrupted or failed attempt requires an explicit new render. Since a provider timeout can still incur a charge, the app reports uncertain results and lets the user check existing outfits first.
+
+Existing installations sign in again for explicit outfit permissions. The native permission migration must be applied before deployment. App Review's existing 1.0 build is not replaced by this beta.
+
 ## Sign-in and drafts
 
-The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, `wishlist:write`, and native-only `wardrobe:delete` / `wishlist:delete` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
+The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, `wishlist:write`, and native-only `wardrobe:delete` / `wishlist:delete` credential, plus native-only `outfits:read` / `outfits:write` / `outfits:delete`, atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
 
 The web handoff must be deployed before using this app. See the [web sign-in protocol](../web/docs/scan-sign-in.md) for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
 
@@ -94,4 +104,4 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 - `scripts/generate-project.py`: optional standard-library-only project generator. The complete generated Xcode project is committed; no generation step is needed to build.
 - `scripts/make-icon.swift`: renders capsule's lowercase black “c” mark on an opaque white app icon.
 
-`ItemExtractor` and `WardrobeDestination` are the extension seams. Wishlist, outfits, and sharing will follow as separate features.
+`ItemExtractor` and `WardrobeDestination` are the extension seams. Sharing, shopping-link import, batch capture, search, and export remain separate features.
