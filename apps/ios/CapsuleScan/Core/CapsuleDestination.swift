@@ -100,7 +100,7 @@ struct CapsulePayload: Encodable {
         color = fields.color.isEmpty ? nil : fields.color
         price = fields.price
         currency = fields.currency.isEmpty ? nil : fields.currency
-        imageData = jpeg.map { "data:image/jpeg;base64," + $0.base64EncodedString() }
+        imageData = jpeg.map { PhotoEncoding.dataURL($0) }
     }
     func encoded() throws -> Data {
         let encoder = JSONEncoder()
@@ -118,7 +118,7 @@ struct CapsulePayloadBuilder: PayloadPreparing {
         // Enforce both the whole-request limit and Capsule's per-photo limit.
         for edge in [1600, 1280, 1024, 800, 640, 400] {
             for quality in [0.85, 0.65, 0.45] {
-                let jpeg = try await images.jpeg(image, maxEdge: edge, quality: quality).data
+                let jpeg = try await images.preservingTransparency(image, maxEdge: edge, quality: quality).data
                 guard jpeg.count <= Self.maximumImageBytes else { continue }
                 let body = try CapsulePayload(fields: fields, jpeg: jpeg).encoded()
                 if body.count < Self.maximumBodyBytes { return body }

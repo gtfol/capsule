@@ -26,29 +26,41 @@ actor VisionImageIsolator: ImageIsolating {
         let masked = try observation.generateMaskedImage(ofInstances: observation.allInstances,
                                                          from: handler, croppedToInstancesExtent: true)
         try Task.checkCancellation()
-        let jpeg = try CutoutRenderer.jpeg(CIImage(cvPixelBuffer: masked))
-        let result = try await ImageProcessor().jpeg(jpeg, maxEdge: 1600, quality: 0.9)
+        let png = try CutoutRenderer.png(CIImage(cvPixelBuffer: masked),
+                                         originalSize: CGSize(width: normalized.width, height: normalized.height))
+        let result = try await ImageProcessor().png(png, maxEdge: 1600)
         try Task.checkCancellation()
         return result
     }
 }
 
 enum CutoutRenderer {
-    // Vision supplies a tight alpha crop. Add breathing room and flatten onto white,
-    // keeping the same JPEG format used by local drafts and capsule uploads.
-    static func jpeg(_ foreground: CIImage) throws -> Data {
+    // Fit the complete subject inside the original photo's proportions, without stretching.
+    // PNG keeps the surrounding space transparent through previews, drafts, and uploads.
+    static func png(_ foreground: CIImage, originalSize: CGSize) throws -> Data {
         let extent = foreground.extent.integral
         guard !extent.isEmpty, !extent.isInfinite, !extent.isNull,
-              extent.width <= 1600, extent.height <= 1600 else { throw ScanError.invalidImage }
+              extent.width <= 1600, extent.height <= 1600,
+              originalSize.width.isFinite, originalSize.height.isFinite,
+              originalSize.width > 0, originalSize.height > 0,
+              originalSize.width <= 1600, originalSize.height <= 1600 else { throw ScanError.invalidImage }
+        let ratio = originalSize.width / originalSize.height
         let padding = ceil(max(extent.width, extent.height) * 0.05)
-        let canvas = CGRect(x: 0, y: 0, width: extent.width + padding * 2, height: extent.height + padding * 2)
-        let positioned = foreground.transformed(by: CGAffineTransform(translationX: padding - extent.minX,
-                                                                       y: padding - extent.minY))
-        let white = CIImage(color: .white).cropped(to: canvas)
-        let opaque = positioned.composited(over: white).cropped(to: canvas)
+        let height = max(extent.height + padding * 2, (extent.width + padding * 2) / ratio)
+        let width = height * ratio
+        let scale = min(1, 1600 / max(width, height))
+        let canvas = CGRect(x: 0, y: 0, width: (width * scale).rounded(), height: (height * scale).rounded())
+        guard canvas.width > 0, canvas.height > 0 else { throw ScanError.invalidImage }
+        let positioned = foreground
+            .transformed(by: CGAffineTransform(translationX: -extent.minX, y: -extent.minY))
+            .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+            .transformed(by: CGAffineTransform(translationX: (canvas.width - extent.width * scale) / 2,
+                                               y: (canvas.height - extent.height * scale) / 2))
+        let transparent = CIImage(color: .clear).cropped(to: canvas)
+        let output = positioned.composited(over: transparent).cropped(to: canvas)
         let context = CIContext(options: [.workingColorSpace: CGColorSpaceCreateDeviceRGB()])
-        guard let data = context.jpegRepresentation(of: opaque, colorSpace: CGColorSpaceCreateDeviceRGB(),
-                                                    options: [kCGImageDestinationLossyCompressionQuality as CIImageRepresentationOption: 0.95]) else {
+        guard let data = context.pngRepresentation(of: output, format: .RGBA8,
+                                                   colorSpace: CGColorSpaceCreateDeviceRGB()) else {
             throw ScanError.invalidImage
         }
         return data

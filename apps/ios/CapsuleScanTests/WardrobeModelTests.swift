@@ -27,6 +27,41 @@ actor LibraryStub: WardrobeServing {
         XCTAssertTrue(model.loaded); XCTAssertNil(model.error); XCTAssertEqual(model.items.count, 1)
         let cursors = await service.cursors; XCTAssertEqual(cursors, [0, 1])
     }
+    func testRefreshReplacesLoadedRecordsAndReloadsPhotosEvenAtSameRevision() async throws {
+        let original = wardrobeFixture(), removed = wardrobeFixture()
+        var updated = original; updated.name = "edited on web"; updated.imageUrl = "https://store.test/new.png"
+        let service = LibraryStub(original, pages: [
+            .init(items: [original, removed], cursor: 12, hasMore: false),
+            .init(items: [updated], cursor: 12, hasMore: false)
+        ])
+        let model = WardrobeModel()
+        await model.load(client: service)
+        let first = model.photoReloadID
+        let cache = WardrobePhotoCache()
+        let old = try await cache.load(key: first.uuidString) { Data([1]) }
+        XCTAssertEqual(old, Data([1]))
+        await model.load(client: service)
+        XCTAssertEqual(model.items, [updated]); XCTAssertNotEqual(first, model.photoReloadID)
+        let fresh = try await cache.load(key: model.photoReloadID.uuidString) { Data([2]) }
+        XCTAssertEqual(fresh, Data([2]))
+        let cursors = await service.cursors; XCTAssertEqual(cursors, [0, 0])
+    }
+    func testCutoutPreviewAndUploadRetainTransparency() async throws {
+        let item = wardrobeFixture(), service = LibraryStub(wardrobeFixture())
+        await service.setPhoto(try CoreTests.fixtureImage(width: 300, height: 400))
+        let png = try IsolationTests.fixture()
+        let model = WardrobeDetailModel(item: item, client: service, images: ImageProcessor(), isolation: StubIsolator(output: png))
+        await model.cutout(.front)
+        XCTAssertNil(model.error)
+        XCTAssertTrue(try XCTUnwrap(model.edit.photos[.front]).hasPrefix("data:image/png;base64,"))
+        XCTAssertTrue(PhotoEncoding.isPNG(try XCTUnwrap(model.previews[.front])))
+        let body = try model.edit.encoded(revision: item.revision)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertTrue(try XCTUnwrap(json["imageData"] as? String).hasPrefix("data:image/png;base64,"))
+        XCTAssertLessThan(body.count, 3_800_000)
+        model.restorePhoto(.front)
+        XCTAssertNil(model.edit.photos[.front])
+    }
     func testFailedEditRetriesExactBodyAndKeyUntilFieldsChange() async {
         let item = wardrobeFixture(); let service = LibraryStub(item)
         let model = WardrobeDetailModel(item: item, client: service, images: ImageProcessor(), isolation: VisionImageIsolator())

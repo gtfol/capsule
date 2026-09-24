@@ -121,7 +121,7 @@ import PhotosUI
                 } label: { Image(systemName: "camera").frame(width: 44, height: 44) }
                     .accessibilityLabel("take \(view.rawValue) photo").disabled(!UIImagePickerController.isSourceTypeAvailable(.camera))
                 if hasPhoto {
-                    Button { let target = view; Task { await model.cutout(target) } } label: { Image(systemName: "scissors").frame(width: 44, height: 44) }.accessibilityLabel("remove background")
+                    Button { let target = view; Task { await model.cutout(target) } } label: { Image(systemName: "scanner").frame(width: 44, height: 44) }.accessibilityLabel("remove background")
                     Spacer(minLength: 0)
                     Button("remove \(view.rawValue)") { model.removePhoto(view) }.font(CapsuleStyle.caption).frame(minHeight: 44)
                 }

@@ -4,6 +4,7 @@ import SwiftUI
     @Published private(set) var items: [RemoteWardrobeItem] = []
     @Published private(set) var loading = false
     @Published private(set) var loaded = false
+    @Published private(set) var photoReloadID = UUID()
     @Published private(set) var error: String?
     @Published private(set) var needsSignIn = false
     private var generation = UUID()
@@ -25,6 +26,7 @@ import SwiftUI
             try Task.checkCancellation()
             guard generation == current else { return }
             items = records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
+            photoReloadID = UUID()
             loaded = true
         } catch is CancellationError { }
         catch {
@@ -68,17 +70,17 @@ import SwiftUI
         processing = true; error = nil
         defer { processing = false }
         do {
-            let jpeg = try await prepare(data)
-            originals[view] = jpeg; remoteOriginals.remove(view)
-            previews[view] = jpeg
-            edit.photos[view] = "data:image/jpeg;base64," + jpeg.base64EncodedString()
+            let photo = try await prepare(data)
+            originals[view] = photo; remoteOriginals.remove(view)
+            previews[view] = photo
+            edit.photos[view] = PhotoEncoding.dataURL(photo)
         } catch { self.error = "couldn’t open this photo. try another." }
     }
     func photoFailed() { error = "couldn’t open this photo. try another." }
     private func prepare(_ data: Data) async throws -> Data {
-        for edge in [1600, 1280, 1024, 800] {
-            let jpeg = try await images.jpeg(data, maxEdge: edge, quality: 0.75).data
-            if jpeg.count <= 600_000 { return jpeg }
+        for edge in [1600, 1280, 1024, 800, 640, 400] {
+            let photo = try await images.preservingTransparency(data, maxEdge: edge, quality: 0.75).data
+            if photo.count <= 600_000 { return photo }
         }
         throw ScanError.imageTooLarge
     }
@@ -89,7 +91,7 @@ import SwiftUI
     func restorePhoto(_ view: GarmentView) {
         guard let data = originals[view], !busy, !processing else { return }
         previews[view] = data
-        edit.photos[view] = remoteOriginals.contains(view) ? nil : "data:image/jpeg;base64," + data.base64EncodedString()
+        edit.photos[view] = remoteOriginals.contains(view) ? nil : PhotoEncoding.dataURL(data)
     }
     func hasOriginal(_ view: GarmentView) -> Bool { originals[view] != nil && originals[view] != previews[view] }
     func cutout(_ view: GarmentView) async {
@@ -100,10 +102,10 @@ import SwiftUI
             let source: Data
             if let preview = previews[view] { source = preview } else { source = try await client.photo(item: item, view: view) }
             let cutout = try await isolation.isolate(source)
-            let jpeg = try await prepare(cutout.data)
+            let photo = try await prepare(cutout.data)
             if edit.photos[view] == nil { remoteOriginals.insert(view) } else { remoteOriginals.remove(view) }
-            originals[view] = source; previews[view] = jpeg
-            edit.photos[view] = "data:image/jpeg;base64," + jpeg.base64EncodedString()
+            originals[view] = source; previews[view] = photo
+            edit.photos[view] = PhotoEncoding.dataURL(photo)
         } catch { self.error = "couldn’t remove the background. the photo is unchanged." }
     }
     func save() async -> Bool {
