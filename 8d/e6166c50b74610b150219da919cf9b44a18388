@@ -1,0 +1,19 @@
+apps/ios/CapsuleScan/UI/WishlistViews.swift
+  s_0521f8d73d6032::t_0b944b94cf91f8 17,26,35,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8de6166c50b74610b150219da919cf9b44a18388",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
