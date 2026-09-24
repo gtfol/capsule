@@ -69,9 +69,10 @@ import SwiftUI
                     }
                 }
                 VStack(alignment: .leading, spacing: 0) {
-                    Link("privacy", destination: URL(string: "https://capsule.gtfol.dev/privacy")!).frame(minHeight: 44)
-                    Link("terms", destination: URL(string: "https://capsule.gtfol.dev/terms")!).frame(minHeight: 44)
-                    Link("support", destination: URL(string: "https://gtfol.dev/contact")!).frame(minHeight: 44)
+                    SupportLink()
+                    Link("terms of service", destination: URL(string: "https://capsule.gtfol.dev/terms")!).frame(minHeight: 44)
+                    Link("privacy policy", destination: URL(string: "https://capsule.gtfol.dev/privacy")!).frame(minHeight: 44)
+                    Link("contact us", destination: URL(string: "https://gtfol.dev/contact")!).frame(minHeight: 44)
                 }.foregroundStyle(CapsuleStyle.secondary)
                 if services.user != nil {
                     Link("delete account", destination: URL(string: "https://capsule.gtfol.dev/?view=settings")!)
