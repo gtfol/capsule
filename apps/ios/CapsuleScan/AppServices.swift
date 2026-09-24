@@ -58,8 +58,8 @@ import SwiftData
     }
     func refreshCredentials() async {
         guard !authenticating else { return }
-        let firstLoad = !credentialsReady
         defer {
+            let firstLoad = !credentialsReady
             credentialsReady = true; analytics.account(user?.id)
             if firstLoad { analytics.track(.appOpened) }
         }

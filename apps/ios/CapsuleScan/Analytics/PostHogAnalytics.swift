@@ -34,7 +34,10 @@ import PostHog
         if enabled {
             if !started { sdk.setup(Self.configuration()); started = true }
             sdk.optIn()
-        } else if started { sdk.optOut() }
+        } else if started {
+            // optOut blocks capture; closing also stops the SDK's queue timers.
+            sdk.optOut(); sdk.close(); started = false
+        }
     }
     func capture(_ event: AnalyticsEvent) { sdk.capture(event.name, properties: event.properties) }
     func identify(_ accountID: String) {
