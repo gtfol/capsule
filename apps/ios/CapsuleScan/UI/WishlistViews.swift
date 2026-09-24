@@ -14,6 +14,7 @@ struct RatingStars: View {
 }
 struct RatingPicker: View {
     @Binding var rating: Decimal?
+    @Environment(\.isEnabled) private var enabled
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("rating").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
@@ -22,6 +23,7 @@ struct RatingPicker: View {
                     Image(systemName: (rating ?? 0) >= Decimal(star) ? "star.fill" : (rating ?? 0) >= Decimal(star) - Decimal(string: "0.5")! ? "star.leadinghalf.filled" : "star")
                         .font(.system(size: 21)).frame(width: 44, height: 44).contentShape(Rectangle())
                         .onTapGesture(coordinateSpace: .local) { location in
+                            guard enabled else { return }
                             let value = Decimal(star) - (location.x < 22 ? Decimal(string: "0.5")! : 0)
                             rating = rating == value ? nil : value
                         }
@@ -30,10 +32,11 @@ struct RatingPicker: View {
             }.accessibilityElement(children: .ignore).accessibilityLabel("rating")
                 .accessibilityValue(rating.map { "\(NSDecimalNumber(decimal: $0).stringValue) out of 5 stars" } ?? "not rated")
                 .accessibilityAdjustableAction { direction in
+                    guard enabled else { return }
                     if direction == .increment { rating = min(5, (rating ?? 0) + Decimal(string: "0.5")!) }
                     else { let value = (rating ?? 0) - Decimal(string: "0.5")!; rating = value > 0 ? value : nil }
                 }
-                .accessibilityAction(named: "clear rating") { rating = nil }
+                .accessibilityAction(named: "clear rating") { if enabled { rating = nil } }
         }
     }
 }
