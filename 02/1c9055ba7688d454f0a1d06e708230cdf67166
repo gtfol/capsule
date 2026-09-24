@@ -1,0 +1,31 @@
+.github/workflows/ios.yml
+  s_0521f8d73d6032::t_658d1440bc7e96 4,7,9-11,41
+.github/workflows/web.yml
+  s_0521f8d73d6032::t_469e12fd3219dd 1-32
+README.md
+  s_0521f8d73d6032::t_48fef723e57a8e 1-27
+apps/ios/README.md
+  s_0521f8d73d6032::t_9d43f99665c849 13,34,62
+apps/web/README.md
+  s_0521f8d73d6032::t_1a75c5276d4663 14-15,115,119-120
+apps/web/src/components/integration-settings.tsx
+  s_0521f8d73d6032::t_e1c2040ced285c 72
+docs/repository-migration.md
+  s_0521f8d73d6032::t_d89dc1c49da650 1-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "021c9055ba7688d454f0a1d06e708230cdf67166",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
