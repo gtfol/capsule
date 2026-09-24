@@ -31,6 +31,10 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
     steps:
       - uses: actions/checkout@v7
+      - name: Verify generated Xcode project
+        run: |
+          python3 scripts/generate-project.py
+          git diff --exit-code -- CapsuleScan.xcodeproj
       - name: Build simulator, test on iPhone, build device target
         run: scripts/test-ios.sh
       - name: Test results
