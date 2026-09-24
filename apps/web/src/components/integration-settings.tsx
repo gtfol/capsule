@@ -69,7 +69,7 @@ function TokenControls({userId,disabled}:{userId:string;disabled:boolean}) {
       <label className="flex items-center justify-between text-[12px] text-subtle">Expires<select className="border-b border-border bg-transparent px-1 py-2 text-[13px] text-foreground" value={expires} disabled={busy||disabled} onChange={event=>setExpires(event.target.value as typeof expires)}><option value="90d">After 90 days</option><option value="1y">After 1 year</option><option value="never">Never</option></select></label>
       <div className="flex items-center gap-4"><Button type="submit" disabled={busy||disabled||!scopes.length||!name.trim()}>{busy ? "Creating…" : "Create token"}</Button><button type="button" className="text-muted-foreground" disabled={busy} onClick={()=>setAdding(false)}>Cancel</button></div>
     </form> : <button type="button" className="min-h-10 text-muted-foreground hover:text-foreground disabled:opacity-40" disabled={disabled||busy||!ready} onClick={()=>{setSecret("");setAdding(true);}}>Connect an AI agent</button>}
-    <a className="mt-2 block text-[11px] text-subtle hover:text-foreground" href="https://github.com/gtfol/capsule/blob/main/docs/integrations.md" target="_blank" rel="noopener noreferrer">API documentation</a>
+    <a className="mt-2 block text-[11px] text-subtle hover:text-foreground" href="https://github.com/gtfol/capsule/blob/main/apps/web/docs/integrations.md" target="_blank" rel="noopener noreferrer">API documentation</a>
     {error && <p role="alert" className="mt-3 text-[12px]">{error}</p>}
   </div>;
 }

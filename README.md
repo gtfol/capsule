@@ -1,169 +1,27 @@
 # capsule
 
-A personal wardrobe and wishlist. Add clothes from product links or your own photos, keep a visual inventory, and render owned pieces on your saved model photo. No advice or recommendations. Wishlist ratings are set only by you.
+Your digital wardrobe. This repository contains the web app and native iPhone app.
 
-Navigation uses nuqs: Wardrobe is `/`, and Wishlist, Add, and Outfits use `?view=wishlist`, `?view=add`, and `?view=outfits`. Add's wishlist destination is kept in `to=wishlist`. Refresh and browser Back/Forward restore the view; navigating between views keeps open editor drafts until the account changes or the page reloads.
+| App | Source | Development |
+| --- | --- | --- |
+| Web | [apps/web](apps/web) | `cd apps/web && npm ci && npm run dev` |
+| iPhone | [apps/ios](apps/ios) | Open `apps/ios/CapsuleScan.xcodeproj` in Xcode |
+| Browser extension | [apps/web/extension](apps/web/extension) | Load the directory unpacked in Chrome or Brave |
 
-On reload, the selected view appears once the active browser/account data is ready. A centered status appears only after a short delay on slower reads; there is no startup spinner or intermediate empty catalog. The page fades in without moving the sidebar or content, respecting reduced-motion preferences.
+The apps keep independent build tools: npm for Next.js, Xcode/Swift for iOS. There is no root package install or shared dependency lockfile. Run app-specific commands from that app's directory.
 
-## Run
+## Checks
 
-Node 22.13+ or 24 LTS and npm.
-
-```sh
-npm install
-npm run dev
-```
-
-Open http://localhost:3000. The wardrobe starts empty. No account or environment variables are required.
-
-Next.js 16, React 19, Tailwind 4, shadcn/ui (Radix primitives), Zustand, native IndexedDB, Lucide. The architecture follows [Freewrite](https://github.com/gtfol/freewrite). The Next.js version includes security fixes released after Freewrite's referenced version.
-
-## Product links and local storage
-
-Paste a product URL under Add, review its extracted name, brand, price, description and photos, choose a category, and save. Or select Photos and choose or drop up to three JPG, PNG, WebP or AVIF images, up to 20 MB each. Add a name and any other details; purchase links are optional. Images are compressed and saved in IndexedDB. The wardrobe starts empty.
-
-Select a front image and optional back and side images from the imported gallery or your uploaded photos. Card hover pairs follow Front/Back, Side/Back, then Front/Side, based on the distinct photos available; the detail panel lets you switch views on touch devices. All selected views are saved locally and included in optional sync, with automatic compression to keep each piece within the sync size limit. When editing a saved piece, the photo toolbar can add uploads or fetch the gallery from its purchase link without replacing its details or selected photos. Existing pieces with one image continue to work.
-
-Import reads JSON-LD Product/ProductGroup data, OpenGraph, product galleries and public Shopify metadata. Product pages that block automated access or expose no product image return an error; the app does not fabricate an item. Images favor explicitly labeled packshots when available, with alternate images available for selection.
-
-The Remove background icon processes the selected photo on this device in a dedicated worker using Transformers.js and BiRefNet Lite. Its first use downloads the pinned model (about 99 MB on supported WebGPU devices, or 192 MB for the WebAssembly fallback), plus runtime assets. Browser caches allow reuse without downloading again while those caches remain available. Photos are never sent to the model host. Compare the original with the transparent cutout before accepting it; cancel or keep the original at any time. Processing requires a browser with workers and OffscreenCanvas, and may be slow on devices without a supported GPU. It removes the background; it does not reconstruct fabric hidden by other objects. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licenses.
-
-Saved pieces, outfit images, edits and deletions work offline. A production service worker caches the app shell and assets after the first visit; dev mode does not register it. Fetching a new product page and rendering a new outfit require the internet. Browser storage is device-specific and can be removed by clearing site data.
-
-The sun/moon icon in the bottom bar switches between light and dark, matching Freewrite. Capsule follows the device setting until you choose a theme, then remembers that choice in this browser. Closing an edited piece with X, Escape or an outside click opens a restrained Save changes / Discard changes / Keep editing dialog. Background-removal setup says “Preparing background removal…” before processing. Transparent cutouts use a plain white or black surface to match the theme, including the preview and wardrobe grid.
-
-## Browser extension
-
-The [Chrome and Brave extension](extension/README.md) adds two actions to the browser toolbar: Add to wardrobe and Save to wishlist. It opens the current product link in a new Capsule tab, fetches its details, and presents the existing review panel. Nothing is saved until you confirm. It uses the local wardrobe and optional sync account in that browser profile.
-
-Load the `extension/` directory unpacked using the linked instructions; no extension build step is needed. It is not yet published in the Chrome Web Store. The app handoff in this release must be deployed before using the extension's production destination. For local or Vercel preview testing, use a separate copy and set its `config.mjs` destination to that app URL.
-
-Only `activeTab` permission is requested, after you invoke the extension. There is no background scraping, page injection, credential storage, or broad website access. Fonts, scripts, and icons are bundled locally. Shop titles stay in the popup; the selected URL is passed to Capsule's existing importer. Retailers that block that importer have the same limitation here.
-
-Handoffs use `/?view=add&to=wardrobe|wishlist&import=<encoded product URL>`. They preserve product variant parameters, open a review draft, and replace the handoff history entry when saved, dismissed, or navigated away from. Leaving Add cancels an in-flight import. Invalid or failed links remain editable for retry. Existing import validation, local storage, and optional sync are shared with the URL-paste flow; no database migration or new environment variables are required.
-
-## Wishlist
-
-The Wishlist tab is a separate local collection. In Add, choose Wishlist and paste a product link, then review its photo, name, brand, details and price. The first available current-price quote is recorded with its source URL, currency and fetch time. Pages without a reliable price can still be saved; manually entering a price does not fabricate a historical fetch.
-
-Wishlist also supports Photos mode with up to three uploads and an optional product link. Both new and saved wishlist pieces use the wardrobe photo editor: assign front/back/side views, upload more photos, fetch a listing's gallery, and remove backgrounds on-device with original/cutout comparison. Photo-only items start without fetched price history. Photo edits are saved together with the piece, protected by the unsaved-changes dialog, and included when moving it to the wardrobe.
-
-Set your own rating from half a star to five stars. Select the same rating again to clear it; arrow keys move in half steps, and Delete or Backspace clears the rating. Cards display the current price, rating and an unavailable-link icon after a failed check. Filter by category and sort by recently added, highest rated or biggest percentage price drop from the first recorded comparable price.
-
-In the detail panel, Refetch price checks the current product link. Add alternative link fetches another listing for the same piece; each listing can be checked individually. Every successful check appends an observation to the same history. The interactive dot chart shows each observation, with a compact price/date/source readout on hover, tap or keyboard selection. Overlapping observations can be cycled and source markers distinguish listing URLs; a table exposes the full history. Currencies are displayed separately; the current price is the lowest healthy source in the piece's comparison currency. There is no currency conversion. Failed listings keep their previous history and are excluded from the current minimum until a successful check; if all sources fail, the last known price remains visible.
-
-Once purchased, Move to wardrobe transfers the piece, including its current edits and photos, in one IndexedDB transaction. The wishlist entry is removed and both changes enter the optional sync queue. Wishlist pieces are never available in the outfit picker until moved. There are no automatic or scheduled price fetches. A piece can hold 20 source links and 1,000 price observations, subject to the sync payload limit; history is never silently truncated.
-
-Wishlist records, ratings, history, source status and photos use the existing account-isolated local storage and optional sync. Local metadata saves merge with the latest price records so an open editor does not overwrite another tab's new observations.
-
-## Sharing
-
-Use Share in the bottom navigation to share a wardrobe or wishlist, or the small share icon in a piece or saved outfit's controls. Links default to seven days; choose 30 days or Never. Changing expiration preserves the published snapshot. Update link explicitly publishes the latest saved details and photos while preserving the existing deadline. Anyone with the link can view it without an account.
-
-Collection links include up to 300 pieces with front photos; individual pieces include front, back and side photos when available. Outfit links include the rendered image and its selected owned pieces. Images are compressed into a self-contained snapshot; original local images are unchanged. Signed-in shares include the account display name, with headings such as “Allen’s wardrobe” or a “Shared by Allen” line on pieces and outfits. Better Auth already stores this name from Google or email registration; no new user column is needed. The name is captured when creating or updating a link, so older or guest links keep their generic headings until updated. Email addresses, account IDs, original model photos, API keys, sync metadata, and price history are excluded. Public pages are not indexed or stored in the offline app cache.
-
-Visitors can add a shared piece or selection to their own wardrobe or wishlist after signing in and confirming. Signing in alone never imports a selection. Copies receive new IDs and their own editable records; wishlist copies start without the owner's rating or price history. Pieces without a shopping link are supported. Copies are saved atomically in the signed-in account's browser storage and enter its normal sync queue. Shared imports skip pieces already in the destination collection, using a stable hashed source identity or the same product URL with matching category, size, and color. Only known tracking parameters are removed; product variants and fragments remain distinct. Names are not compared. Wishlist alternative links are checked too. Existing pieces are never overwritten, and bulk imports report how many were skipped. Source identities sync with copies and survive re-sharing; raw local IDs remain private. Older links without an identity still match by URL or their existing retry receipt. Update an older link to include piece identities. Identity/link checks run again inside the IndexedDB write transaction to cover concurrent tabs and overlapping selections. A matching piece opens directly with `/?piece=<local ID>` (and `view=wishlist` for wishlist). Removing a public link does not remove copies already saved by visitors.
-
-Manage links is available from the collection Share popover, including links to pieces or outfits that have since been deleted. Link management belongs to the browser and wardrobe/account space where the link was created; it does not sync between devices. Keep that browser's site data to retain control of Never links. Remove link immediately revokes future access. Ownership tokens are reserved locally before publication and only their hashes are stored on the server, so interrupted requests can be retried safely.
-
-Existing databases need [db/migrations/20260909_add_shares.sql](db/migrations/20260909_add_shares.sql). Save and run it in the Supabase SQL editor. It creates two private tables with RLS and no browser-role grants; no new environment variables or storage buckets are needed. `/api/share` reports availability. Creation is limited to ten links per IP per hour, with keyed IP digests rather than raw addresses. Expired snapshot bodies are removed in bounded batches during share requests; small expired/revoked ID tombstones prevent old requests from republishing removed links.
-
-## Optional sync setup
-
-Existing Capsule databases need [db/migrations/20260908_add_wishlist.sql](db/migrations/20260908_add_wishlist.sql) before deploying the Wishlist release. Run it in the Supabase SQL editor; it only allows the new collection in the existing records table and can be run again safely. No new environment variables, browser keys, or storage bucket are needed. Fresh databases use the schema below.
-
-1. Create a separate Supabase project for Capsule.
-2. Run [db/schema.sql](db/schema.sql) in the Supabase SQL editor. Better Auth uses its own user/session/account tables; Supabase Auth is not used. RLS keeps these tables out of the public Supabase data API.
-3. Add these server-only variables to the Capsule Vercel project:
-
-| Variable | Value |
-| --- | --- |
-| `DATABASE_URL` | Supabase session pooler Postgres connection string, port 5432 |
-| `DATABASE_SSL_CA` | Optional Supabase root certificate in PEM format, if required by the database's certificate chain |
-| `BETTER_AUTH_SECRET` | A unique random secret, at least 32 characters |
-| `BETTER_AUTH_URL` | `https://capsule.gtfol.dev` |
-| `GOOGLE_CLIENT_ID` | Google OAuth web application's client ID |
-| `GOOGLE_CLIENT_SECRET` | The same application's client secret |
-
-4. In Google OAuth, add `https://capsule.gtfol.dev` as an authorized JavaScript origin and `https://capsule.gtfol.dev/api/auth/callback/google` as an authorized redirect URI. Add the corresponding localhost URLs for local development if needed. If the consent screen is in testing, add your Google account as a test user.
-5. Redeploy. `/api/sync/status` should return `enabled: true` and `providers.google: true`. The cloud popover shows Continue with Google.
-
-`EMAIL_PASSWORD_AUTH=1` exposes the fallback email/password form. Leave it unset for Google-only sign-in. Variables are described in [.env.example](.env.example); never commit real secrets.
-
-Remote Postgres connections verify the server's TLS certificate and hostname. If Supabase requires its own root certificate, set `DATABASE_SSL_CA` to that certificate's PEM text (actual newlines or `\n` escapes). Connection URL query options such as `sslmode=require` cannot disable verification. Only exact loopback hosts use a connection without TLS for local development.
-
-Sync authenticates via Better Auth at `/api/auth/[...all]`. The browser queues durable changes and deletion tombstones; Postgres revisions detect concurrent updates and keep conflicting edits as separate copies. Records and cursors are isolated by account. The first sign-in copies this browser's guest wardrobe to that account once. Explicit sign-out returns to the guest wardrobe. A session expiring leaves that account's local copy usable offline until you explicitly sign out or change accounts. Reference photos stay local and never enter sync; saved rendered outfit images do sync.
-
-## Outfit rendering
-
-In Outfits, add a full-body, front-facing photo or mirror selfie visible from head to toe. Hover or focus the silhouette to reveal Add photo, then choose the camera, photo library, or file picker. Touch devices always show the label. The model photo is saved in IndexedDB for this browser and guest/account space, reused for future outfits, and never synced.
-
-Guests enter an OpenAI key for the current page session. The key stays only in React memory, is lost on reload, and has no Save control. Signed-in users can explicitly Save, Change, or Remove an account key. The description appears beneath the OpenAI API key label, and entry stays visually masked without a password input or login form.
-
-Account keys are encrypted with AES-256-GCM before being written to `capsule_render_keys`. Each write uses a fresh 12-byte nonce and authenticated data bound to the account ID. The independent `RENDER_KEY_ENCRYPTION_KEY` is a 32-byte random secret encoded as base64, configured as a sensitive production variable in Vercel. It is never stored in Supabase. Apply `db/migrations/20260909_add_render_keys.sql` before enabling this configuration on an existing database. New databases use the updated `db/schema.sql`. The table has RLS enabled, no browser policies, and no grants to Supabase's anonymous/authenticated roles.
-
-`GET /api/render/key` returns saved-state metadata only. PUT and DELETE require the current Better Auth session, a matching expected user ID, and a same-origin request. Signed-in renders send an account-key selection rather than the key itself; the server retrieves and decrypts the authenticated account's key only for that render. No read endpoint returns it to the browser, and keys never enter wardrobe snapshots or sync. Old browser keys from the unreleased preview are deleted at app initialization, never uploaded automatically. Server errors are sanitized and credential responses are not cached.
-
-The encryption secret must be retained for existing keys to remain usable. Do not casually replace it: to rotate without invalidating saved keys, decrypt and re-encrypt existing records in a controlled server operation using the old and new secrets. If the old secret is lost, users must replace their saved API keys. A compromised application server can still access decrypted keys; encryption protects stored database contents, not a compromised runtime.
-
-Select 1–6 owned pieces and choose Render outfit. The photo, selected garment images, and user's key are sent only for an explicit render to OpenAI's fixed Images edit endpoint. Rendering charges apply to that user's OpenAI account; no shared deployment OpenAI key is used. The resulting image is saved in IndexedDB and can be downloaded. No text advice is requested or displayed. The active model appears beside Render outfit. `OPENAI_IMAGE_MODEL` defaults to [`gpt-image-2.5-sunburst`](https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst), with medium quality at 1024×1536. Remove or update any existing `OPENAI_IMAGE_MODEL` deployment override to use the new default; `OUTFIT_RENDERING_ENABLED=false` disables new rendering. Credit, spending, usage, and temporary rate limits have distinct messages. A live paid render is not part of automated tests.
+- Web: in `apps/web`, run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build`.
+- iOS: in `apps/ios`, run `swift test` and `scripts/test-ios.sh` (requires Xcode and an iPhone simulator).
+- GitHub Actions runs the relevant checks when an app or its workflow changes.
 
 ## Deployment
 
-The public repository is [gtfol/capsule](https://github.com/gtfol/capsule). The Vercel project is `capsule` in the `gtfol` team. Build with `npm run build`; attach `capsule.gtfol.dev` under the project's Domains settings and follow Vercel's DNS instructions. Environment-variable changes require a new deployment.
+The existing Vercel project `capsule` deploys `apps/web` from `main` to [capsule.gtfol.dev](https://capsule.gtfol.dev). Keep its Root Directory set to `apps/web`; environment variables and domains remain on that same project. Local web configuration belongs in `apps/web/.env.local` and must not be committed.
 
-## Validation
+The iPhone app uses bundle ID `dev.gtfol.capsule`. Its Xcode target remains `CapsuleScan`; its existing callback scheme is unchanged. Build and upload using the project inside `apps/ios`.
 
-```sh
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
+[Web setup and API](apps/web/README.md) · [iPhone setup](apps/ios/README.md) · [Repository migration](docs/repository-migration.md)
 
-Tests cover metadata and price extraction, public-host validation and DNS pinning, redirect and decompression limits, offline writes and tombstones, sync conflicts and account isolation, offline reconnection, request validation, rendering credentials and mocked image-service responses. Wishlist tests cover currency separation, price-history ordering, source failures and recovery, local/synced ratings, concurrent updates, and atomic moves to the wardrobe including rollback.
-
-## Public endpoint protection and analytics
-
-Before deploying this release, save and run [20260915_add_request_limits.sql](db/migrations/20260915_add_request_limits.sql) in Supabase's SQL editor. Fresh databases include the same table in `db/schema.sql`.
-
-Product imports allow 20 requests per 10 minutes, price checks 60 per 10 minutes, and image fetches 300 per minute, per IP and endpoint. Postgres counters are shared across Vercel instances; only keyed IP digests are retained. Expired counters are cleaned in bounded batches. Requests over quota return 429 with `Retry-After`; an unavailable database returns 503 rather than bypassing protection. Every Vercel deployment using these endpoints needs a database, including previews. Local development without a database uses in-memory counters.
-
-PostHog requires `NEXT_PUBLIC_POSTHOG_KEY` and optionally `NEXT_PUBLIC_POSTHOG_HOST` at build time. Analytics strips query strings, fragments, URL credentials, and share IDs, including URL properties nested in SDK attribution objects. Referrers retain only the referring origin. Autocapture, session replay, and automatic exception capture remain disabled.
-
-The generic social preview is `public/social-preview.png` (1200×630), sourced from `public/social-preview.svg`. Regenerate with `node -e 'require("sharp")("public/social-preview.svg").png().toFile("public/social-preview.png")'`. Shared links use the generic artwork, never wardrobe photos.
-
-To test distributed rate limits, apply the migration to a disposable local Postgres database and run `TEST_RATE_LIMIT_DATABASE_URL=postgres://... npm test`. This adds concurrent multi-instance, window-reset, and RLS checks to the regular suite.
-
-## Settings and data ownership
-
-Open the Settings icon in the bottom navigation (`/?view=settings`). OpenAI key entry and account-key management live here; Outfits links to Settings when setup is needed. Guest keys remain in memory for the current page session, including navigation between views. Account keys retain the existing encrypted storage and account checks.
-
-Export data downloads a versioned JSON file containing the active library's wardrobe, wishlist ratings and price history, all locally saved photo views, saved outfits, and this browser's model photo. Remote-only photos remain URLs. Sync first for the latest changes from other devices. Credentials, sync internals, and share-management tokens are excluded. This release exports data; it does not yet restore backup files.
-
-Guests can clear their browser data with confirmation. Signed-in users can delete their account by typing DELETE. The server deletes the user and cascades to sessions, OAuth accounts, synced content, and encrypted rendering keys. Share links managed by the current browser are revoked in the same transaction; links created on other browsers are not associated with an account and must be removed there. This browser’s account cache is erased, and late sync responses cannot restore it. Offline copies on other devices and separate guest data remain. Share management stays in the Share popover. No database migration is needed.
-
-Set `NEXT_PUBLIC_SUPPORT_URL` to a one-time `https://buy.stripe.com/...` Payment Link to show a Support Capsule heart icon in the bottom navigation. It opens Stripe's hosted checkout; no payment SDK, credentials, subscriptions, or webhooks are used. The link is hidden when unconfigured. Verify the payment link itself is configured for one-time payments before publishing it.
-
-### Integrations
-
-Settings → Integrations creates scoped, revocable bearer tokens for shopping tools.
-The [REST API guide](docs/integrations.md) covers adding wishlist/wardrobe pieces,
-editing pieces and uploading front/back/side photos, confirmed-purchase moves,
-lookup, idempotency, and sync status. Tokens offer 90-day (default), one-year,
-or no expiry. Apply
-`db/migrations/20260915_add_integrations.sql` and
-`db/migrations/20260916_integration_token_expiry.sql` before deploying this feature.
-The expiry migration preserves existing tokens and allows null for no expiry.
-The REST integration itself needs no new secrets or environment variables.
-
-The optional [hosted MCP bridge](docs/mcp.md) at `/api/mcp` exposes
-`create_wardrobe_item` and `create_wishlist_item`, with stable idempotency keys
-and a follow-up GET to verify each write. It requires the server-only
-`CAPSULE_MCP_API_TOKEN` and a separate `CAPSULE_MCP_ACCESS_KEY`; it is disabled
-until configured. This is a private single-account bridge for clients supporting
-Streamable HTTP and a secure Authorization header, not an OAuth sign-in service.
-
-Integration database tests use a disposable local `capsule_integrations_test`
-database initialized with `db/schema.sql` and `TEST_INTEGRATION_DATABASE_URL`.
+[Support](https://gtfol.dev/contact) · [Privacy](https://capsule.gtfol.dev/privacy) · [Terms](https://capsule.gtfol.dev/terms)
