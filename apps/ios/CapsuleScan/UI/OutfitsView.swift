@@ -40,7 +40,7 @@ import AVFoundation
                 }
             }.padding(20)
         }
-        .refreshable { await model.refresh(client: client) }
+        .refreshable { await model.refresh(client: client, refreshPhotos: true) }
         .task(id: services.wardrobeReloadID) { await model.refresh(client: client) }
         .sheet(isPresented: $creating, onDismiss: { services.wardrobeReloadID = UUID() }) {
             if let userID = services.user?.id {
@@ -56,33 +56,19 @@ import AVFoundation
         .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { outfit in
             NavigationStack { OutfitDetailView(model: OutfitDetailModel(outfit: outfit, client: client), wardrobe: wardrobe) }
         }
-        .environment(\.wardrobePhotoRefreshID, model.photoReloadID)
+        .onChange(of: model.photoReloadID) { _, _ in
+            if let account = services.user?.id { PhotoRefreshState.shared.refresh(account: account, collection: "outfit") }
+        }
     }
 }
 
 @MainActor struct OutfitPhoto: View {
-    @EnvironmentObject private var services: AppServices
-    @Environment(\.wardrobePhotoRefreshID) private var refreshID
     let outfit: RemoteOutfit
     let client: any OutfitServing
-    @State private var image: UIImage?
-    @State private var failed = false
-    @State private var attempt = 0
+    var maxPixelSize = 600
     var body: some View {
-        ZStack {
-            CapsuleStyle.canvas
-            if let image { Image(uiImage: image).resizable().scaledToFit() }
-            else if failed { Button { attempt += 1 } label: { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }.accessibilityLabel("reload outfit photo") }
-            else { ProgressView().controlSize(.small) }
-        }.accessibilityLabel(outfit.name)
-        .task(id: "\(services.user?.id ?? ""):\(outfit.id):\(outfit.revision):\(refreshID?.uuidString ?? ""):\(attempt)") {
-            image = nil; failed = false
-            guard let userID = services.user?.id else { return }
-            do {
-                let data = try await WardrobePhotoCache.shared.load(key: "\(userID):outfit:\(outfit.id):\(outfit.revision):\(refreshID?.uuidString ?? "")") { try await client.photo(item: outfit) }
-                guard !Task.isCancelled, services.user?.id == userID else { return }
-                image = UIImage(data: data); failed = image == nil
-            } catch { if !Task.isCancelled { failed = true } }
+        RemotePhoto(collection: "outfit", identity: outfit.id, revision: String(outfit.revision), label: outfit.name, maxPixelSize: maxPixelSize) {
+            try await client.photo(item: outfit)
         }
     }
 }
@@ -282,7 +268,7 @@ import AVFoundation
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                OutfitPhoto(outfit: model.outfit, client: model.client).aspectRatio(2 / 3, contentMode: .fit)
+                OutfitPhoto(outfit: model.outfit, client: model.client, maxPixelSize: 1600).aspectRatio(2 / 3, contentMode: .fit)
                 TextField("outfit name", text: $model.name).frame(minHeight: 44).accessibilityLabel("outfit name")
                 Divider().overlay(CapsuleStyle.divider)
                 ScrollView(.horizontal, showsIndicators: false) {

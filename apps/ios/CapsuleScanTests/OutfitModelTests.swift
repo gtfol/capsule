@@ -86,7 +86,7 @@ actor OutfitPiecesStub: WardrobeServing {
         await model.refresh(client: client)
         let previous = model.photoReloadID
         await client.rename("updated on web")
-        await model.refresh(client: client)
+        await model.refresh(client: client, refreshPhotos: true)
         XCTAssertEqual(model.items.first?.name, "updated on web")
         XCTAssertNotEqual(model.photoReloadID, previous)
     }

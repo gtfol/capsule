@@ -106,7 +106,7 @@ import PhotosUI
     @ViewBuilder private var photoPreview: some View {
         if let data = model.previews[view], let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity) }
         else if model.edit.photos[view] == "" { Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).frame(maxWidth: .infinity) }
-        else { WardrobePhoto(item: model.item, view: view, client: client, collection: model.collection) }
+        else { WardrobePhoto(item: model.item, view: view, client: client, collection: model.collection, maxPixelSize: 1600) }
     }
     private var hasPhoto: Bool { model.previews[view] != nil || (model.edit.photos[view] != "" && model.item.hasPhoto(view)) }
     private var photoActions: some View {

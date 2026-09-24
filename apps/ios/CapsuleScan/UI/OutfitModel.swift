@@ -7,7 +7,7 @@ import SwiftUI
     @Published private(set) var loading = false
     @Published var error: String?
     @Published private(set) var reconnect = false
-    func refresh(client: any OutfitServing) async {
+    func refresh(client: any OutfitServing, refreshPhotos: Bool = false) async {
         guard !loading else { return }
         loading = true; error = nil; reconnect = false
         defer { loading = false }
@@ -22,7 +22,7 @@ import SwiftUI
                 cursor = page.cursor
             }
             items = records.values.sorted { $0.createdAt > $1.createdAt }
-            photoReloadID = UUID()
+            if refreshPhotos { photoReloadID = UUID() }
         } catch is CancellationError {} catch { reconnect = error as? OutfitError == .reconnect; self.error = error.localizedDescription }
     }
 }
