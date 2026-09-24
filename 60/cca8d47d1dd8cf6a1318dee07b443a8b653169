@@ -1,0 +1,23 @@
+apps/ios/CapsuleScan/Analytics/PostHogAnalytics.swift
+  s_0521f8d73d6032::t_a7cf2fc203ab78 37-40
+apps/ios/CapsuleScan/AppServices.swift
+  s_0521f8d73d6032::t_bb7ef8fad41a8b 62
+apps/ios/README.md
+  s_0521f8d73d6032::t_fffa2b13a00196 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "60cca8d47d1dd8cf6a1318dee07b443a8b653169",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
