@@ -1,0 +1,21 @@
+apps/web/src/lib/server/integration-api.ts
+  s_0521f8d73d6032::t_11892fc729a659 203
+apps/web/tests/native-wishlist.test.ts
+  s_0521f8d73d6032::t_213daa9d994961 37,44-45,47,58-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "f0444461052026a01b75f5a4839a81024f239af6",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
