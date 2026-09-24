@@ -68,6 +68,15 @@ import SwiftUI
                             .accessibilityAddTraits(.updatesFrequently)
                     }
                 }
+                if let client = services.outfits {
+                    OutfitSettingsView(client: client).id(services.user?.id)
+                } else if services.connected {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("outfit rendering").font(CapsuleStyle.heading)
+                        Text("sign in again to connect your outfits.").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
+                        SignInButton().frame(minHeight: 44)
+                    }
+                }
                 VStack(alignment: .leading, spacing: 0) {
                     SupportLink()
                     Link("terms of service", destination: URL(string: "https://capsule.gtfol.dev/terms")!).frame(minHeight: 44)

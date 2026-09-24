@@ -11,13 +11,13 @@ final class NoRedirects: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
 }
 final class HTTPClient: HTTPTransport, @unchecked Sendable {
     private let session: URLSession
-    init() {
+    init(resourceTimeout: TimeInterval = 60) {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.httpShouldSetCookies = false
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = 45
-        configuration.timeoutIntervalForResource = 60
+        configuration.timeoutIntervalForResource = resourceTimeout
         session = URLSession(configuration: configuration, delegate: NoRedirects(), delegateQueue: nil)
     }
     func send(_ request: URLRequest) async throws -> HTTPResult {

@@ -288,3 +288,18 @@ signed-in Capsule browser session and same-origin checks. The optional
 `GET /wardrobe/{id}` returns `{item: <summary>}` for a live owned wardrobe piece. `GET /wardrobe/{id}/photos/{view}` returns uploaded JPEG/PNG/WebP bytes for `front`, `back`, or `side` (404 if that view is URL-backed or absent). Both require `items:read` and return private, uncached responses. URL-backed photos remain in the summary URL fields.
 
 The native sign-in flow has a separate, explicitly approved `wardrobe:delete` permission for revision-checked deletion. This permission cannot be requested through AI-agent token creation. See [native sign-in](scan-sign-in.md).
+
+## Native outfit endpoints
+
+These scopes are issued only by the explicit native `access=outfits` grant, not the AI-agent token form. All endpoints require a Capsule bearer token and return private, uncached responses.
+
+- `GET /api/v1/outfits?cursor=0`: paginated metadata (`outfits`, `cursor`, `hasMore`), requiring `outfits:read`.
+- `GET /api/v1/outfits/:id` and `GET /api/v1/outfits/:id/image`: metadata envelope or authenticated raster image.
+- `PATCH /api/v1/outfits/:id`: `{name, expectedRevision}`, requiring `outfits:write`.
+- `DELETE /api/v1/outfits/:id`: `{expectedRevision}`, requiring `outfits:delete`. PATCH/DELETE require `Idempotency-Key` and preserve revisions/tombstones for web sync.
+- `GET /api/v1/outfits/config`: enabled/model and key availability flags; never the key itself.
+- `PUT /api/v1/outfits/key`: `{apiKey}`; `DELETE` with `{}` removes it. Both require `outfits:write` and use the existing encrypted account key store.
+- `POST /api/v1/outfits/render`: `{name, referencePhoto, items:[{id,name,category,imageData}], notes?}` with `Idempotency-Key`; requires `items:read`, `outfits:read`, and `outfits:write`. Input photos are data URLs, each at most 1.5 MB, whole body below 3.8 MB. One to six distinct wardrobe IDs must belong to the authenticated account. The server uses the account key, records a pending receipt before the provider call, and atomically saves the resulting outfit and receipt.
+- `GET /api/v1/outfits/render/:key`: recover an attempt without resubmitting photos or causing another provider call. A pending attempt returns 202, success returns `{kind:"outfit-render",state:"saved",id,revision}`. Provider failures are recorded and never automatically retried; a new intentional render needs a new key. Pending attempts older than three minutes report `RENDER_INTERRUPTED`.
+
+Receipts contain no input photos, styling notes, API keys, or bearer tokens. Model photos remain on the iPhone; completed outfit images use the existing synced `outfits` collection. Requests from other accounts cannot read or mutate records or render receipts. Provider calls run outside database transactions, and a revoked token cannot commit a completed render.

@@ -35,3 +35,7 @@ Wishlist reads use `GET /api/v1/items?collection=wishlist`, `GET /api/v1/wishlis
 `DELETE /api/v1/wishlist/{id}` requires native `wishlist:delete`, `{expectedRevision}`, and `Idempotency-Key`; it writes a sync tombstone. Purchase uses the existing atomic `POST /api/v1/wishlist/{id}/purchase` with the current revision and both write scopes. The app asks for confirmation and requires saved edits first.
 
 Regression coverage: `tests/native-wishlist.test.ts`, native `WishlistTests` and `WishlistModelTests`. No offline replication, automatic price checks, or queued edits are added.
+
+## Native outfits
+
+`access=outfits` explicitly requests the wardrobe/wishlist permissions plus `outfits:read`, `outfits:write`, and `outfits:delete`. The consent screen includes rendering with the account OpenAI key and managing that key. Earlier grants never gain these permissions implicitly. Apply `db/migrations/20260924_native_outfits.sql` before deploying the new native build.

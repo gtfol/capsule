@@ -9,6 +9,8 @@ import SwiftData
     let isolation: any ImageIsolating
     let credentials: any CredentialStore
     let transport: any HTTPTransport
+    let outfitTransport: any HTTPTransport
+    let modelPhotos: any ModelPhotoStoring
     private var activeSaves: Set<UUID> = []
     private let browser: any BrowserAuthenticating
     private let extractionOverride: (any ItemExtractor)?
@@ -21,6 +23,11 @@ import SwiftData
     @Published private(set) var hasVisionKey = false
     @Published var connectionMessage: String?
     @Published private(set) var wishlistEnabled = false
+    @Published private(set) var outfitsEnabled = false
+    var outfits: (any OutfitServing)? {
+        guard let user, connected, outfitsEnabled else { return nil }
+        return CapsuleOutfitClient(credentials: credentials, transport: outfitTransport, expectedUserID: user.id)
+    }
     var wishlist: (any WardrobeServing)? {
         guard let user, connected, wishlistEnabled else { return nil }
         return CapsuleWardrobeClient(credentials: credentials, transport: transport, expectedUserID: user.id, collection: .wishlist)
@@ -34,7 +41,10 @@ import SwiftData
     init(container: ModelContainer, media: any MediaStoring, images: any ImageProcessing = ImageProcessor(),
          credentials: any CredentialStore = KeychainStore(), transport: any HTTPTransport = HTTPClient(),
          extractor: (any ItemExtractor)? = nil, browser: any BrowserAuthenticating = BrowserSignIn(),
-         isolation: any ImageIsolating = VisionImageIsolator()) {
+         isolation: any ImageIsolating = VisionImageIsolator(),
+         outfitTransport: any HTTPTransport = HTTPClient(resourceTimeout: 135), modelPhotos: (any ModelPhotoStoring)? = nil) {
+        self.outfitTransport = outfitTransport
+        self.modelPhotos = modelPhotos ?? ModelPhotoStore(directory: URL.applicationSupportDirectory.appendingPathComponent("model-photos"))
         self.isolation = isolation
         self.extractionOverride = extractor; self.browser = browser
         self.container = container; self.media = media; self.images = images; self.credentials = credentials; self.transport = transport
@@ -53,6 +63,7 @@ import SwiftData
                 try await credentials.write(nil, for: .capsuleToken)
             }
             user = authenticationRejected ? nil : login?.user
+            outfitsEnabled = login?.scopes?.contains("outfits:write") == true && login?.scopes?.contains("outfits:read") == true && login?.scopes?.contains("outfits:delete") == true
             wishlistEnabled = login?.scopes?.contains("wishlist:write") == true && login?.scopes?.contains("wishlist:delete") == true
             hasVisionKey = !(try await credentials.read(.visionAPIKey) ?? "").isEmpty
             let visionConsent = try await credentials.read(.visionPhotoConsent)
@@ -74,6 +85,7 @@ import SwiftData
             try await credentials.storeCapsuleLogin(login) // Token and account commit atomically in Keychain.
             try? await credentials.write(nil, for: .capsuleToken)
             authenticationRejected = false; user = login.user
+            outfitsEnabled = login.scopes?.contains("outfits:write") == true && login.scopes?.contains("outfits:read") == true && login.scopes?.contains("outfits:delete") == true
             wishlistEnabled = login.scopes?.contains("wishlist:write") == true && login.scopes?.contains("wishlist:delete") == true
             wardrobeReloadID = UUID()
         } catch SignInError.cancelled { }
