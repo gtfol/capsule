@@ -1,7 +1,6 @@
 import { getPool } from "./db";
-import { createModelPhotoHandler } from "./model-photo-api";
-import { integrationFailure } from "./integration-tokens";
+import { createModelPhotoHandler, modelPhotoFailure } from "./model-photo-api";
 export async function modelPhotoRequest(request: Request, native: boolean) {
   try { return await createModelPhotoHandler(getPool(), native)(request); }
-  catch (error) { return integrationFailure(error); }
+  catch (error) { return modelPhotoFailure(error); }
 }

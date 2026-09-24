@@ -20,6 +20,9 @@ export async function prepareModelPhoto(value: string | null): Promise<string | 
     return `data:image/jpeg;base64,${bytes.toString("base64")}`;
   } catch { throw new IntegrationError("Choose a smaller photo in JPEG, PNG, or WebP format."); }
 }
+export function modelPhotoFailure(error: unknown) {
+  return integrationFailure(error instanceof IntegrationError ? error : new IntegrationError("Your model photo could not sync. Try again.", 503, "UNAVAILABLE"));
+}
 export function createModelPhotoHandler(pool: Pool, native: boolean, userFor: SessionUser = sessionUser) {
   const limit = createDatabaseLimiter((sql, values) => pool.query(sql, values));
   return async (request: Request): Promise<Response> => {
@@ -72,6 +75,6 @@ export function createModelPhotoHandler(pool: Pool, native: boolean, userFor: Se
         return reply(photo);
       } catch (error) { await client.query("rollback").catch(() => {}); throw error; }
       finally { client.release(); }
-    } catch (error) { return integrationFailure(error); }
+    } catch (error) { return modelPhotoFailure(error); }
   };
 }
