@@ -1,0 +1,25 @@
+apps/ios/CapsuleScan/UI/SupportLink.swift
+  s_ed36ef5ee1b507::t_6ca2fe503e2014 1-24
+apps/ios/CapsuleScan/UI/SettingsView.swift
+  s_ed36ef5ee1b507::t_6ca2fe503e2014 72-75
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_ed36ef5ee1b507::t_088d9c40e4da42 128-133,256,351-354,374
+apps/ios/scripts/test-ios.sh
+  s_ed36ef5ee1b507::t_1a991ee8353b4d 5,20-21,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "c167a23dc6a2189ff192fc08b4bbba35db1f123d",
+  "prompts": {},
+  "sessions": {
+    "s_ed36ef5ee1b507": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0d08a-bb45-7cc2-b052-ae3dfead9767",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
