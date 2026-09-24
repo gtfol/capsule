@@ -1,0 +1,23 @@
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_3a523353b35f65 594,614
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_d41cc3383bc480 47
+apps/web/src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_eddb38c6dcec5d 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8997d221768b99c3dfd472fda8c931fe31f29b18",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
