@@ -1,0 +1,39 @@
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_6cbf675a67604d 164-169,248-253,334,340,453-456,484,515-518,542,671,691
+apps/ios/CapsuleScan/UI/OutfitModel.swift
+  s_0521f8d73d6032::t_d3eee6a7ff5670 10,25
+apps/ios/CapsuleScan/UI/OutfitsView.swift
+  s_0521f8d73d6032::t_2c746f14fbe4b0 43,59-61,68,70-71,271
+apps/ios/CapsuleScan/UI/RemotePhoto.swift
+  s_0521f8d73d6032::t_d82815912be5b9 1-178
+apps/ios/CapsuleScan/UI/WardrobeDetailView.swift
+  s_0521f8d73d6032::t_a856dd25444829 109
+apps/ios/CapsuleScan/UI/WardrobeModel.swift
+  s_0521f8d73d6032::t_4e17e218b3e44a 11,29
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_73007635b0a6dd 151,159-161,175,177-183
+apps/ios/CapsuleScanTests/OutfitModelTests.swift
+  s_0521f8d73d6032::t_600de715641b44 89
+apps/ios/CapsuleScanTests/PhotoLoadingTests.swift
+  s_0521f8d73d6032::t_b39d964ea68246 1-127
+apps/ios/CapsuleScanTests/WardrobeModelTests.swift
+  s_0521f8d73d6032::t_4bedde7503c3fb 43
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_5359d125e981c5 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "200f6a99d6121195bd0cace428e6f1cff9bc9e56",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
