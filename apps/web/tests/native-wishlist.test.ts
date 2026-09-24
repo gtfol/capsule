@@ -34,17 +34,17 @@ test("native wishlist: metadata, photos, ratings, price receipts, source preserv
     type Kind = Parameters<typeof api.write>[1];
     const write = (kind:Kind,body:unknown,key:string,id?:string,secret=token.token) => api.write(req(body,key,secret),kind,id);
     const read = async(id:string) => (await (await api.wardrobeItem(req(),id,undefined,"wishlist")).json()).item;
-    const createdResponse = await write("wishlist",{name:"shirt",url:primary,price:"100",currency:"USD",rating:4.5,imageData:photo,backImageData:photo,sideImageData:photo,fetch:false},"create-wishlist");
+    const createdResponse = await write("wishlist",{name:"shirt",url:primary,price:"100",currency:"USD",rating:4.5,imageData:photo,backImageData:photo,sideImageData:photo,fetch:true},"create-wishlist");
     assert.equal(createdResponse.status,200); const created = await createdResponse.json(); const id = created.id;
     let item = await read(id); assert.equal(item.rating,4.5); assert.equal(item.priceHistory.length,1);
     assert.equal((await api.wardrobeItem(req(undefined,"key",outsider.token),id,undefined,"wishlist")).status,404);
     for(const view of ["front","back","side"]) { const image = await api.wardrobeItem(req(),id,view,"wishlist"); assert.equal(image.status,200); assert.match(image.headers.get("content-type")!,/^image\//); }
     const priceBody = {expectedRevision:item.revision,url:cheaper};
     const checked = await write("wishlist-price",priceBody,"cheaper-price",id); assert.equal(checked.status,200); assert.equal((await checked.json()).priceFetched,true);
-    assert.equal(fetches,1);
-    const replay = await write("wishlist-price",priceBody,"cheaper-price",id); assert.equal(replay.headers.get("Idempotency-Replayed"),"true"); assert.equal(fetches,1);
+    assert.equal(fetches,2);
+    const replay = await write("wishlist-price",priceBody,"cheaper-price",id); assert.equal(replay.headers.get("Idempotency-Replayed"),"true"); assert.equal(fetches,2);
     item = await read(id); assert.equal(item.price,"70"); assert.equal(item.currentSourceUrl,cheaper); assert.equal(item.priceHistory.length,2);
-    assert.equal((await write("wishlist-price",priceBody,"stale-price",id)).status,409); assert.equal(fetches,1);
+    assert.equal((await write("wishlist-price",priceBody,"stale-price",id)).status,409); assert.equal(fetches,2);
     const edited = await write("update-wishlist",{expectedRevision:item.revision,rating:null,name:"cotton shirt"},"edit-rating",id); assert.equal(edited.status,200);
     item = await read(id); assert.equal(item.rating,null); assert.equal(item.sources.find((s:{url:string})=>s.url===primary).price,"100"); assert.equal(item.price,"70");
     const listing = await (await api.lookup(new Request("https://capsule.test/api/v1/items?collection=wishlist",{headers:{authorization:`Bearer ${token.token}`}}))).json();
@@ -55,7 +55,8 @@ test("native wishlist: metadata, photos, ratings, price receipts, source preserv
     const moved = await write("purchase",{expectedRevision:item.revision},"move-piece",id); assert.equal(moved.status,200); assert.equal((await moved.json()).collection,"wardrobe");
     assert.equal((await api.wardrobeItem(req(),id,undefined,"wishlist")).status,404);
     const owned = await (await api.wardrobeItem(req(),id)).json(); assert.equal(owned.item.photos.side,true);
-    const second = await (await write("wishlist",{name:"new hat",fetch:false},"create-second")).json();
+    const second = await (await write("wishlist",{name:"new hat",url:"https://shop.test/hat",price:"10",currency:"USD",fetch:false},"create-second")).json();
+    const manual = await read(second.id); assert.equal(manual.price,"10"); assert.equal(manual.priceHistory.length,0); assert.equal(manual.sources[0].fetched_at,null);
     const remove = {expectedRevision:second.sync.revision};
     assert.equal((await write("delete-wishlist",remove,"cannot-delete",second.id,limited.token)).status,403);
     assert.equal((await write("delete-wishlist",remove,"other-delete",second.id,outsider.token)).status,404);

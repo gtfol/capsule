@@ -200,7 +200,7 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
             const now = Date.now();
             const item: Item = {id:randomUUID(),name:"",brand:"",size:"",color:"",category:"tops",price:"",currency:"",description:"",purchaseUrl:url ?? "",imageUrl:"",...imported?.item,...fields,...photos,createdAt:now,updatedAt:now,deletedAt:null};
             const collection = kind === "wishlist" ? "wishlist" : "items";
-            const candidate = collection === "wishlist" ? {...createWishlistItem(item,now,imported?.priceQuote),rating:rating ?? null} : item;
+            const candidate = collection === "wishlist" ? {...createWishlistItem(item,now,imported?.priceQuote ?? null),rating:rating ?? null} : item;
             const record = validateRecord(token.user_id,collection,candidate);
             const candidates = await existingPieces(client,token.user_id,collection);
             const match = findDuplicatePiece(record,candidates.map(row=>row.record));
