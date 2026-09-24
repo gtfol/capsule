@@ -1,0 +1,61 @@
+apps/ios/CapsuleScan/Core/Outfits.swift
+  s_0521f8d73d6032::t_18cb3448477052 13-24,60-61,133-152
+apps/ios/CapsuleScan/UI/OutfitModel.swift
+  s_0521f8d73d6032::t_8b67019081c6f9 47,60-65,93-106
+apps/ios/CapsuleScan/UI/OutfitsView.swift
+  s_0521f8d73d6032::t_42c6138fbb35b6 219
+apps/ios/CapsuleScanTests/OutfitModelTests.swift
+  s_0521f8d73d6032::t_cf3ab67e11318b 7-16,47-82
+apps/ios/CapsuleScanTests/OutfitTests.swift
+  s_0521f8d73d6032::t_b0be42f4b7d3b5 13-30
+apps/ios/README.md
+  s_0521f8d73d6032::t_c43d835967b6c0 42
+apps/web/db/migrations/20260924_model_photos.sql
+  s_0521f8d73d6032::t_06402c351a3414 1-17
+apps/web/db/schema.sql
+  s_0521f8d73d6032::t_659f3127f84834 193-205
+apps/web/docs/integrations.md
+  s_0521f8d73d6032::t_0bc0e00c4c0e29 306-313
+apps/web/src/app/api/model-photo/route.ts
+  s_0521f8d73d6032::t_386405e1237a68 1-5
+apps/web/src/app/api/v1/outfits/model-photo/route.ts
+  s_0521f8d73d6032::t_9aba2dd56f84b3 1-5
+apps/web/src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_31e5f86561358a 20
+apps/web/src/components/outfits.tsx
+  s_0521f8d73d6032::t_191566efa48fef 13-14,40,75
+apps/web/src/lib/db.ts
+  s_0521f8d73d6032::t_d3fcd3bfc60e1e 334,338-363,460
+apps/web/src/lib/model-photo-sync.ts
+  s_0521f8d73d6032::t_4c253a6d86580b 1-51
+apps/web/src/lib/server/model-photo-api.ts
+  s_0521f8d73d6032::t_55ac62350ba2d3 1-77
+apps/web/src/lib/server/model-photo-route.ts
+  s_0521f8d73d6032::t_102a39c6603fa5 1-7
+apps/web/src/lib/store.ts
+  s_0521f8d73d6032::t_d98574d093c868 4,7,142
+apps/web/src/lib/sync.ts
+  s_0521f8d73d6032::t_d654cc4d1dc26e 8,212
+apps/web/tests/model-photo-api.test.ts
+  s_0521f8d73d6032::t_7a5d015a9870f0 1-56
+apps/web/tests/model-photo-sync.test.ts
+  s_0521f8d73d6032::t_939e04961d86a1 1-43
+apps/web/tests/sync-races.test.ts
+  s_0521f8d73d6032::t_9817c421c5defb 50,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cbefef22db0bbefde3edb4c46aff683e84633cfe",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
