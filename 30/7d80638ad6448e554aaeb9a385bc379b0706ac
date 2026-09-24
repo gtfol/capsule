@@ -1,0 +1,117 @@
+apps/ios/.github/workflows/ios.yml
+  s_0521f8d73d6032::t_1acc3bcd5aff70 1-37
+apps/ios/.gitignore
+  s_0521f8d73d6032::t_b800d337ae673f 1-7
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_a82e8dcc5b7d79 1-613
+apps/ios/CapsuleScan.xcodeproj/xcshareddata/xcschemes/CapsuleScan.xcscheme
+  s_0521f8d73d6032::t_fa80ebcbdafd67 1-11
+apps/ios/CapsuleScan/AppServices.swift
+  s_0521f8d73d6032::t_68856ac2547ae0 1-139
+apps/ios/CapsuleScan/Assets.xcassets/AppIcon.appiconset/Contents.json
+  s_0521f8d73d6032::t_55207df500e64f 1
+apps/ios/CapsuleScan/Assets.xcassets/Contents.json
+  s_0521f8d73d6032::t_993336893100b5 1
+apps/ios/CapsuleScan/CapsuleScanApp.swift
+  s_0521f8d73d6032::t_22bc3b10f8f77e 1-37
+apps/ios/CapsuleScan/Core/CapsuleDestination.swift
+  s_0521f8d73d6032::t_9cedc580019f37 1-129
+apps/ios/CapsuleScan/Core/CapsuleSignIn.swift
+  s_0521f8d73d6032::t_b6e238d0c1dc1c 1-101
+apps/ios/CapsuleScan/Core/Credentials.swift
+  s_0521f8d73d6032::t_2a64720003f1ba 1-41
+apps/ios/CapsuleScan/Core/Domain.swift
+  s_0521f8d73d6032::t_44954e308b9da2 1-134
+apps/ios/CapsuleScan/Core/Extraction.swift
+  s_0521f8d73d6032::t_06dd99f246327c 1-90
+apps/ios/CapsuleScan/Core/Images.swift
+  s_0521f8d73d6032::t_dcffd88d24cd1a 1-77
+apps/ios/CapsuleScan/Core/Isolation.swift
+  s_0521f8d73d6032::t_2cf079ea32a1c3 1-56
+apps/ios/CapsuleScan/Core/SaveCoordinator.swift
+  s_0521f8d73d6032::t_8601c282d3c347 1-65
+apps/ios/CapsuleScan/Core/WardrobeLibrary.swift
+  s_0521f8d73d6032::t_720ea07643c8e6 1-160
+apps/ios/CapsuleScan/Info.plist
+  s_0521f8d73d6032::t_241588ffdca71a 1-21
+apps/ios/CapsuleScan/Persistence/WardrobeItem.swift
+  s_0521f8d73d6032::t_219ec52ff39ab8 1-83
+apps/ios/CapsuleScan/Resources/Lato-OFL.txt
+  s_0521f8d73d6032::t_1bf4881e50b090 1-93
+apps/ios/CapsuleScan/UI/BrowserSignIn.swift
+  s_0521f8d73d6032::t_92c894755fb728 1-44
+apps/ios/CapsuleScan/UI/CaptureView.swift
+  s_0521f8d73d6032::t_5340cbc2aa9f7b 1-167
+apps/ios/CapsuleScan/UI/DraftsView.swift
+  s_0521f8d73d6032::t_4453bc073522e4 1-63
+apps/ios/CapsuleScan/UI/Interface.swift
+  s_0521f8d73d6032::t_a3b52d5e680bc8 1-85
+apps/ios/CapsuleScan/UI/ItemEditorModel.swift
+  s_0521f8d73d6032::t_20bd919d7f66a0 1-145
+apps/ios/CapsuleScan/UI/ItemEditorView.swift
+  s_0521f8d73d6032::t_8888aa0e2532ca 1-98
+apps/ios/CapsuleScan/UI/SettingsView.swift
+  s_0521f8d73d6032::t_357204bcdfce03 1-113
+apps/ios/CapsuleScan/UI/WardrobeDetailView.swift
+  s_0521f8d73d6032::t_0f106608dab3d3 1-133
+apps/ios/CapsuleScan/UI/WardrobeModel.swift
+  s_0521f8d73d6032::t_e00cce6e4c83b8 1-149
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_167d71fe8b5bb6 1-156
+apps/ios/CapsuleScanTests/CoreTests.swift
+  s_0521f8d73d6032::t_304807ce8559a3 1-304
+apps/ios/CapsuleScanTests/IsolationTests.swift
+  s_0521f8d73d6032::t_fc445bd99c7491 1-48
+apps/ios/CapsuleScanTests/KeychainTests.swift
+  s_0521f8d73d6032::t_5205d71244de20 1-30
+apps/ios/CapsuleScanTests/PersistenceTests.swift
+  s_0521f8d73d6032::t_a7050076a02b32 1-287
+apps/ios/CapsuleScanTests/SignInTests.swift
+  s_0521f8d73d6032::t_66ff21dde9c89c 1-73
+apps/ios/CapsuleScanTests/WardrobeModelTests.swift
+  s_0521f8d73d6032::t_f913f56fac0bae 1-74
+apps/ios/CapsuleScanTests/WardrobeTests.swift
+  s_0521f8d73d6032::t_7d6cc496815823 1-107
+apps/ios/Package.swift
+  s_0521f8d73d6032::t_298e1f20e6417f 1-13
+apps/ios/README.md
+  s_0521f8d73d6032::t_731b293ae643db 1-89
+apps/ios/docs/privacy.md
+  s_0521f8d73d6032::t_1871e4c06ccfc4 1-7
+apps/ios/docs/support.md
+  s_0521f8d73d6032::t_55cf6bf609c5d3 1-5
+apps/ios/docs/verification.md
+  s_0521f8d73d6032::t_abdd04412e9b30 1-53
+apps/ios/marketing/app-store/README.md
+  s_0521f8d73d6032::t_2efc67c621c736 1-24
+apps/ios/marketing/app-store/assets/Lato-OFL.txt
+  s_0521f8d73d6032::t_d03b8dbef82400 1-93
+apps/ios/marketing/app-store/gallery-entry.swift
+  s_0521f8d73d6032::t_e6dd02c9bb67dd 1-60
+apps/ios/marketing/app-store/index.html
+  s_0521f8d73d6032::t_05c2350533c006 1-16
+apps/ios/marketing/app-store/render.py
+  s_0521f8d73d6032::t_8e9cd3f2ae1dba 1-107
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_5866e9d8b1ef15 1-84
+apps/ios/scripts/make-icon.swift
+  s_0521f8d73d6032::t_67de0118fb1e05 1-25
+apps/ios/scripts/test-ios.sh
+  s_0521f8d73d6032::t_c7105615e6d6c4 1-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "307d80638ad6448e554aaeb9a385bc379b0706ac",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
