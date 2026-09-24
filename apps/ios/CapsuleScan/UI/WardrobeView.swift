@@ -68,14 +68,17 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
             .sheet(item: $newWishlistItem, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
                 if let client = services.wishlist {
                     NavigationStack {
-                        WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: .wishlist), client: client)
+                        WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: .wishlist, analytics: services.analytics), client: client)
                     }
                 }
             }
             .sheet(isPresented: $capture) {
                 CaptureView(inWardrobe: true, onUploaded: { capture = false })
             }
-            .task { await services.refreshCredentials() }
+            .task { await services.refreshCredentials(); services.analytics.track(.screen(.wardrobe)) }
+            .onChange(of: collection) { _, tab in
+                if let screen = AnalyticsScreen(rawValue: tab.rawValue) { services.analytics.track(.screen(screen)) }
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { Task { await services.refreshCredentials(); services.wardrobeReloadID = UUID() } }
             }
@@ -150,7 +153,7 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
         .task(id: services.wardrobeReloadID) { await model.load(client: client) }
         .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
             NavigationStack {
-                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection), client: client)
+                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection, analytics: services.analytics), client: client)
             }
         }
         .environment(\.wardrobePhotoRefreshID, model.photoReloadID)

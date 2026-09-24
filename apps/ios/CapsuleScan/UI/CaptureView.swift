@@ -115,18 +115,22 @@ private struct PhotoDraft: Identifiable { let id = UUID(); let image: Data }
                         guard let data = try await newValue.loadTransferable(type: Data.self) else { throw ScanError.invalidImage }
                         let image = try await services.images.jpeg(data, maxEdge: 1600, quality: 0.85)
                         draft = PhotoDraft(image: image.data)
+                        services.analytics.track(.photoSelected(.library))
                     } catch { self.error = "couldn’t open this photo. try another." }
                     processing = false; photo = nil
                 }
             }
-            .task { await services.refreshCredentials() }
+            .task { services.analytics.track(.screen(.capture)); await services.refreshCredentials() }
             .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await services.refreshCredentials() } } }
         }
     }
     private func prepare(_ data: Data) {
         processing = true; error = nil
         Task {
-            do { draft = PhotoDraft(image: try await services.images.jpeg(data, maxEdge: 1600, quality: 0.85).data) }
+            do {
+                draft = PhotoDraft(image: try await services.images.jpeg(data, maxEdge: 1600, quality: 0.85).data)
+                services.analytics.track(.photoSelected(.camera))
+            }
             catch { self.error = ScanError.invalidImage.localizedDescription }
             processing = false
         }

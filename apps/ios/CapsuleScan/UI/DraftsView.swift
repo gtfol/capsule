@@ -36,6 +36,7 @@ import SwiftData
         }
         .capsuleScreen()
         .navigationTitle("drafts")
+        .onAppear { services.analytics.track(.screen(.drafts)) }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) { Text("drafts").font(CapsuleStyle.heading) }

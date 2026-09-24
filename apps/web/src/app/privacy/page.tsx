@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <LegalPage title="privacy policy">
+  return <LegalPage title="privacy policy" effectiveDate="September 24, 2026">
     <p>This policy covers capsule at capsule.gtfol.dev and the capsule iPhone app, operated by gtfol, LLC. Contact <a href="mailto:team@gtfol.dev">team@gtfol.dev</a> about privacy or your data.</p>
     <section><h2>on your device</h2>
       <p>The web app stores your wardrobe, wishlist, photos, outfits, and preferences in this browser. You can use it without an account. Local storage can be lost if you clear browser data or your device removes it.</p>
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>providers and analytics</h2>
       <p>We use Vercel for hosting and Supabase for our database. Authentication providers process sign-in requests. If you choose to support capsule, Stripe processes your payment; capsule does not receive your full card number. Providers may process network information, including IP addresses, for delivery, security, and operational logs.</p>
-      <p>The web app uses PostHog for page visits and selected feature events, such as item counts and render durations. It uses cookies and local storage, and associates activity with your account ID when signed in. We exclude names, email addresses, item text, prices, photos, keys, product URLs, and raw share IDs from the events we send. Session recording and automatic input capture are disabled. The native iPhone app has no analytics or advertising SDK. We do not sell personal data or use it for advertising.</p>
+      <p>The web app uses PostHog for page visits and selected feature events, such as item counts and render durations. It uses cookies and local storage, and associates activity with your account ID when signed in. We exclude names, email addresses, item text, prices, photos, keys, product URLs, and raw share IDs from the events we send. Session recording and automatic input capture are disabled. The iPhone app also uses PostHog for selected screen visits and feature events, app and device versions, and a generated installation identifier. Activity is associated with your account ID when signed in. The same content exclusions apply; screen recording, automatic input capture, crash capture, and location enrichment are disabled. Turn off usage analytics in iPhone Settings to stop further collection on that device. Debug and automated test builds do not send analytics. There is no advertising SDK. We do not sell personal data or use it for advertising.</p>
     </section>
     <section><h2>retention and your choices</h2>
       <p>Use <Link href="/?view=settings">Settings</Link> to export the data available in your browser, remove saved keys, revoke integrations, clear guest data, or delete your account. Account deletion removes account records and synced content. It revokes share links managed by the current browser; links created in other browsers must be removed there. Offline copies, separate guest data, native drafts, and copies saved by other people remain on their devices.</p>

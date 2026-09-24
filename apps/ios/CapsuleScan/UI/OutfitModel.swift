@@ -45,12 +45,14 @@ import SwiftUI
     let userID: String
     let photos: any ModelPhotoStoring
     let images: any ImageProcessing
+    private let analytics: AppAnalytics
     private let defaults: UserDefaults
     private var photoRevision: Int64?
     private var pendingMutation: WardrobeMutation?
     private var preference: String { "capsule.outfit-render.\(userID)" }
     var canRender: Bool { !loading && !rendering && !importingPhoto && pendingKey == nil && photo != nil && !selected.isEmpty && selected.count <= 6 && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && config?.enabled == true && config?.hasSavedKey == true }
-    init(client: any OutfitServing, wardrobe: any WardrobeServing, userID: String, photos: any ModelPhotoStoring, images: any ImageProcessing, defaults: UserDefaults = .standard) {
+    init(client: any OutfitServing, wardrobe: any WardrobeServing, userID: String, photos: any ModelPhotoStoring, images: any ImageProcessing, defaults: UserDefaults = .standard, analytics: AppAnalytics = AppAnalytics()) {
+        self.analytics = analytics
         self.client = client; self.wardrobe = wardrobe; self.userID = userID; self.photos = photos; self.images = images; self.defaults = defaults
         pendingKey = defaults.string(forKey: preference)
     }
@@ -96,6 +98,7 @@ import SwiftUI
             if let photoRevision { revision = photoRevision }
             else { revision = try await client.modelPhoto().revision }
             try await applyPhoto(client.saveModelPhoto(prepared, revision: revision))
+            analytics.track(prepared == nil ? .modelPhotoRemoved : .modelPhotoSet)
         } catch OutfitError.conflict {
             if let current = try? await client.modelPhoto() { try? await applyPhoto(current) }
             error = "your model photo changed on another device. choose it again to replace it."
@@ -124,6 +127,7 @@ import SwiftUI
             // A small account-scoped receipt survives an app restart. It contains
             // no photos or credentials and is never an offline upload queue.
             defaults.set(mutation.key, forKey: preference)
+            analytics.track(.renderStarted(selected.count))
             let receipt = try await client.render(mutation: mutation)
             received = true
             try await accept(receipt)
@@ -149,12 +153,14 @@ import SwiftUI
         guard let id = receipt.id else { throw OutfitError.unavailable }
         do { result = try await client.item(id: id) }
         catch OutfitError.missing { clearPending(); throw OutfitError.missing }
+        analytics.track(.renderCompleted)
         clearPending()
     }
     private func clearPending() { pendingKey = nil; pendingMutation = nil; defaults.removeObject(forKey: preference) }
     private func handle(_ error: Error, checking: Bool = false) {
         switch error as? OutfitError {
         case .renderFailed, .interrupted:
+            analytics.track(.renderFailed)
             clearPending()
         case .keyRequired, .invalid, .rateLimited, .conflict:
             if !checking { clearPending() }

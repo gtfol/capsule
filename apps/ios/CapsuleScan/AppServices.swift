@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 @MainActor final class AppServices: ObservableObject {
+    let analytics: AppAnalytics
+    @Published private(set) var analyticsEnabled: Bool
     let container: ModelContainer
     let items: SwiftDataItemStore
     let media: any MediaStoring
@@ -42,7 +44,8 @@ import SwiftData
          credentials: any CredentialStore = KeychainStore(), transport: any HTTPTransport = HTTPClient(),
          extractor: (any ItemExtractor)? = nil, browser: any BrowserAuthenticating = BrowserSignIn(),
          isolation: any ImageIsolating = VisionImageIsolator(),
-         outfitTransport: any HTTPTransport = HTTPClient(resourceTimeout: 135), modelPhotos: (any ModelPhotoStoring)? = nil) {
+         outfitTransport: any HTTPTransport = HTTPClient(resourceTimeout: 135), modelPhotos: (any ModelPhotoStoring)? = nil, analytics: AppAnalytics = AppAnalytics()) {
+        self.analytics = analytics; self.analyticsEnabled = analytics.enabled
         self.outfitTransport = outfitTransport
         self.modelPhotos = modelPhotos ?? ModelPhotoStore(directory: URL.applicationSupportDirectory.appendingPathComponent("model-photos"))
         self.isolation = isolation
@@ -50,9 +53,16 @@ import SwiftData
         self.container = container; self.media = media; self.images = images; self.credentials = credentials; self.transport = transport
         items = SwiftDataItemStore(context: container.mainContext)
     }
+    func setAnalyticsEnabled(_ enabled: Bool) {
+        analytics.setEnabled(enabled); analyticsEnabled = analytics.enabled
+    }
     func refreshCredentials() async {
         guard !authenticating else { return }
-        defer { credentialsReady = true }
+        defer {
+            let firstLoad = !credentialsReady
+            credentialsReady = true; analytics.account(user?.id)
+            if firstLoad { analytics.track(.appOpened) }
+        }
         do {
             var login = try await credentials.capsuleLogin()
             if login == nil, !authenticationRejected, let legacy = try await credentials.read(.capsuleToken), !legacy.isEmpty {
@@ -85,6 +95,7 @@ import SwiftData
             try await credentials.storeCapsuleLogin(login) // Token and account commit atomically in Keychain.
             try? await credentials.write(nil, for: .capsuleToken)
             authenticationRejected = false; user = login.user
+            analytics.account(login.user.id); analytics.track(.signedIn)
             outfitsEnabled = login.scopes?.contains("outfits:write") == true && login.scopes?.contains("outfits:read") == true && login.scopes?.contains("outfits:delete") == true
             wishlistEnabled = login.scopes?.contains("wishlist:write") == true && login.scopes?.contains("wishlist:delete") == true
             wardrobeReloadID = UUID()
@@ -101,6 +112,7 @@ import SwiftData
                 try await CapsuleSignInClient(transport: transport).revoke(token: token)
                 try await credentials.clearCapsuleLogin(matching: token)
             }
+            analytics.track(.signedOut); analytics.account(nil)
             authenticationRejected = false; user = nil
             await WardrobePhotoCache.shared.clear()
         } catch { connectionMessage = "couldn’t sign out. check your connection and try again." }
@@ -142,6 +154,7 @@ import SwiftData
             try await saves.send(id: id)
             let completed = try items.record(id: id)
             if completed.capsuleSaveState.completed {
+                if !item.capsuleSaveState.completed { analytics.track(.pieceSaved(.wardrobe, created: true, duplicate: completed.capsuleSaveState == .alreadyExists)) }
                 wardrobeReloadID = UUID()
                 // Keep a small success receipt to prevent resubmission, not a second wardrobe.
                 await media.remove(completed.localImageReference)
@@ -149,7 +162,7 @@ import SwiftData
             }
         } catch {
             if error as? ScanError == .authentication || error as? ScanError == .notConnected {
-                authenticationRejected = true; self.user = nil
+                authenticationRejected = true; self.user = nil; analytics.account(nil)
                 connectionMessage = ScanError.authentication.localizedDescription
             }
             throw error

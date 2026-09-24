@@ -73,7 +73,7 @@ Without a key, Core Image estimates the dominant color in the center of the phot
 - The exact pending body and idempotency UUID are persisted before network submission. Timeout, offline, and server-error retries reuse both across launches. Saving edited fields after failure resets both; an idempotency conflict rotates the key and retries once.
 - The HTTP client rejects redirects rather than forwarding bearer credentials elsewhere. Errors shown to users never include server response bodies.
 - Camera access is requested only when used. The system photo picker grants access to the selected photo without requesting broad library access.
-- No analytics, automatic remote saves, background sync, or new backend. The OS may include local app data in a device backup; there is no app-level iCloud sync.
+- No automatic remote saves, background sync, or new backend. The OS may include local app data in a device backup; there is no app-level iCloud sync.
 
 ## Tests
 
@@ -105,3 +105,13 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 - `scripts/make-icon.swift`: renders capsule's lowercase black “c” mark on an opaque white app icon.
 
 `ItemExtractor` and `WardrobeDestination` are the extension seams. Sharing, shopping-link import, batch capture, search, and export remain separate features.
+
+## Product analytics
+
+Release builds use PostHog iOS 3.81.0 via Swift Package Manager, pinned in the generated project and Package.resolved. They use Capsule web’s public US ingestion token (not a secret/personal API key). Debug builds and automated tests never initialize the SDK. The shared core test package remains dependency-free.
+
+Settings → usage analytics controls collection on this installation. Disabled on startup means no SDK initialization; opting out stops further capture and shuts down the SDK. Requests already in flight may finish. Sign-out/account switching reset analytics identity; successful sign-in uses only the Capsule account ID, never name/email. A final allowlist drops unknown events and properties, including nested payloads, URLs, photos, item IDs/details, keys, and raw errors. Session replay, autocapture, automatic screens/lifecycle, push, surveys, flags, and crash capture are disabled. IP geolocation enrichment is disabled; PostHog still receives network requests.
+
+Events: app_opened, $screen (fixed names), account_signed_in/out, garment_photo_selected (camera/library), piece_added/updated/removed (collection and duplicate when known), wishlist_piece_promoted, background_removed, model_photo_set/removed, outfit_render_started/completed/failed (only a bounded piece count). Changes to this schema require matching privacy tests. No test events should be sent to production to verify the SDK.
+
+Before distributing a release with analytics, App Store privacy disclosures must include User ID, Device ID, Product Interaction and Other Usage Data for Analytics, linked to the user, not used for tracking. Preserve the existing app-functionality disclosures. Privacy policy: https://capsule.gtfol.dev/privacy. TestFlight builds use the same configuration, with $is_testflight for filtering.

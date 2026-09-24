@@ -52,6 +52,7 @@ import SwiftUI
                 cutout = result.data
                 self.image = result.data
                 usingCutout = true
+                services.analytics.track(.backgroundRemoved)
             } catch {
                 guard !Task.isCancelled else { return }
                 isolationMessage = "couldn’t isolate this item. using the original photo."

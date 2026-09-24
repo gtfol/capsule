@@ -45,7 +45,7 @@ import AVFoundation
         .sheet(isPresented: $creating, onDismiss: { services.wardrobeReloadID = UUID() }) {
             if let userID = services.user?.id {
                 NavigationStack {
-                    OutfitBuilderView(model: OutfitBuilderModel(client: client, wardrobe: wardrobe, userID: userID, photos: services.modelPhotos, images: services.images)) { _ in
+                    OutfitBuilderView(model: OutfitBuilderModel(client: client, wardrobe: wardrobe, userID: userID, photos: services.modelPhotos, images: services.images, analytics: services.analytics)) { _ in
                         creating = false
                         // Detail can be opened from the refreshed grid after the sheet closes.
                         services.wardrobeReloadID = UUID()
