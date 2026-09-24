@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>accounts and sync</h2>
       <p>Signing in gives us your account identifier, name, email address, and authentication information from your sign-in provider. The capsule iPhone app uses the same capsule account. We use this information to authenticate you and operate account features.</p>
-      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. The capsule iPhone app sends the reviewed photo and item details when you select save to capsule. Your web model photo stays in this browser unless you send it for an outfit render.</p>
+      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. The capsule iPhone app sends the reviewed photo and item details when you select save to capsule. When signed in, your model photo is stored privately with your account and reused across the web and iPhone apps. Existing device-only model photos migrate when the account has no saved photo. Replacing or removing the photo syncs across devices; it is never included in public share links. Guest model photos stay in the browser.</p>
     </section>
     <section><h2>imports, sharing, and integrations</h2>
       <p>Pasting a product URL or refetching a price sends that URL to our server and the listing site so we can retrieve product information and images. External image hosts can receive requests when their photos are displayed.</p>

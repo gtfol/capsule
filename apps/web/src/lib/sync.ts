@@ -5,6 +5,7 @@ import { authClient } from "./auth-client";
 import { accountSpace, applySyncResponse, GUEST_SPACE, importGuestOnce, pendingChanges, subscribeToLocalChanges, syncCursor } from "./db";
 import { useWardrobe } from "./store";
 import type { SyncChange, SyncProviders, SyncResponse, SyncUser } from "./types";
+import { syncReferencePhoto } from "./model-photo-sync";
 import { identifyAccount, resetIdentity, track } from "./analytics";
 
 export type SyncStatus = "loading" | "disabled" | "signed-out" | "idle" | "syncing" | "offline" | "error";
@@ -208,6 +209,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         };
         if (navigator.locks) await navigator.locks.request(`capsule-sync:${space}`, exchange);
         else await exchange();
+        if (generation === sessionGeneration && get().user?.id === user.id) await syncReferencePhoto(user.id);
         if (generation === sessionGeneration && get().user?.id === user.id) {
           set({ status: "idle", lastSyncAt: Date.now(), error: conflicts ? "Changes made on two devices were kept as separate copies. A deletion that conflicted with an edit kept the edited item." : null });
         }

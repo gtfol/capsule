@@ -303,3 +303,11 @@ These scopes are issued only by the explicit native `access=outfits` grant, not 
 - `GET /api/v1/outfits/render/:key`: recover an attempt without resubmitting photos or causing another provider call. A pending attempt returns 202, success returns `{kind:"outfit-render",state:"saved",id,revision}`. Provider failures are recorded and never automatically retried; a new intentional render needs a new key. Pending attempts older than three minutes report `RENDER_INTERRUPTED`.
 
 Receipts contain no input photos, styling notes, API keys, or bearer tokens. Model photos remain on the iPhone; completed outfit images use the existing synced `outfits` collection. Requests from other accounts cannot read or mutate records or render receipts. Provider calls run outside database transactions, and a revoked token cannot commit a completed render.
+
+### Private model photo (native outfits)
+
+`GET /outfits/model-photo` requires `outfits:read` and returns `{ imageData, revision }` for the signed-in account. A never-set photo has `imageData: null, revision: 0`.
+
+`PUT /outfits/model-photo` requires `outfits:write` and accepts only `{ imageData, expectedRevision }`. Use a JPEG/PNG/WebP data URL of at most 1.5 MB decoded, or `null` to remove the photo. The server strips metadata and stores a JPEG up to 1200 px. Responses include the saved image and revision. A stale revision returns `409 REVISION_CONFLICT`; reload before replacing. Retrying the same body after an uncertain response is safe.
+
+The web and iPhone use this same private account photo. Removals retain a revision so old device copies do not restore deleted photos. Model photos are never added to share snapshots, and account deletion removes them. Agent tokens without native outfit scopes cannot access this endpoint.

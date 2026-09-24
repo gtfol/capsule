@@ -47,6 +47,7 @@ test("late session reads cannot undo sign-out and a new account syncs after an o
     const delayedSync = deferred<Response>();
     const accounts: string[] = [];
     handleFetch = async (_input, init) => {
+      if (String(_input) === "/api/model-photo") return Response.json({ imageData: null, revision: 0 });
       const request = JSON.parse(String(init?.body));
       accounts.push(request.expectedUserId);
       if (request.expectedUserId === first.id) { startedSync.resolve(); return delayedSync.promise; }
@@ -65,7 +66,7 @@ test("late session reads cannot undo sign-out and a new account syncs after an o
     assert.equal(useSyncStore.getState().user?.id, second.id);
     assert.equal(useWardrobe.getState().space, accountSpace(second.id));
     assert.deepEqual((await readSnapshot(accountSpace(second.id))).items, []);
-    handleFetch = async (input) => String(input).includes("get-session")
+    handleFetch = async (input) => String(input) === "/api/model-photo" ? Response.json({ imageData: null, revision: 0 }) : String(input).includes("get-session")
       ? Response.json({ user: { ...second, name: "Updated display name" }, session: { id: "current-session" } })
       : Response.json({ userId: second.id, results: [], rows: [], cursor: 0, hasMore: false });
     await useSyncStore.getState().refreshSession();

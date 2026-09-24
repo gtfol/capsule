@@ -1,9 +1,10 @@
 "use client";
 
 import { create } from "zustand";
-import { activateSpace, clearLegacyRenderKeys, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord, writeReferencePhoto } from "./db";
+import { activateSpace, clearLegacyRenderKeys, currentSpace, deleteWishlistRecord, GUEST_SPACE, moveWishlistToWardrobe, readSnapshot, removeRecord, subscribeToLocalChanges, updateWishlistRecord, writeRecord } from "./db";
 import type { Item, Outfit, WishlistItem } from "./types";
 import { track } from "./analytics";
+import { saveReferencePhoto } from "./model-photo-sync";
 
 interface WardrobeState {
   libraryGeneration: number;
@@ -138,6 +139,6 @@ export const useWardrobe = create<WardrobeState>((set, get) => {
         throw error;
       }
     },
-    setReferencePhoto: (data) => change((space) => writeReferencePhoto(space, data)),
+    setReferencePhoto: (data) => change((space) => saveReferencePhoto(space, data)),
   };
 });

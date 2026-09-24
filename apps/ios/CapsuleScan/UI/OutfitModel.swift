@@ -44,6 +44,7 @@ import SwiftUI
     let photos: any ModelPhotoStoring
     let images: any ImageProcessing
     private let defaults: UserDefaults
+    private var photoRevision: Int64?
     private var pendingMutation: WardrobeMutation?
     private var preference: String { "capsule.outfit-render.\(userID)" }
     var canRender: Bool { !loading && !rendering && !importingPhoto && pendingKey == nil && photo != nil && !selected.isEmpty && selected.count <= 6 && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && config?.enabled == true && config?.hasSavedKey == true }
@@ -56,7 +57,12 @@ import SwiftUI
         loading = true; error = nil
         defer { loading = false }
         do {
-            photo = try await photos.load(userID: userID)
+            var remote = try await client.modelPhoto()
+            if remote.revision == 0, let legacy = try await photos.load(userID: userID) {
+                do { remote = try await client.saveModelPhoto(legacy, revision: 0) }
+                catch OutfitError.conflict { remote = try await client.modelPhoto() }
+            }
+            try await applyPhoto(remote)
             config = try await client.config()
             var cursor: Int64 = 0, values: [String: RemoteWardrobeItem] = [:]
             while true {
@@ -84,9 +90,20 @@ import SwiftUI
             let prepared: Data?
             if let original { prepared = try await images.jpeg(original, maxEdge: 1200, quality: 0.82).data }
             else { prepared = nil }
-            try await photos.save(prepared, userID: userID)
-            photo = prepared
-        } catch { self.error = "couldn’t save this photo. try another." }
+            let revision: Int64
+            if let photoRevision { revision = photoRevision }
+            else { revision = try await client.modelPhoto().revision }
+            try await applyPhoto(client.saveModelPhoto(prepared, revision: revision))
+        } catch OutfitError.conflict {
+            if let current = try? await client.modelPhoto() { try? await applyPhoto(current) }
+            error = "your model photo changed on another device. choose it again to replace it."
+        } catch { self.error = "couldn’t sync your model photo. check your connection and try again." }
+    }
+    private func applyPhoto(_ remote: SyncedModelPhoto) async throws {
+        let data = try remote.decodedImage()
+        photo = data; photoRevision = remote.revision
+        // The server is authoritative; this is only a cache and legacy migration source.
+        try? await photos.save(data, userID: userID)
     }
     func render() async {
         guard canRender, let photo else { return }
