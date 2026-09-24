@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
-import { integrationCreateSchema as createSchema, integrationUpdateSchema as updateSchema, integrationPurchaseSchema as purchaseSchema } from "../integration-input";
+import { integrationCreateSchema as createSchema, integrationWishlistCreateSchema as wishlistCreateSchema, integrationUpdateSchema as updateSchema, integrationPurchaseSchema as purchaseSchema, integrationWishlistUpdateSchema as wishlistUpdateSchema, integrationPriceCheckSchema as priceCheckSchema } from "../integration-input";
 import { type Item, type WishlistItem } from "../types";
 import { findDuplicatePiece, productLinkKey } from "../piece-identity";
-import { createWishlistItem, normalizeListingUrl, recomputeWishlistPrice } from "../wishlist";
+import { applyPriceFetch, createWishlistItem, normalizeListingUrl, recomputeWishlistPrice, priceDropPercent, type PriceQuote } from "../wishlist";
 import { MAX_ITEM_IMAGE_CHARS } from "../image-limits";
 import { PHOTO_FIELDS, prepareIntegrationPhotos } from "./integration-photos";
 import { importProduct, type ProductImport } from "./product";
@@ -13,11 +13,12 @@ import { readLimitedJson } from "./render";
 import { createDatabaseLimiter } from "./request-limit";
 import { authenticateToken, bearerHash, digest, IntegrationError, integrationFailure, type IntegrationScope } from "./integration-tokens";
 
-type CreateInput = z.infer<typeof createSchema>;
+type CreateInput = z.infer<typeof wishlistCreateSchema>;
 type PurchaseInput = z.infer<typeof purchaseSchema>;
-type UpdateInput = z.infer<typeof updateSchema>;
+type UpdateInput = z.infer<typeof wishlistUpdateSchema>;
+type PriceCheckInput = z.infer<typeof priceCheckSchema>;
 type Row = { collection: "items" | "wishlist"; record: Item | WishlistItem; revision: string };
-type MutationResult = { id: string; collection: "wardrobe" | "wishlist"; duplicate: boolean; movedFrom?: string; sync: { status: "saved_to_cloud"; revision: number; devices: "pending" } };
+type MutationResult = { id: string; collection: "wardrobe" | "wishlist"; duplicate: boolean; movedFrom?: string; priceFetched?: boolean; sync: { status: "saved_to_cloud"; revision: number; devices: "pending" } };
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
   if (value && typeof value === "object") return `{${Object.entries(value).sort(([a],[b]) => a.localeCompare(b)).map(([key,entry]) => `${JSON.stringify(key)}:${canonical(entry)}`).join(",")}}`;
@@ -25,9 +26,9 @@ export function canonical(value: unknown): string {
 }
 const uuid = (value: string) => z.uuid().safeParse(value).success;
 const reply = (body: unknown, headers?: Record<string,string>) => Response.json(body, {headers: {"Cache-Control":"no-store", ...headers}});
-const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, backImageUrl: row.record.backImageUrl ?? "", sideImageUrl: row.record.sideImageUrl ?? "", description:row.record.description, createdAt:row.record.createdAt, updatedAt:row.record.updatedAt, photos: {front:!!(row.record.imageUrl || row.record.imageData),back:!!(row.record.backImageUrl || row.record.backImageData),side:!!(row.record.sideImageUrl || row.record.sideImageData)}, price: row.record.price, currency: row.record.currency });
+const summary = (row: Row) => ({ id: row.record.id, collection: row.collection === "items" ? "wardrobe" : "wishlist", revision: Number(row.revision), name: row.record.name, brand: row.record.brand, size: row.record.size, color: row.record.color, category: row.record.category, url: row.record.purchaseUrl, imageUrl: row.record.imageUrl, backImageUrl: row.record.backImageUrl ?? "", sideImageUrl: row.record.sideImageUrl ?? "", description:row.record.description, createdAt:row.record.createdAt, updatedAt:row.record.updatedAt, photos: {front:!!(row.record.imageUrl || row.record.imageData),back:!!(row.record.backImageUrl || row.record.backImageData),side:!!(row.record.sideImageUrl || row.record.sideImageData)}, price: row.record.price, currency: row.record.currency, ...(row.collection === "wishlist" ? {rating:(row.record as WishlistItem).rating, link_broken:(row.record as WishlistItem).link_broken, currentSourceUrl:(row.record as WishlistItem).currentSourceUrl, priceDrop:priceDropPercent(row.record as WishlistItem)} : {}) });
 // Lookup and deduplication do not load embedded photos or full price histories.
-const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','backImageUrl',record->'backImageUrl','sideImageUrl',record->'sideImageUrl','imageData',case when coalesce(record->>'imageData','')<>'' then 'present' else '' end,'backImageData',case when coalesce(record->>'backImageData','')<>'' then 'present' else '' end,'sideImageData',case when coalesce(record->>'sideImageData','')<>'' then 'present' else '' end,'price',record->'price','currency',record->'currency','description',record->'description','createdAt',record->'createdAt','updatedAt',record->'updatedAt') as record`;
+const metadata = `jsonb_build_object('id',id,'name',record->'name','brand',record->'brand','category',record->'category','size',record->'size','color',record->'color','purchaseUrl',record->'purchaseUrl','sourceKey',record->'sourceKey','sources',record->'sources','imageUrl',record->'imageUrl','backImageUrl',record->'backImageUrl','sideImageUrl',record->'sideImageUrl','imageData',case when coalesce(record->>'imageData','')<>'' then 'present' else '' end,'backImageData',case when coalesce(record->>'backImageData','')<>'' then 'present' else '' end,'sideImageData',case when coalesce(record->>'sideImageData','')<>'' then 'present' else '' end,'price',record->'price','currency',record->'currency','description',record->'description','createdAt',record->'createdAt','updatedAt',record->'updatedAt','rating',record->'rating','link_broken',record->'link_broken','currentSourceUrl',record->'currentSourceUrl','priceHistory',coalesce((select jsonb_agg(first_quote) from (select value as first_quote from jsonb_array_elements(coalesce(record->'priceHistory','[]'::jsonb)) where value->>'currency'=record->>'currency' order by (value->>'fetched_at')::numeric limit 1) baseline),'[]'::jsonb)) as record`;
 
 async function existingPieces(client: PoolClient, userId: string, collection: string): Promise<Row[]> {
   return (await client.query<Row>(`select collection, ${metadata}, revision from capsule_records where user_id=$1 and collection=$2 and coalesce((record->>'deletedAt')::bigint,0)=0`, [userId, collection])).rows;
@@ -84,7 +85,7 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
       } catch(error) { return integrationFailure(error); }
     },
-    async wardrobeItem(request: Request, id: string, view?: string) {
+    async wardrobeItem(request: Request, id: string, view?: string, collection: "items" | "wishlist" = "items") {
       try {
         const hash = bearerHash(request);
         const scopes: IntegrationScope[] = ["items:read"];
@@ -92,9 +93,9 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         await rate(token.user_id,false);
         if (!uuid(id) || (view !== undefined && !["front","back","side"].includes(view))) throw new IntegrationError("Invalid piece or photo.");
         return await locked(hash,token.user_id,scopes,async client => {
-          const row = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='items' and id=$2 and coalesce((record->>'deletedAt')::bigint,0)=0",[token.user_id,id])).rows[0];
+          const row = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection=$3 and id=$2 and coalesce((record->>'deletedAt')::bigint,0)=0",[token.user_id,id,collection])).rows[0];
           if (!row) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
-          if (!view) return reply({item:summary(row)});
+          if (!view) return reply({item:{...summary(row),...(collection === "wishlist" ? {sources:(row.record as WishlistItem).sources,priceHistory:(row.record as WishlistItem).priceHistory} : {})}});
           const field = view === "front" ? "imageData" : view === "back" ? "backImageData" : "sideImageData";
           const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(row.record[field] ?? "");
           if (!match) throw new IntegrationError("This photo is unavailable.",404,"NOT_FOUND");
@@ -102,24 +103,26 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
       } catch(error) { return integrationFailure(error); }
     },
-    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe" | "delete-wardrobe", id?: string) {
+    async write(request: Request, kind: "wishlist" | "wardrobe" | "purchase" | "update-wishlist" | "update-wardrobe" | "delete-wardrobe" | "delete-wishlist" | "wishlist-price", id?: string) {
       try {
         const hash = bearerHash(request);
-        const scopes: IntegrationScope[] = kind === "delete-wardrobe" ? ["wardrobe:delete"] : kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [(kind === "wishlist" || kind === "update-wishlist") ? "wishlist:write" : "wardrobe:write"];
+        const scopes: IntegrationScope[] = kind === "delete-wishlist" ? ["wishlist:delete"] : kind === "delete-wardrobe" ? ["wardrobe:delete"] : kind === "purchase" ? ["wishlist:write","wardrobe:write"] : [(kind === "wishlist" || kind === "update-wishlist" || kind === "wishlist-price") ? "wishlist:write" : "wardrobe:write"];
         const token = await authenticateToken(pool,hash,scopes);
         await rate(token.user_id,true);
         const key = request.headers.get("idempotency-key") ?? "";
         if (!/^[A-Za-z0-9._:-]{8,200}$/.test(key)) throw new IntegrationError("Send an Idempotency-Key of 8–200 letters, digits, dots, colons, underscores or hyphens.",400,"IDEMPOTENCY_KEY_REQUIRED");
         if (!request.headers.get("content-type")?.includes("application/json")) throw new IntegrationError("Send a JSON request.",415);
-        const deleting = kind === "delete-wardrobe";
+        const deleting = kind === "delete-wardrobe" || kind === "delete-wishlist";
+        const priceChecking = kind === "wishlist-price";
         const updating = kind === "update-wishlist" || kind === "update-wardrobe";
-        if ((kind === "purchase" || updating || deleting) && (!id || !uuid(id))) throw new IntegrationError("Invalid item ID.");
-        let parsed: CreateInput | PurchaseInput | UpdateInput;
-        try { const raw = await readLimitedJson(request.body,MAX_SYNC_BYTES); parsed = deleting ? z.object({expectedRevision:z.number().int().positive().safe()}).strict().parse(raw) : kind === "purchase" ? purchaseSchema.parse(raw) : updating ? updateSchema.parse(raw) : createSchema.parse(raw); }
+        if ((kind === "purchase" || updating || deleting || priceChecking) && (!id || !uuid(id))) throw new IntegrationError("Invalid item ID.");
+        let parsed: CreateInput | PurchaseInput | UpdateInput | PriceCheckInput;
+        try { const raw = await readLimitedJson(request.body,MAX_SYNC_BYTES); parsed = deleting ? z.object({expectedRevision:z.number().int().positive().safe()}).strict().parse(raw) : priceChecking ? priceCheckSchema.parse(raw) : kind === "purchase" ? purchaseSchema.parse(raw) : updating ? (kind === "update-wishlist" ? wishlistUpdateSchema : updateSchema).parse(raw) : (kind === "wishlist" ? wishlistCreateSchema : createSchema).parse(raw); }
         catch { throw new IntegrationError("Invalid or oversized request body. Check the integration documentation."); }
         const requestHash = digest(canonical({kind,id:id ?? null,body:parsed}));
         let imported: ProductImport | undefined;
         let photos: Partial<Item> | undefined;
+        let quote: PriceQuote | null | undefined;
         const perform = () => locked(hash,token.user_id,scopes,async client => {
           const saved = await client.query<{request_hash:string;response:MutationResult}>("select request_hash,response from capsule_integration_receipts where user_id=$1 and key=$2",[token.user_id,key]);
           if (saved.rows[0]) {
@@ -128,13 +131,26 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
           }
           let response: MutationResult;
           if (deleting) {
-            const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='items' and id=$2",[token.user_id,id])).rows[0];
+            const collection = kind === "delete-wishlist" ? "wishlist" : "items";
+            const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection=$3 and id=$2",[token.user_id,id,collection])).rows[0];
             if (!source || source.record.deletedAt) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
             if ((parsed as PurchaseInput).expectedRevision !== Number(source.revision)) throw new IntegrationError("This piece changed. Reload it before deleting.",409,"REVISION_CONFLICT");
             const now = Date.now();
             const record = {...source.record,deletedAt:now,updatedAt:now};
-            const removed = await client.query<{revision:string}>("update capsule_records set record=$3::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection='items' and id=$2 returning revision",[token.user_id,id,JSON.stringify(record)]);
-            response = result(record.id,"items",Number(removed.rows[0].revision),false);
+            const removed = await client.query<{revision:string}>("update capsule_records set record=$3::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection=$4 and id=$2 returning revision",[token.user_id,id,JSON.stringify(record),collection]);
+            response = result(record.id,collection,Number(removed.rows[0].revision),false);
+          } else if (priceChecking) {
+            const input = parsed as PriceCheckInput;
+            const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='wishlist' and id=$2",[token.user_id,id])).rows[0];
+            if (!source || source.record.deletedAt) throw new IntegrationError("This piece is missing or removed.",404,"NOT_FOUND");
+            if (input.expectedRevision !== Number(source.revision)) throw new IntegrationError("This piece changed. Reload it before checking its price.",409,"REVISION_CONFLICT");
+            if (quote === undefined) return null;
+            let item: WishlistItem;
+            try { item = applyPriceFetch(source.record as WishlistItem,input.url,quote); }
+            catch { throw new IntegrationError("This item has reached its listing or price history limit."); }
+            const record = validateRecord(token.user_id,"wishlist",{...item,updatedAt:Date.now()});
+            const updated = await client.query<{revision:string}>("update capsule_records set record=$3::jsonb,revision=nextval('capsule_sync_revision') where user_id=$1 and collection='wishlist' and id=$2 returning revision",[token.user_id,id,JSON.stringify(record)]);
+            response = {...result(record.id,"wishlist",Number(updated.rows[0].revision),false),priceFetched:quote !== null};
           } else if (kind === "purchase") {
             const input = parsed as PurchaseInput;
             const source = (await client.query<Row>("select collection,record,revision from capsule_records where user_id=$1 and collection='wishlist' and id=$2",[token.user_id,id])).rows[0];
@@ -180,11 +196,12 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
           } else {
             const input = parsed as CreateInput;
             if (!photos || (input.fetch && input.url && !imported)) return null; // Fetch outside the account lock.
-            const {url,fetch:_fetch,...fields} = input; void _fetch;
+            const {url,fetch:_fetch,rating,...fields} = input; void _fetch;
             const now = Date.now();
             const item: Item = {id:randomUUID(),name:"",brand:"",size:"",color:"",category:"tops",price:"",currency:"",description:"",purchaseUrl:url ?? "",imageUrl:"",...imported?.item,...fields,...photos,createdAt:now,updatedAt:now,deletedAt:null};
             const collection = kind === "wishlist" ? "wishlist" : "items";
-            const record = validateRecord(token.user_id,collection,collection === "wishlist" ? createWishlistItem(item,now,imported?.priceQuote) : item);
+            const candidate = collection === "wishlist" ? {...createWishlistItem(item,now,imported?.priceQuote),rating:rating ?? null} : item;
+            const record = validateRecord(token.user_id,collection,candidate);
             const candidates = await existingPieces(client,token.user_id,collection);
             const match = findDuplicatePiece(record,candidates.map(row=>row.record));
             const duplicate = candidates.find(row=>row.record.id === match?.id);
@@ -196,7 +213,10 @@ export function createIntegrationHandlers(pool: Pool, extract: (url: string) => 
         });
         const initial = await perform();
         if (initial) return initial;
-        if (kind !== "purchase") {
+        if (priceChecking) {
+          const input = parsed as PriceCheckInput;
+          try { quote = (await extract(input.url)).priceQuote ?? null; } catch { quote = null; }
+        } else if (kind !== "purchase") {
           const input = parsed as CreateInput | UpdateInput;
           if (PHOTO_FIELDS.reduce((size,[,data])=>size+(input[data]?.length ?? 0),0) > MAX_ITEM_IMAGE_CHARS) throw new IntegrationError("The combined uploaded photos are too large.");
           photos = await prepareIntegrationPhotos(input);

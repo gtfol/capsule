@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 
 export const INTEGRATION_SCOPES = ["items:read", "wishlist:write", "wardrobe:write"] as const;
-export type IntegrationScope = typeof INTEGRATION_SCOPES[number] | "wardrobe:delete";
+export type IntegrationScope = typeof INTEGRATION_SCOPES[number] | "wardrobe:delete" | "wishlist:delete";
 export const INTEGRATION_EXPIRIES = ["90d", "1y", "never"] as const;
 export type IntegrationExpiry = typeof INTEGRATION_EXPIRIES[number];
 export class IntegrationError extends Error {

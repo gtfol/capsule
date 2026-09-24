@@ -62,6 +62,12 @@ test("native sign-in: origin/account checks, PKCE, atomic single-use exchange, e
     const wardrobeLogin = await (await exchange(expandedCode)).json();
     assert.deepEqual(wardrobeLogin.scopes,["items:read","wardrobe:write","wardrobe:delete"]);
     assert.deepEqual((await authenticateToken(pool,digest(wardrobeLogin.token),["wardrobe:delete"])).scopes,wardrobeLogin.scopes);
+    const wishlistGrant = await authorize({...authorization,access:"wishlist"});
+    const wishlistCode = new URL((await wishlistGrant.json()).callbackURL).searchParams.get("code")!;
+    const wishlistLogin = await (await exchange(wishlistCode)).json();
+    assert.deepEqual(wishlistLogin.scopes,["items:read","wardrobe:write","wardrobe:delete","wishlist:write","wishlist:delete"]);
+    await authenticateToken(pool,digest(wishlistLogin.token),["wishlist:delete"]);
+    await assert.rejects(authenticateToken(pool,digest(wardrobeLogin.token),["wishlist:delete"]));
     const expired = await grant();
     await pool.query('update "verification" set "expiresAt"=now()-interval \'1 second\' where identifier=$1',[`capsule-scan:${digest(expired)}`]);
     assert.equal((await exchange(expired)).status,400);

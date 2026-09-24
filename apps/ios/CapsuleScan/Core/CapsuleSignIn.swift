@@ -25,7 +25,7 @@ struct CapsuleSignInRequest: Sendable {
     var challenge: String { Self.base64url(Data(SHA256.hash(data: Data(verifier.utf8)))) }
     var url: URL {
         var url = URLComponents(string: "https://capsule.gtfol.dev/scan/connect")!
-        url.queryItems = [URLQueryItem(name: "code_challenge", value: challenge), URLQueryItem(name: "state", value: state), URLQueryItem(name: "access", value: "wardrobe")]
+        url.queryItems = [URLQueryItem(name: "code_challenge", value: challenge), URLQueryItem(name: "state", value: state), URLQueryItem(name: "access", value: "wishlist")]
         return url.url!
     }
     func code(from callback: URL) throws -> String {

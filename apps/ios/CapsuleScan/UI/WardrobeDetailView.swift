@@ -16,6 +16,10 @@ import PhotosUI
     @State private var confirmClose = false
     @State private var confirmDelete = false
     @State private var confirmReload = false
+    @State private var confirmPurchase = false
+    @State private var loaded = false
+    private var isNew: Bool { model.item.revision == 0 }
+    private var title: String { isNew ? "add to wishlist" : "edit item" }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -25,6 +29,10 @@ import PhotosUI
                 photoPreview.frame(height: 300)
                 photoActions
                 fields
+                if model.collection == .wishlist {
+                    RatingPicker(rating: $model.edit.rating).disabled(model.busy)
+                    if !isNew { WishlistPrices(model: model) }
+                }
                 if let error = model.error {
                     Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
                     if model.needsSignIn { SignInButton() }
@@ -32,17 +40,24 @@ import PhotosUI
                 }
                 Button {
                     Task { if await model.save() { services.wardrobeReloadID = UUID(); dismiss() } }
-                } label: { HStack { Spacer(); if model.busy { ProgressView() }; Text(model.busy ? "saving…" : "save changes"); Spacer() } }
+                } label: { HStack { Spacer(); if model.saving { ProgressView() }; Text(model.saving ? "saving…" : (isNew ? "save to wishlist" : "save changes")); Spacer() } }
                     .capsulePrimaryAction().disabled(model.busy || model.processing || importing || !model.hasChanges)
-                Button("delete piece", role: .destructive) { confirmDelete = true }
-                    .font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).frame(minHeight: 44)
-                    .disabled(model.busy || model.processing || importing)
+                if !isNew {
+                    if model.collection == .wishlist {
+                        Button("move to wardrobe") { confirmPurchase = true }
+                            .font(CapsuleStyle.body).frame(minHeight: 44)
+                            .disabled(model.busy || model.processing || importing || model.hasChanges)
+                    }
+                    Button("delete piece", role: .destructive) { confirmDelete = true }
+                        .font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).frame(minHeight: 44)
+                        .disabled(model.busy || model.processing || importing)
+                }
             }.padding(20)
         }
         .capsuleScreen().scrollDismissesKeyboard(.interactively)
-        .navigationTitle("edit item").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(title).navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) { Text("edit item").font(CapsuleStyle.heading) }
+            ToolbarItem(placement: .principal) { Text(title).font(CapsuleStyle.heading) }
             ToolbarItem(placement: .cancellationAction) {
                 Button { if model.hasChanges { confirmClose = true } else { dismiss() } } label: { Image(systemName: "xmark").font(.system(size: 14)).frame(width: 44, height: 44) }.accessibilityLabel("close").disabled(model.busy || model.processing || importing)
             }.quietBackground()
@@ -56,10 +71,17 @@ import PhotosUI
         .confirmationDialog("delete this piece?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("delete piece", role: .destructive) { Task { if await model.remove() { services.wardrobeReloadID = UUID(); dismiss() } } }
             Button("cancel", role: .cancel) {}
-        } message: { Text("removed from your capsule wardrobe on every device.") }
+        } message: { Text("removed from your \(model.collection.rawValue) on every device.") }
         .confirmationDialog("reload and discard your changes?", isPresented: $confirmReload, titleVisibility: .visible) {
             Button("reload item", role: .destructive) { Task { await model.reload() } }
             Button("cancel", role: .cancel) {}
+        }
+        .confirmationDialog("move this piece to your wardrobe?", isPresented: $confirmPurchase, titleVisibility: .visible) {
+            Button("move to wardrobe") { Task { if await model.purchase() { services.wardrobeReloadID = UUID(); dismiss() } } }
+            Button("cancel", role: .cancel) {}
+        }
+        .task {
+            if !isNew && !loaded { loaded = true; await model.reload() }
         }
         .onChange(of: photo) { _, value in
             guard let value else { return }; let target = view
@@ -84,7 +106,7 @@ import PhotosUI
     @ViewBuilder private var photoPreview: some View {
         if let data = model.previews[view], let image = UIImage(data: data) { Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity) }
         else if model.edit.photos[view] == "" { Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).frame(maxWidth: .infinity) }
-        else { WardrobePhoto(item: model.item, view: view, client: client) }
+        else { WardrobePhoto(item: model.item, view: view, client: client, collection: model.collection) }
     }
     private var hasPhoto: Bool { model.previews[view] != nil || (model.edit.photos[view] != "" && model.item.hasPhoto(view)) }
     private var photoActions: some View {
@@ -120,7 +142,7 @@ import PhotosUI
             field("size", text: $model.edit.fields.size)
             field("price", text: $model.priceText, keyboard: .decimalPad)
             field("currency", text: $model.edit.fields.currency)
-            field("purchase link", text: $model.edit.url, keyboard: .URL)
+            field(model.collection == .wishlist ? "listing link" : "purchase link", text: $model.edit.url, keyboard: .URL)
             TextField("description", text: $model.edit.description, axis: .vertical).lineLimit(3...8).padding(.vertical, 16).accessibilityLabel("description")
         }.disabled(model.busy)
     }

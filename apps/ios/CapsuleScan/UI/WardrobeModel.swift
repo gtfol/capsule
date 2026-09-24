@@ -43,17 +43,22 @@ import SwiftUI
     @Published private(set) var previews: [GarmentView: Data] = [:]
     @Published private(set) var busy = false
     @Published private(set) var processing = false
+    @Published private(set) var saving = false
     @Published private(set) var error: String?
     @Published private(set) var conflict = false
     @Published private(set) var needsSignIn = false
     private var pending: WardrobeMutation?
     private var deletion: WardrobeMutation?
+    private var priceCheck: WardrobeMutation?
+    private var movement: WardrobeMutation?
+    let collection: CapsuleCollection
     private let client: any WardrobeServing
     private let images: any ImageProcessing
     private let isolation: any ImageIsolating
     private var originals: [GarmentView: Data] = [:]
     private var remoteOriginals: Set<GarmentView> = []
-    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating) {
+    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating, collection: CapsuleCollection = .wardrobe) {
+        self.collection = collection
         self.item = item; edit = WardrobeEdit(item: item); priceText = Price.display(item.fields.price)
         self.client = client; self.images = images; self.isolation = isolation
     }
@@ -103,19 +108,59 @@ import SwiftUI
     }
     func save() async -> Bool {
         guard !busy, !processing else { return false }
-        busy = true; error = nil; conflict = false; needsSignIn = false
-        defer { busy = false }
+        busy = true; saving = true; error = nil; conflict = false; needsSignIn = false
+        defer { busy = false; saving = false }
         do {
             var copy = edit; copy.fields.price = try Price.canonical(priceText)
-            let body = try copy.encoded(revision: item.revision)
+            let body = try copy.encoded(revision: item.revision, collection: collection)
             if pending?.body != body { pending = WardrobeMutation(body: body) }
-            do { try await client.update(id: item.id, mutation: pending!) }
+            do { try await submit() }
             catch ScanError.idempotencyConflict {
                 pending!.key = UUID().uuidString
-                try await client.update(id: item.id, mutation: pending!)
+                try await submit()
             }
             return true
         } catch { handle(error); return false }
+    }
+    private func submit() async throws {
+        if item.revision == 0 { _ = try await client.create(mutation: pending!) }
+        else { try await client.update(id: item.id, mutation: pending!) }
+    }
+    func checkPrice(url: String) async {
+        guard !busy, !processing, !hasChanges, item.revision > 0 else { return }
+        busy = true; error = nil; conflict = false; needsSignIn = false
+        defer { busy = false }
+        do {
+            let body = try JSONSerialization.data(withJSONObject: ["expectedRevision": item.revision, "url": url], options: [.sortedKeys])
+            if priceCheck?.body != body { priceCheck = WardrobeMutation(body: body) }
+            let fetched: Bool
+            do { fetched = try await client.checkPrice(id: item.id, mutation: priceCheck!) }
+            catch ScanError.idempotencyConflict {
+                priceCheck!.key = UUID().uuidString
+                fetched = try await client.checkPrice(id: item.id, mutation: priceCheck!)
+            }
+            let fresh = try await client.item(id: item.id)
+            apply(fresh); priceCheck = nil
+            if !fetched { error = "couldn’t check this link. your price history is unchanged." }
+        } catch { handle(error) }
+    }
+    func purchase() async -> Bool {
+        guard !busy, !processing, !hasChanges, item.revision > 0 else { return false }
+        busy = true; error = nil; conflict = false; needsSignIn = false
+        defer { busy = false }
+        do {
+            if movement == nil { movement = WardrobeMutation(body: try JSONEncoder().encode(["expectedRevision": item.revision])) }
+            do { _ = try await client.purchase(id: item.id, mutation: movement!) }
+            catch ScanError.idempotencyConflict {
+                movement!.key = UUID().uuidString
+                _ = try await client.purchase(id: item.id, mutation: movement!)
+            }
+            return true
+        } catch { handle(error); return false }
+    }
+    private func apply(_ fresh: RemoteWardrobeItem) {
+        item = fresh; edit = WardrobeEdit(item: fresh); priceText = Price.display(fresh.fields.price)
+        previews = [:]; originals = [:]; remoteOriginals = []; pending = nil; deletion = nil; movement = nil; conflict = false
     }
     func reload() async {
         guard !busy, !processing else { return }
@@ -123,8 +168,7 @@ import SwiftUI
         defer { busy = false }
         do {
             let fresh = try await client.item(id: item.id)
-            item = fresh; edit = WardrobeEdit(item: fresh); priceText = Price.display(fresh.fields.price)
-            previews = [:]; originals = [:]; remoteOriginals = []; pending = nil; deletion = nil; conflict = false
+            apply(fresh); priceCheck = nil
         } catch { handle(error) }
     }
     func remove() async -> Bool {
