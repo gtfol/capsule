@@ -26,7 +26,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>optional OpenAI processing</h2>
       <p>In the capsule iPhone app, adding a key and explicitly allowing photo processing sends newly selected garment photos directly to OpenAI to suggest details. Requests disable Responses API storage, but OpenAI’s provider retention policies still apply. Remove the key to stop this processing.</p>
-      <p>In the web app, selecting Render outfit sends your model photo, selected garment images, and render instructions through our server to OpenAI. Your own key authorizes the request, and OpenAI bills your account. Guest keys remain in memory for the page session. Keys saved to a capsule account are encrypted in our database; the server decrypts them when needed for rendering. Native app keys stay in Keychain.</p>
+      <p>In either app, selecting Render outfit sends your model photo, selected garment images, and render instructions through our server to OpenAI. Your own key authorizes the request, and OpenAI bills your account. Guest keys remain in memory for the page session. Keys saved to a capsule account are encrypted in our database; the server decrypts them when needed for rendering. The optional iPhone photo-detail extraction key stays in Keychain.</p>
       <p>See <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> for its handling of data.</p>
     </section>
     <section><h2>providers and analytics</h2>
