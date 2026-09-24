@@ -1,0 +1,19 @@
+apps/web/package-lock.json
+  s_0521f8d73d6032::t_419e5c6e3f3abf 467-478,489-499,1835-1847,2905-2970,3019-3029,3390-3606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "e8e9e897558b7d3b9f6f598efa43ccb29f6881bc",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
