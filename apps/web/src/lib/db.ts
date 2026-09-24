@@ -331,8 +331,35 @@ export async function writeReferencePhoto(space: string, image: string | null): 
   const done = completed(tx);
   if (await request(tx.objectStore("meta").get(metaKey(space, "account-deleted")))) { await done; throw new Error("This account was deleted."); }
   tx.objectStore("meta").put({ key: metaKey(space, "reference-photo"), value: image });
+  tx.objectStore("meta").put({ key: metaKey(space, "reference-photo-sync"), value: { token: crypto.randomUUID() } });
   await done;
   notify(space);
+}
+export interface ReferencePhotoState { imageData: string | null; revision: number | null; token: string | null; }
+export async function readReferencePhotoState(space: string): Promise<ReferencePhotoState> {
+  const db = await openDatabase(), tx = db.transaction("meta", "readonly"), meta = tx.objectStore("meta");
+  const [photo, state] = await Promise.all([
+    request(meta.get(metaKey(space, "reference-photo"))) as Promise<Meta | undefined>,
+    request(meta.get(metaKey(space, "reference-photo-sync"))) as Promise<Meta | undefined>,
+  ]);
+  const value = state?.value as { revision?: number; token?: string } | undefined;
+  return { imageData: typeof photo?.value === "string" ? photo.value : null, revision: value?.revision ?? null, token: value?.token ?? null };
+}
+export async function applyReferencePhoto(space: string, expected: ReferencePhotoState, photo: { imageData: string | null; revision: number }): Promise<void> {
+  const db = await openDatabase(), tx = db.transaction("meta", "readwrite"), done = completed(tx), meta = tx.objectStore("meta");
+  const [stored, state, deleted] = await Promise.all([
+    request(meta.get(metaKey(space, "reference-photo"))) as Promise<Meta | undefined>,
+    request(meta.get(metaKey(space, "reference-photo-sync"))) as Promise<Meta | undefined>,
+    request(meta.get(metaKey(space, "account-deleted"))),
+  ]);
+  const current = state?.value as { revision?: number; token?: string } | undefined;
+  // Ignore late responses after another tab edited the photo or the account was deleted.
+  if (!deleted && (current?.token ?? null) === expected.token && (stored?.value ?? null) === expected.imageData) {
+    meta.put({ key: metaKey(space, "reference-photo"), value: photo.imageData });
+    meta.put({ key: metaKey(space, "reference-photo-sync"), value: { revision: photo.revision, token: crypto.randomUUID() } });
+  }
+  await done;
+  notify(space, "remote");
 }
 export async function pendingChanges(space: string): Promise<SyncChange[]> {
   return (await listStored(space)).filter((row) => row.pendingToken).map((row) => ({
@@ -430,6 +457,7 @@ export async function deleteLibrary(space: string, guard: () => void): Promise<v
       else records.put({ ...row, record: libraryTombstone(row.collection, row.record), pendingToken: crypto.randomUUID() });
     }
     meta.delete(metaKey(space, "reference-photo"));
+    meta.delete(metaKey(space, "reference-photo-sync"));
     // Preserve share-management tokens and sync cursors. Deleting either could
     // lose control of public links or pull old records back into this browser.
     await done;

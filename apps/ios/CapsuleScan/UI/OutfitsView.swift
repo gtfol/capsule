@@ -218,7 +218,7 @@ import AVFoundation
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 0) {
                 Text("your model photo").font(CapsuleStyle.heading)
-                InfoButton(title: "your model photo", paragraphs: ["saved on this iPhone for your account and reused for future outfits. sent to OpenAI only when you render."])
+                InfoButton(title: "your model photo", paragraphs: ["saved to your account and synced across devices. reused for future outfits. sent to OpenAI only when you render."])
                 Spacer(minLength: 0)
                 if model.photo != nil {
                     photoMenu(icon: true)

@@ -10,7 +10,8 @@ import { SharePopover } from "@/components/share-popover";
 import { useWardrobe } from "@/lib/store";
 import { compressImage, imageSource } from "@/lib/images";
 import type { Outfit } from "@/lib/types";
-import { writeRecord, writeReferencePhoto } from "@/lib/db";
+import { saveReferencePhoto } from "@/lib/model-photo-sync";
+import { writeRecord } from "@/lib/db";
 import { renderCredentialPayload, type RenderCredential } from "@/lib/render-credential";
 import { track } from "@/lib/analytics";
 type RenderConfig = { enabled: boolean; requiresApiKey: boolean; provider: string; model: string };
@@ -36,7 +37,7 @@ export function Outfits({ onAdd, onSettings, credential, busy, setBusy, active =
       if (file.size > 20_000_000) throw new Error("Choose a model photo smaller than 20 MB.");
       const data = await compressImage(file, 1200, 0.82);
       if (useWardrobe.getState().space !== space || useWardrobe.getState().libraryGeneration !== libraryGeneration) throw new Error("Your library changed. Choose the photo again.");
-      await writeReferencePhoto(space, data);
+      await saveReferencePhoto(space, data);
       track("model_photo_set");
     }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Your model photo could not be saved."); throw cause; }
@@ -71,7 +72,7 @@ export function Outfits({ onAdd, onSettings, credential, busy, setBusy, active =
   }
   const builder = creating || outfits.length === 0;
   const modelPhotoPanel = <aside aria-label="Your model photo" className="self-start">
-    <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1"><h2 className="text-[12px]">Your model photo</h2>{active && <InfoTooltip label="About your model photo">Saved in this browser and reused for future outfits. Sent with your selected pieces to OpenAI only when you select Render outfit.</InfoTooltip>}</div>{referencePhoto && <div role="group" aria-label="Model photo actions" className="-my-2 -mr-2 flex shrink-0 items-center gap-1"><ModelPhotoPicker key={space} active={active} hasPhoto busy={busy || photoBusy} onSelect={selectPhoto} /><IconAction label="Remove model photo" tooltip="Remove photo" icon={Trash2} disabled={busy || photoBusy} onClick={() => { void setReferencePhoto(null).catch(() => setError("Your model photo could not be removed.")); }} /></div>}</div>
+    <div className="flex items-center justify-between gap-3"><div className="flex items-center gap-1"><h2 className="text-[12px]">Your model photo</h2>{active && <InfoTooltip label="About your model photo">{space === "guest" ? "Saved in this browser." : "Saved to your account and synced across devices."} Reused for future outfits. Sent with your selected pieces to OpenAI only when you select Render outfit.</InfoTooltip>}</div>{referencePhoto && <div role="group" aria-label="Model photo actions" className="-my-2 -mr-2 flex shrink-0 items-center gap-1"><ModelPhotoPicker key={space} active={active} hasPhoto busy={busy || photoBusy} onSelect={selectPhoto} /><IconAction label="Remove model photo" tooltip="Remove photo" icon={Trash2} disabled={busy || photoBusy} onClick={() => { void setReferencePhoto(null).catch(() => setError("Your model photo could not be removed.")); }} /></div>}</div>
     <p className="mt-2 text-[11px] leading-relaxed text-subtle">A full-body photo or mirror selfie, facing the camera and visible from head to toe.</p>
     {referencePhoto ? <div className="mt-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}

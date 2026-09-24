@@ -4,6 +4,16 @@ import XCTest
 
 actor OutfitStub: OutfitServing {
     var outfit = outfitFixture()
+    var modelPhotoValue = SyncedModelPhoto(imageData: nil, revision: 0)
+    var modelPhotoWrites = 0
+    func modelPhoto() -> SyncedModelPhoto { modelPhotoValue }
+    func saveModelPhoto(_ photo: Data?, revision: Int64) throws -> SyncedModelPhoto {
+        guard revision == modelPhotoValue.revision else { throw OutfitError.conflict }
+        modelPhotoWrites += 1
+        modelPhotoValue = .init(imageData: photo.map { "data:image/jpeg;base64," + $0.base64EncodedString() }, revision: revision + 1)
+        return modelPhotoValue
+    }
+    func remotePhoto(_ photo: Data?, revision: Int64) { modelPhotoValue = .init(imageData: photo.map { "data:image/jpeg;base64," + $0.base64EncodedString() }, revision: revision) }
     var mutations: [WardrobeMutation] = []
     var statusKeys: [String] = []
     var failure: OutfitError? = .offline
@@ -35,6 +45,42 @@ actor OutfitPiecesStub: WardrobeServing {
     func remove(id: String, mutation: WardrobeMutation) {}
 }
 @MainActor final class OutfitModelTests: XCTestCase {
+    func testModelPhotoSyncLoadsWebPhotoAndRespectsRemoteRemovalAndConflicts() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let client = OutfitStub(), photos = ModelPhotoStore(directory: directory)
+        let old = try CoreTests.fixtureImage(width: 10, height: 20), web = try CoreTests.fixtureImage(width: 30, height: 40)
+        try await photos.save(old, userID: "owner")
+        await client.remotePhoto(web, revision: 10)
+        let model = OutfitBuilderModel(client: client, wardrobe: OutfitPiecesStub(), userID: "owner", photos: photos, images: ImageProcessor(), defaults: defaults)
+        await model.load()
+        XCTAssertEqual(model.photo, web)
+        var writes = await client.modelPhotoWrites; XCTAssertEqual(writes, 0)
+        await client.remotePhoto(nil, revision: 11)
+        await model.load(); XCTAssertNil(model.photo)
+        let cached = try await photos.load(userID: "owner"); XCTAssertNil(cached)
+        writes = await client.modelPhotoWrites; XCTAssertEqual(writes, 0)
+        await model.setPhoto(old)
+        let uploaded = await client.modelPhotoValue
+        XCTAssertNotNil(uploaded.imageData); XCTAssertEqual(uploaded.revision, 12)
+        await client.remotePhoto(web, revision: 13)
+        await model.setPhoto(nil)
+        XCTAssertEqual(model.photo, web); XCTAssertNotNil(model.error)
+        let remote = await client.modelPhotoValue; XCTAssertEqual(remote.revision, 13)
+    }
+    func testLegacyPhonePhotoMigratesOnlyToNeverSetAccount() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), suite = UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let client = OutfitStub(), photos = ModelPhotoStore(directory: directory)
+        let original = try CoreTests.fixtureImage(width: 10, height: 20)
+        try await photos.save(original, userID: "owner")
+        let model = OutfitBuilderModel(client: client, wardrobe: OutfitPiecesStub(), userID: "owner", photos: photos, images: ImageProcessor(), defaults: defaults)
+        await model.load(); await model.load()
+        let writes = await client.modelPhotoWrites; XCTAssertEqual(writes, 1)
+        XCTAssertEqual(model.photo, original)
+    }
     func testRefreshUpdatesExistingOutfitAndItsPhoto() async {
         let client = OutfitStub(), model = OutfitLibraryModel()
         await model.refresh(client: client)

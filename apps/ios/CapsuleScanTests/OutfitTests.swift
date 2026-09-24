@@ -10,6 +10,24 @@ func outfitFixture() -> RemoteOutfit {
     .init(id: UUID().uuidString, name: "weekend", itemIds: [], createdAt: 1, updatedAt: 2, revision: 12)
 }
 final class OutfitTests: XCTestCase {
+    func testModelPhotoEndpointKeepsAccountAuthAndEncodesRemovalAsNull() async throws {
+        let credentials = MemoryCredentials()
+        try await credentials.storeCapsuleLogin(.init(token: "test-only", user: .init(id: "owner", name: "owner")))
+        let response = Data(#"{"imageData":null,"revision":15}"#.utf8)
+        let http = WardrobeHTTP([.init(data: response, status: 200), .init(data: response, status: 200)])
+        let client = CapsuleOutfitClient(credentials: credentials, transport: http, expectedUserID: "owner")
+        let photo = try await client.modelPhoto(); XCTAssertNil(try photo.decodedImage())
+        _ = try await client.saveModelPhoto(nil, revision: 14)
+        let requests = await http.requests
+        XCTAssertEqual(requests[0].url?.path, "/api/v1/outfits/model-photo")
+        XCTAssertEqual(requests[1].httpMethod, "PUT")
+        XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer test-only" })
+        let body = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(requests[1].httpBody)) as? [String: Any])
+        XCTAssertTrue(body["imageData"] is NSNull); XCTAssertEqual(body["expectedRevision"] as? Int, 14)
+        XCTAssertEqual(Set(body.keys), ["imageData", "expectedRevision"])
+        XCTAssertThrowsError(try SyncedModelPhoto(imageData: "https://example.test/photo.jpg", revision: 3).decodedImage())
+    }
+
     func testRenderAndRecoveryUseAuthenticatedEndpointsAndStableKey() async throws {
         let vault = MemoryCredentials(); try await vault.storeCapsuleLogin(.init(token: "test-only", user: .init(id: "owner", name: "owner")))
         let outfit = outfitFixture()

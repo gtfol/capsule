@@ -17,7 +17,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>accounts and sync</h2>
       <p>Signing in gives us your account identifier, name, email address, and authentication information from your sign-in provider. The capsule iPhone app uses the same capsule account. We use this information to authenticate you and operate account features.</p>
-      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. The capsule iPhone app sends the reviewed photo and item details when you select save to capsule. Your web model photo stays in this browser unless you send it for an outfit render.</p>
+      <p>With sync enabled, wardrobe and wishlist records, their photos and links, ratings, price history, and saved outfits are stored with your account. The capsule iPhone app sends the reviewed photo and item details when you select save to capsule. When signed in, your model photo is stored privately with your account and reused across the web and iPhone apps. Existing device-only model photos migrate when the account has no saved photo. Replacing or removing the photo syncs across devices; it is never included in public share links. Guest model photos stay in the browser.</p>
     </section>
     <section><h2>imports, sharing, and integrations</h2>
       <p>Pasting a product URL or refetching a price sends that URL to our server and the listing site so we can retrieve product information and images. External image hosts can receive requests when their photos are displayed.</p>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
     </section>
     <section><h2>optional OpenAI processing</h2>
       <p>In the capsule iPhone app, adding a key and explicitly allowing photo processing sends newly selected garment photos directly to OpenAI to suggest details. Requests disable Responses API storage, but OpenAI’s provider retention policies still apply. Remove the key to stop this processing.</p>
-      <p>In the web app, selecting Render outfit sends your model photo, selected garment images, and render instructions through our server to OpenAI. Your own key authorizes the request, and OpenAI bills your account. Guest keys remain in memory for the page session. Keys saved to a capsule account are encrypted in our database; the server decrypts them when needed for rendering. Native app keys stay in Keychain.</p>
+      <p>In either app, selecting Render outfit sends your model photo, selected garment images, and render instructions through our server to OpenAI. Your own key authorizes the request, and OpenAI bills your account. Guest keys remain in memory for the page session. Keys saved to a capsule account are encrypted in our database; the server decrypts them when needed for rendering. The optional iPhone photo-detail extraction key stays in Keychain.</p>
       <p>See <a href="https://openai.com/policies/privacy-policy/">OpenAI’s privacy policy</a> for its handling of data.</p>
     </section>
     <section><h2>providers and analytics</h2>

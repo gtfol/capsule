@@ -10,6 +10,18 @@ struct RemoteOutfit: Codable, Equatable, Identifiable, Sendable {
     let revision: Int64
 }
 struct OutfitPage: Decodable, Sendable { let outfits: [RemoteOutfit]; let cursor: Int64; let hasMore: Bool }
+struct SyncedModelPhoto: Codable, Sendable {
+    let imageData: String?
+    let revision: Int64
+    func decodedImage() throws -> Data? {
+        guard revision >= 0 else { throw OutfitError.unavailable }
+        guard let imageData else { return nil }
+        let prefix = "data:image/jpeg;base64,"
+        guard imageData.hasPrefix(prefix), imageData.utf8.count <= 2_100_000,
+              let data = Data(base64Encoded: String(imageData.dropFirst(prefix.count))), !data.isEmpty else { throw OutfitError.unavailable }
+        return data
+    }
+}
 struct OutfitConfig: Decodable, Sendable {
     let enabled: Bool
     let model: String
@@ -45,6 +57,8 @@ protocol OutfitServing: Sendable {
     func photo(item: RemoteOutfit) async throws -> Data
     func update(id: String, mutation: WardrobeMutation) async throws
     func remove(id: String, mutation: WardrobeMutation) async throws
+    func modelPhoto() async throws -> SyncedModelPhoto
+    func saveModelPhoto(_ photo: Data?, revision: Int64) async throws -> SyncedModelPhoto
     func config() async throws -> OutfitConfig
     func saveKey(_ value: String?) async throws
     func render(mutation: WardrobeMutation) async throws -> OutfitRenderReceipt
@@ -116,6 +130,26 @@ struct CapsuleOutfitClient: OutfitServing {
     }
     func update(id: String, mutation: WardrobeMutation) async throws { try await mutate(id: id, method: "PATCH", mutation: mutation) }
     func remove(id: String, mutation: WardrobeMutation) async throws { try await mutate(id: id, method: "DELETE", mutation: mutation) }
+    func modelPhoto() async throws -> SyncedModelPhoto {
+        let value = try decode(SyncedModelPhoto.self, response: await request("/model-photo"))
+        _ = try value.decodedImage()
+        return value
+    }
+    func saveModelPhoto(_ photo: Data?, revision: Int64) async throws -> SyncedModelPhoto {
+        struct Body: Encodable { let imageData: String?; let expectedRevision: Int64
+            enum CodingKeys: String, CodingKey { case imageData, expectedRevision }
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(imageData, forKey: .imageData)
+                try container.encode(expectedRevision, forKey: .expectedRevision)
+            }
+        }
+        guard revision >= 0, (photo?.count ?? 0) <= 1_500_000 else { throw OutfitError.invalid }
+        let body = Body(imageData: photo.map { "data:image/jpeg;base64," + $0.base64EncodedString() }, expectedRevision: revision)
+        let value = try decode(SyncedModelPhoto.self, response: await request("/model-photo", method: "PUT", body: JSONEncoder().encode(body)))
+        _ = try value.decodedImage()
+        return value
+    }
     func config() async throws -> OutfitConfig { try decode(OutfitConfig.self, response: await request("/config")) }
     func saveKey(_ value: String?) async throws {
         let values = value.map { ["apiKey": $0] } ?? [:]
