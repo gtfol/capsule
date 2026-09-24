@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor final class OutfitLibraryModel: ObservableObject {
     @Published private(set) var items: [RemoteOutfit] = []
+    @Published private(set) var photoReloadID = UUID()
     @Published private(set) var loading = false
     @Published var error: String?
     @Published private(set) var reconnect = false
@@ -21,6 +22,7 @@ import SwiftUI
                 cursor = page.cursor
             }
             items = records.values.sorted { $0.createdAt > $1.createdAt }
+            photoReloadID = UUID()
         } catch is CancellationError {} catch { reconnect = error as? OutfitError == .reconnect; self.error = error.localizedDescription }
     }
 }

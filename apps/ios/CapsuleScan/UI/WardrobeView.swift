@@ -153,6 +153,7 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
                 WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection), client: client)
             }
         }
+        .environment(\.wardrobePhotoRefreshID, model.photoReloadID)
     }
     private func categoryButton(_ title: String, value: GarmentCategory?) -> some View {
         Button { category = value } label: {
@@ -161,7 +162,17 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
     }
 }
 
-// Memory-only, bounded cache; keys include account, revision, and view. No offline library.
+struct WardrobePhotoRefreshKey: EnvironmentKey {
+    static let defaultValue: UUID? = nil
+}
+extension EnvironmentValues {
+    var wardrobePhotoRefreshID: UUID? {
+        get { self[WardrobePhotoRefreshKey.self] }
+        set { self[WardrobePhotoRefreshKey.self] = newValue }
+    }
+}
+
+// Memory-only, bounded cache; keys include account, revision, view, and refresh. No offline library.
 actor WardrobePhotoCache {
     static let shared = WardrobePhotoCache()
     private var generation = UUID()
@@ -189,6 +200,7 @@ actor WardrobePhotoCache {
     let view: GarmentView
     let client: any WardrobeServing
     var collection: CapsuleCollection = .wardrobe
+    @Environment(\.wardrobePhotoRefreshID) private var refreshID
     @State private var image: UIImage?
     @State private var failed = false
     @State private var attempt = 0
@@ -202,10 +214,10 @@ actor WardrobePhotoCache {
             else { Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
         }
         .clipped()
-        .task(id: "\(services.user?.id ?? ""):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(attempt)") {
+        .task(id: "\(services.user?.id ?? ""):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(refreshID?.uuidString ?? ""):\(attempt)") {
             image = nil; failed = false
             guard item.hasPhoto(view), let userID = services.user?.id else { return }
-            let key = "\(userID):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue)"
+            let key = "\(userID):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(refreshID?.uuidString ?? "")"
             do {
                 let data = try await WardrobePhotoCache.shared.load(key: key) { try await client.photo(item: item, view: view) }
                 guard !Task.isCancelled, services.user?.id == userID else { return }

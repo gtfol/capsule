@@ -31,6 +31,7 @@ actor OutfitStub: OutfitServing {
     func remove(id: String, mutation: WardrobeMutation) throws { mutations.append(mutation); if let failure { throw failure } }
     func render(mutation: WardrobeMutation) throws -> OutfitRenderReceipt { mutations.append(mutation); if let failure { throw failure }; return .init(state: "saved", id: outfit.id, revision: outfit.revision) }
     func renderStatus(key: String) throws -> OutfitRenderReceipt { statusKeys.append(key); if let statusFailure { throw statusFailure }; return .init(state: "saved", id: outfit.id, revision: outfit.revision) }
+    func rename(_ name: String) { outfit.name = name }
     func fail(_ value: OutfitError?) { failure = value }
     func failStatus(_ value: OutfitError?) { statusFailure = value }
     func failItem(_ value: OutfitError?) { itemFailure = value }
@@ -79,6 +80,15 @@ actor OutfitPiecesStub: WardrobeServing {
         await model.load(); await model.load()
         let writes = await client.modelPhotoWrites; XCTAssertEqual(writes, 1)
         XCTAssertEqual(model.photo, original)
+    }
+    func testRefreshUpdatesExistingOutfitAndItsPhoto() async {
+        let client = OutfitStub(), model = OutfitLibraryModel()
+        await model.refresh(client: client)
+        let previous = model.photoReloadID
+        await client.rename("updated on web")
+        await model.refresh(client: client)
+        XCTAssertEqual(model.items.first?.name, "updated on web")
+        XCTAssertNotEqual(model.photoReloadID, previous)
     }
     func testCompletedRenderKeepsReceiptWhenLoadingResultFails() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), suite = UUID().uuidString

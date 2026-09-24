@@ -94,7 +94,7 @@ struct CapsuleWardrobeClient: WardrobeServing {
         guard let login = try await credentials.capsuleLogin(), login.user.id == expectedUserID else { throw WardrobeError.reconnect }
         var components = URLComponents(url: CapsuleDestination.baseURL.appendingPathComponent(path), resolvingAgainstBaseURL: false)!
         if !query.isEmpty { components.queryItems = query }
-        var request = URLRequest(url: components.url!)
+        var request = URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData)
         request.httpMethod = method
         request.setValue("Bearer \(login.token)", forHTTPHeaderField: "Authorization")
         if let mutation {
@@ -144,7 +144,7 @@ struct CapsuleWardrobeClient: WardrobeServing {
             // Public product images go through Capsule's SSRF-protected proxy. No account token is sent.
             var components = URLComponents(string: "https://capsule.gtfol.dev/api/image")!
             components.queryItems = [.init(name: "url", value: url)]
-            let result = try await transport.send(URLRequest(url: components.url!))
+            let result = try await transport.send(URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData))
             guard (200..<300).contains(result.status) else { throw WardrobeError.unavailable }
             return result.data
         }

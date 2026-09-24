@@ -56,11 +56,13 @@ import AVFoundation
         .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { outfit in
             NavigationStack { OutfitDetailView(model: OutfitDetailModel(outfit: outfit, client: client), wardrobe: wardrobe) }
         }
+        .environment(\.wardrobePhotoRefreshID, model.photoReloadID)
     }
 }
 
 @MainActor struct OutfitPhoto: View {
     @EnvironmentObject private var services: AppServices
+    @Environment(\.wardrobePhotoRefreshID) private var refreshID
     let outfit: RemoteOutfit
     let client: any OutfitServing
     @State private var image: UIImage?
@@ -73,11 +75,11 @@ import AVFoundation
             else if failed { Button { attempt += 1 } label: { Image(systemName: "arrow.clockwise").frame(width: 44, height: 44) }.accessibilityLabel("reload outfit photo") }
             else { ProgressView().controlSize(.small) }
         }.accessibilityLabel(outfit.name)
-        .task(id: "\(services.user?.id ?? ""):\(outfit.id):\(outfit.revision):\(attempt)") {
+        .task(id: "\(services.user?.id ?? ""):\(outfit.id):\(outfit.revision):\(refreshID?.uuidString ?? ""):\(attempt)") {
             image = nil; failed = false
             guard let userID = services.user?.id else { return }
             do {
-                let data = try await WardrobePhotoCache.shared.load(key: "\(userID):outfit:\(outfit.id):\(outfit.revision)") { try await client.photo(item: outfit) }
+                let data = try await WardrobePhotoCache.shared.load(key: "\(userID):outfit:\(outfit.id):\(outfit.revision):\(refreshID?.uuidString ?? "")") { try await client.photo(item: outfit) }
                 guard !Task.isCancelled, services.user?.id == userID else { return }
                 image = UIImage(data: data); failed = image == nil
             } catch { if !Task.isCancelled { failed = true } }

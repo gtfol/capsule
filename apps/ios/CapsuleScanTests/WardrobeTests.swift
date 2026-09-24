@@ -46,6 +46,7 @@ final class WardrobeTests: XCTestCase {
         XCTAssertTrue(page.hasMore); XCTAssertEqual(page.cursor, 123)
         let data = try await client.photo(item: item, view: .side); XCTAssertEqual(data, Data([1, 2]))
         let requests = await http.requests
+        XCTAssertTrue(requests.allSatisfy { $0.cachePolicy == .reloadIgnoringLocalCacheData })
         XCTAssertEqual(requests[0].url?.query, "collection=wardrobe&cursor=12")
         XCTAssertTrue(requests[1].url!.path.hasSuffix("/photos/side"))
         XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer test-only" })
@@ -61,6 +62,7 @@ final class WardrobeTests: XCTestCase {
         XCTAssertNil(requests[1].value(forHTTPHeaderField: "Authorization"))
         XCTAssertEqual(requests[1].url?.host, "capsule.gtfol.dev")
         XCTAssertEqual(requests[1].url?.path, "/api/image")
+        XCTAssertEqual(requests[1].cachePolicy, .reloadIgnoringLocalCacheData)
     }
     func testErrorMappingAndStableMutationHeaders() async throws {
         let credentials = MemoryCredentials()
