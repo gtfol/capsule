@@ -1,0 +1,21 @@
+apps/web/src/lib/server/model-photo-api.ts
+  s_0521f8d73d6032::t_bd824754c71aaf 23-25,78
+apps/web/src/lib/server/model-photo-route.ts
+  s_0521f8d73d6032::t_27c8b6758a605b 2,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "0d3bbd16f8b21fd770a75e825a58e819af4c986a",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
