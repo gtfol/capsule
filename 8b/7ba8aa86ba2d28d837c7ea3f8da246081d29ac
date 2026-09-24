@@ -1,0 +1,73 @@
+.github/workflows/web.yml
+  s_0521f8d73d6032::t_d80df7cb89b46b 21-31,42
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_09bc5cb4e580c4 74-79,146-151,194-205,250,256,309-312,357-360,364,395-402,406
+apps/ios/CapsuleScan/AppServices.swift
+  s_0521f8d73d6032::t_e9240cfc8be451 23-27,56,77
+apps/ios/CapsuleScan/Core/CapsuleSignIn.swift
+  s_0521f8d73d6032::t_43530750789038 28
+apps/ios/CapsuleScan/Core/WardrobeLibrary.swift
+  s_0521f8d73d6032::t_dd5e79c7b6eaf9 3-13,33-38,63,67,79-86,92,128,134,140,158,162-186,195-197,200-201,209-219,226-234
+apps/ios/CapsuleScan/Core/Wishlist.swift
+  s_0521f8d73d6032::t_93d8ef2eb07ff9 1-31
+apps/ios/CapsuleScan/UI/WardrobeDetailView.swift
+  s_0521f8d73d6032::t_26ce5a79026368 19-22,32-35,43,45-54,58,60,74,79-85,109,145
+apps/ios/CapsuleScan/UI/WardrobeModel.swift
+  s_0521f8d73d6032::t_87af7560d0fe5c 46,52-54,60-61,111-112,115,117,120-156,161-164,171
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_8ba200128cc356 7-8,14-23,33,36,41,44-62,79,81,83,92-99,111,119,122-128,141,179,193,196
+apps/ios/CapsuleScan/UI/WishlistViews.swift
+  s_0521f8d73d6032::t_7eec84e18baf30 1-142
+apps/ios/CapsuleScanTests/WishlistModelTests.swift
+  s_0521f8d73d6032::t_9a6632b1c58aa9 1-60
+apps/ios/CapsuleScanTests/WishlistTests.swift
+  s_0521f8d73d6032::t_8204cebca236c7 1-67
+apps/ios/README.md
+  s_0521f8d73d6032::t_ea2eebabcde1cc 3,18,30-37,40
+apps/ios/docs/verification.md
+  s_0521f8d73d6032::t_50689ad45bb2b9 54-61
+apps/web/db/migrations/20260924_native_wishlist.sql
+  s_0521f8d73d6032::t_630c85f29d0c32 1-5
+apps/web/db/schema.sql
+  s_0521f8d73d6032::t_b94320c3b1e28f 167
+apps/web/docs/scan-sign-in.md
+  s_0521f8d73d6032::t_db80f079990ccf 1,5-6,8-9,11,24-37
+apps/web/src/app/api/v1/wishlist/[id]/photos/[view]/route.ts
+  s_0521f8d73d6032::t_83c01506633b4b 1-7
+apps/web/src/app/api/v1/wishlist/[id]/price/route.ts
+  s_0521f8d73d6032::t_5cd62ebe4a68a4 1-7
+apps/web/src/app/api/v1/wishlist/[id]/route.ts
+  s_0521f8d73d6032::t_2b9706378797b3 5-7
+apps/web/src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_8bc05b483aefa4 5,39
+apps/web/src/lib/integration-input.ts
+  s_0521f8d73d6032::t_39168b30d1f89d 18-22,25-29
+apps/web/src/lib/server/integration-api.ts
+  s_0521f8d73d6032::t_1b17af2bf955af 4,7,16,18-19,21,29,31,88,96,98,106,109,115-116,118-120,125,134-135,140-153,199,203-204,216-219
+apps/web/src/lib/server/integration-routes.ts
+  s_0521f8d73d6032::t_fd711e06a236c6 8,11
+apps/web/src/lib/server/integration-tokens.ts
+  s_0521f8d73d6032::t_afa1774bae40fd 5
+apps/web/src/lib/server/scan-auth.ts
+  s_0521f8d73d6032::t_dd9894a1fa71d7 9,54,58
+apps/web/tests/native-wishlist.test.ts
+  s_0521f8d73d6032::t_c1b375309b666e 1-66
+apps/web/tests/scan-auth.test.ts
+  s_0521f8d73d6032::t_2cb343f29d4a35 65-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8b7ba8aa86ba2d28d837c7ea3f8da246081d29ac",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
