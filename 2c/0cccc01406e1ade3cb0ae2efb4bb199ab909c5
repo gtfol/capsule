@@ -1,0 +1,29 @@
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_d8d273c842164b 158-163,298,413-416,436,594,614
+apps/ios/CapsuleScan/UI/SettingsView.swift
+  s_0521f8d73d6032::t_5ed17366e2f1a5 81-84
+apps/ios/CapsuleScan/UI/SupportLink.swift
+  s_0521f8d73d6032::t_3981a840782f67 1-24
+apps/ios/docs/verification.md
+  s_0521f8d73d6032::t_941a52275e10d2 3,10
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_d20a9bba372f74 47
+apps/ios/scripts/test-ios.sh
+  s_0521f8d73d6032::t_6c0070d1af7b1d 5,20-21,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "2c0cccc01406e1ade3cb0ae2efb4bb199ab909c5",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
