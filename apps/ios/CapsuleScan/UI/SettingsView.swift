@@ -77,6 +77,10 @@ import SwiftUI
                         SignInButton().frame(minHeight: 44)
                     }
                 }
+                HStack(spacing: 0) {
+                    Toggle("usage analytics", isOn: Binding(get: { services.analyticsEnabled }, set: { services.setAnalyticsEnabled($0) }))
+                    InfoButton(title: "usage analytics", paragraphs: ["helps improve capsule with screen visits and feature usage. linked to your account when signed in. no photos, item details, or keys.", "turn off anytime on this iphone. no screen recording or advertising."])
+                }
                 VStack(alignment: .leading, spacing: 0) {
                     SupportLink()
                     Link("terms of service", destination: URL(string: "https://capsule.gtfol.dev/terms")!).frame(minHeight: 44)
@@ -96,7 +100,7 @@ import SwiftUI
         .navigationTitle("settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .principal) { Text("settings").font(CapsuleStyle.heading) } }
-        .task { await services.refreshCredentials() }
+        .task { services.analytics.track(.screen(.settings)); await services.refreshCredentials() }
         .onDisappear { visionKey = "" }
         .alert("send photos to OpenAI?", isPresented: $confirmVision) {
             Button("allow") { update(remove: false) }

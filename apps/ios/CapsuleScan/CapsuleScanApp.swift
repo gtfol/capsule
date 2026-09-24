@@ -29,7 +29,7 @@ import SwiftData
             let support = URL.applicationSupportDirectory
             let container = try SwiftDataItemStore.makeContainer(in: support)
             let directory = support.appendingPathComponent("garment-files", isDirectory: true)
-            let app = AppServices(container: container, media: LocalMediaStore(directory: directory))
+            let app = AppServices(container: container, media: LocalMediaStore(directory: directory), analytics: PostHogAnalytics.make())
             try app.items.recoverInterruptedSaves()
             services = app
         } catch { startupError = true }

@@ -53,13 +53,15 @@ import SwiftUI
     private var deletion: WardrobeMutation?
     private var priceCheck: WardrobeMutation?
     private var movement: WardrobeMutation?
+    private let analytics: AppAnalytics
     let collection: CapsuleCollection
     private let client: any WardrobeServing
     private let images: any ImageProcessing
     private let isolation: any ImageIsolating
     private var originals: [GarmentView: Data] = [:]
     private var remoteOriginals: Set<GarmentView> = []
-    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating, collection: CapsuleCollection = .wardrobe) {
+    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating, collection: CapsuleCollection = .wardrobe, analytics: AppAnalytics = AppAnalytics()) {
+        self.analytics = analytics
         self.collection = collection
         self.item = item; edit = WardrobeEdit(item: item); priceText = Price.display(item.fields.price)
         self.client = client; self.images = images; self.isolation = isolation
@@ -106,6 +108,7 @@ import SwiftUI
             if edit.photos[view] == nil { remoteOriginals.insert(view) } else { remoteOriginals.remove(view) }
             originals[view] = source; previews[view] = photo
             edit.photos[view] = PhotoEncoding.dataURL(photo)
+            analytics.track(.backgroundRemoved)
         } catch { self.error = "couldn’t remove the background. the photo is unchanged." }
     }
     func save() async -> Bool {
@@ -125,8 +128,13 @@ import SwiftUI
         } catch { handle(error); return false }
     }
     private func submit() async throws {
-        if item.revision == 0 { _ = try await client.create(mutation: pending!) }
-        else { try await client.update(id: item.id, mutation: pending!) }
+        if item.revision == 0 {
+            _ = try await client.create(mutation: pending!)
+            analytics.track(.pieceSaved(collection, created: true, duplicate: nil))
+        } else {
+            try await client.update(id: item.id, mutation: pending!)
+            analytics.track(.pieceSaved(collection, created: false, duplicate: false))
+        }
     }
     func checkPrice(url: String) async {
         guard !busy, !processing, !hasChanges, item.revision > 0 else { return }
@@ -157,6 +165,7 @@ import SwiftUI
                 movement!.key = UUID().uuidString
                 _ = try await client.purchase(id: item.id, mutation: movement!)
             }
+            analytics.track(.wishlistPromoted)
             return true
         } catch { handle(error); return false }
     }
@@ -184,6 +193,7 @@ import SwiftUI
                 deletion!.key = UUID().uuidString
                 try await client.remove(id: item.id, mutation: deletion!)
             }
+            analytics.track(.pieceRemoved(collection))
             return true
         } catch { handle(error); return false }
     }
