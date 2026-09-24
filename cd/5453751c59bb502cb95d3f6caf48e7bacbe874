@@ -1,0 +1,91 @@
+apps/ios/CapsuleScan/UI/OutfitModel.swift
+  s_0521f8d73d6032::t_61d41262e6e9dc 1-174
+  s_0521f8d73d6032::t_f1fab18726e684 175-181
+apps/ios/docs/verification.md
+  s_0521f8d73d6032::t_7f9580333d5aef 7
+  s_0521f8d73d6032::t_ad29190b8a9ce6 3-6,8-12
+apps/ios/CapsuleScan/UI/OutfitSettingsView.swift
+  s_0521f8d73d6032::t_1d6feb92a7bd5e 1-58
+apps/ios/CapsuleScan/Core/Outfits.swift
+  s_0521f8d73d6032::t_6566b7583c7154 1-186
+apps/ios/CapsuleScanTests/OutfitModelTests.swift
+  s_0521f8d73d6032::t_91c6e5f46d27b6 1-93
+apps/web/src/lib/server/outfit-api.ts
+  s_0521f8d73d6032::t_3b198727003119 6,10,18-19,29-37,138,149-152,185,190,204,206
+  s_0521f8d73d6032::t_28a786cbf42935 1-5,7-9,11-17,20-28,38-137,139-148,153-184,186-189,191-203,205,207-224
+apps/ios/CapsuleScan/UI/OutfitsView.swift
+  s_0521f8d73d6032::t_5b02a7d548a305 1-327
+  s_0521f8d73d6032::t_8900b069a5a24f 328-341
+apps/web/tests/native-outfits.test.ts
+  s_0521f8d73d6032::t_bb44416700cdcd 1-106
+apps/ios/CapsuleScan.xcodeproj/project.pbxproj
+  s_0521f8d73d6032::t_9685ab52782b3d 62-67,128-151,200-211,292,298,343-346,387-402,426,441-448,476,583-584,603-604
+apps/ios/CapsuleScan/AppServices.swift
+  s_0521f8d73d6032::t_33f6ffbe6fd43f 12-13,26-30,44-47,66,88
+apps/ios/CapsuleScan/Core/CapsuleDestination.swift
+  s_0521f8d73d6032::t_baa42e91e03835 14,20
+apps/ios/CapsuleScan/Core/CapsuleSignIn.swift
+  s_0521f8d73d6032::t_2c7a19f60d9db3 28
+apps/ios/CapsuleScan/Info.plist
+  s_0521f8d73d6032::t_c66534fcc2fc40 16-17
+apps/ios/CapsuleScan/UI/ModelPhotoSilhouette.swift
+  s_0521f8d73d6032::t_6c00bcb7ae951b 1-94
+apps/ios/CapsuleScan/UI/SettingsView.swift
+  s_0521f8d73d6032::t_dd21e339e8ea6d 71-79
+apps/ios/CapsuleScan/UI/WardrobeView.swift
+  s_0521f8d73d6032::t_0c25a6e373736a 3-7,12-13,21-27,29,53,59
+apps/ios/CapsuleScanTests/OutfitTests.swift
+  s_0521f8d73d6032::t_6d695009f675ec 1-72
+apps/ios/README.md
+  s_0521f8d73d6032::t_646fef166d8300 3,18,38-47,50,107
+apps/ios/scripts/generate-project.py
+  s_0521f8d73d6032::t_4522b89009334a 47
+apps/web/db/migrations/20260924_native_outfits.sql
+  s_0521f8d73d6032::t_986c70fad43bbf 1-5
+apps/web/db/schema.sql
+  s_0521f8d73d6032::t_baf3f8105d381a 167
+apps/web/docs/integrations.md
+  s_0521f8d73d6032::t_7d74cc4962cbeb 291-305
+apps/web/docs/scan-sign-in.md
+  s_0521f8d73d6032::t_0c46d407cb8050 38-41
+apps/web/src/app/api/v1/outfits/[id]/image/route.ts
+  s_0521f8d73d6032::t_a4fe61c63f17c0 1-4
+apps/web/src/app/api/v1/outfits/[id]/route.ts
+  s_0521f8d73d6032::t_63076286907d6f 1-6
+apps/web/src/app/api/v1/outfits/config/route.ts
+  s_0521f8d73d6032::t_a0271742318337 1-4
+apps/web/src/app/api/v1/outfits/key/route.ts
+  s_0521f8d73d6032::t_3a5356379474d2 1-5
+apps/web/src/app/api/v1/outfits/render/[id]/route.ts
+  s_0521f8d73d6032::t_624de94ca11511 1-4
+apps/web/src/app/api/v1/outfits/render/route.ts
+  s_0521f8d73d6032::t_5779248d5e5347 1-5
+apps/web/src/app/api/v1/outfits/route.ts
+  s_0521f8d73d6032::t_73a2e89a9fc099 1-4
+apps/web/src/components/scan-connect.tsx
+  s_0521f8d73d6032::t_1cf65161ac95bb 5,39
+apps/web/src/lib/server/integration-tokens.ts
+  s_0521f8d73d6032::t_d247c468bb475f 5
+apps/web/src/lib/server/outfit-routes.ts
+  s_0521f8d73d6032::t_2686df6a4a805f 1-13
+apps/web/src/lib/server/scan-auth.ts
+  s_0521f8d73d6032::t_3a76b32b2b1c34 9,54,58
+apps/web/tests/scan-auth.test.ts
+  s_0521f8d73d6032::t_afff6a6f6bd70a 71-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "cd5453751c59bb502cb95d3f6caf48e7bacbe874",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
