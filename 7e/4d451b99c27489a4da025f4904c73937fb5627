@@ -1,0 +1,25 @@
+apps/ios/CapsuleScan/Core/Analytics.swift
+  s_0521f8d73d6032::t_0dad491a77e577 53
+apps/ios/CapsuleScanTests/AnalyticsTests.swift
+  s_0521f8d73d6032::t_463cdc2adbbf23 23,25
+apps/web/src/app/privacy/page.tsx
+  s_0521f8d73d6032::t_c57e0aec1dd499 12
+apps/web/src/components/legal-page.tsx
+  s_0521f8d73d6032::t_5ed9ead40c6975 3,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7e4d451b99c27489a4da025f4904c73937fb5627",
+  "prompts": {},
+  "sessions": {
+    "s_0521f8d73d6032": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0836b-e052-7f82-9502-659c23c1b21f",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Allen Lin <allenlinsh@gmail.com>"
+    }
+  }
+}
