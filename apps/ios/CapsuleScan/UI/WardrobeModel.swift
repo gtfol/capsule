@@ -8,7 +8,7 @@ import SwiftUI
     @Published private(set) var error: String?
     @Published private(set) var needsSignIn = false
     private var generation = UUID()
-    func load(client: any WardrobeServing) async {
+    func load(client: any WardrobeServing, refreshPhotos: Bool = false) async {
         let current = UUID(); generation = current
         loading = true; error = nil; needsSignIn = false
         defer { if generation == current { loading = false } }
@@ -26,7 +26,7 @@ import SwiftUI
             try Task.checkCancellation()
             guard generation == current else { return }
             items = records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
-            photoReloadID = UUID()
+            if refreshPhotos { photoReloadID = UUID() }
             loaded = true
         } catch is CancellationError { }
         catch {

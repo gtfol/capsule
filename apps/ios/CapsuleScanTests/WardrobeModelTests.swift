@@ -40,7 +40,7 @@ actor LibraryStub: WardrobeServing {
         let cache = WardrobePhotoCache()
         let old = try await cache.load(key: first.uuidString) { Data([1]) }
         XCTAssertEqual(old, Data([1]))
-        await model.load(client: service)
+        await model.load(client: service, refreshPhotos: true)
         XCTAssertEqual(model.items, [updated]); XCTAssertNotEqual(first, model.photoReloadID)
         let fresh = try await cache.load(key: model.photoReloadID.uuidString) { Data([2]) }
         XCTAssertEqual(fresh, Data([2]))

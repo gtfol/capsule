@@ -148,7 +148,7 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
                     }.padding(.horizontal, 20).padding(.top, 20).padding(.bottom, 32)
                 }
             }
-            .refreshable { await model.load(client: client) }
+            .refreshable { await model.load(client: client, refreshPhotos: true) }
         }
         .task(id: services.wardrobeReloadID) { await model.load(client: client) }
         .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
@@ -156,7 +156,9 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
                 WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection, analytics: services.analytics), client: client)
             }
         }
-        .environment(\.wardrobePhotoRefreshID, model.photoReloadID)
+        .onChange(of: model.photoReloadID) { _, _ in
+            if let account = services.user?.id { PhotoRefreshState.shared.refresh(account: account, collection: collection.rawValue) }
+        }
     }
     private func categoryButton(_ title: String, value: GarmentCategory?) -> some View {
         Button { category = value } label: {
@@ -165,67 +167,20 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
     }
 }
 
-struct WardrobePhotoRefreshKey: EnvironmentKey {
-    static let defaultValue: UUID? = nil
-}
-extension EnvironmentValues {
-    var wardrobePhotoRefreshID: UUID? {
-        get { self[WardrobePhotoRefreshKey.self] }
-        set { self[WardrobePhotoRefreshKey.self] = newValue }
-    }
-}
-
-// Memory-only, bounded cache; keys include account, revision, view, and refresh. No offline library.
-actor WardrobePhotoCache {
-    static let shared = WardrobePhotoCache()
-    private var generation = UUID()
-    private var data: [String: Data] = [:]
-    private var order: [String] = []
-    private var tasks: [String: Task<Data, Error>] = [:]
-    func load(key: String, operation: @escaping @Sendable () async throws -> Data) async throws -> Data {
-        if let value = data[key] { return value }
-        if let task = tasks[key] { return try await task.value }
-        let current = generation
-        let task = Task { try await operation() }; tasks[key] = task
-        defer { if generation == current { tasks[key] = nil } }
-        let value = try await task.value
-        guard current == generation else { throw CancellationError() }
-        data[key] = value; order.append(key)
-        while order.count > 32 || data.values.reduce(0, { $0 + $1.count }) > 24_000_000 { data[order.removeFirst()] = nil }
-        return value
-    }
-    func clear() { generation = UUID(); tasks.values.forEach { $0.cancel() }; tasks = [:]; data = [:]; order = [] }
-}
-
 @MainActor struct WardrobePhoto: View {
-    @EnvironmentObject private var services: AppServices
     let item: RemoteWardrobeItem
     let view: GarmentView
     let client: any WardrobeServing
     var collection: CapsuleCollection = .wardrobe
-    @Environment(\.wardrobePhotoRefreshID) private var refreshID
-    @State private var image: UIImage?
-    @State private var failed = false
-    @State private var attempt = 0
+    var maxPixelSize = 600
     var body: some View {
-        ZStack {
-            CapsuleStyle.canvas
-            if let image { Image(uiImage: image).resizable().scaledToFit().accessibilityLabel("\(item.name), \(view.rawValue)") }
-            else if failed {
-                Button { attempt += 1 } label: { Image(systemName: "arrow.clockwise").font(.system(size: 16)).frame(width: 44, height: 44) }.accessibilityLabel("reload photo")
-            } else if item.hasPhoto(view) { ProgressView().controlSize(.small) }
-            else { Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary) }
-        }
-        .clipped()
-        .task(id: "\(services.user?.id ?? ""):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(refreshID?.uuidString ?? ""):\(attempt)") {
-            image = nil; failed = false
-            guard item.hasPhoto(view), let userID = services.user?.id else { return }
-            let key = "\(userID):\(collection.rawValue):\(item.id):\(item.revision):\(view.rawValue):\(refreshID?.uuidString ?? "")"
-            do {
-                let data = try await WardrobePhotoCache.shared.load(key: key) { try await client.photo(item: item, view: view) }
-                guard !Task.isCancelled, services.user?.id == userID else { return }
-                image = UIImage(data: data); failed = image == nil
-            } catch { if !Task.isCancelled { failed = true } }
+        if item.hasPhoto(view) {
+            RemotePhoto(collection: collection.rawValue, identity: "\(item.id):\(view.rawValue)",
+                        revision: "\(item.revision):\(item.updatedAt):\(item.photoURL(view))", label: "\(item.name), \(view.rawValue)", maxPixelSize: maxPixelSize) {
+                try await client.photo(item: item, view: view)
+            }
+        } else {
+            Text("no photo").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 }

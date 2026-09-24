@@ -144,8 +144,13 @@ struct CapsuleWardrobeClient: WardrobeServing {
             // Public product images go through Capsule's SSRF-protected proxy. No account token is sent.
             var components = URLComponents(string: "https://capsule.gtfol.dev/api/image")!
             components.queryItems = [.init(name: "url", value: url)]
-            let result = try await transport.send(URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData))
-            guard (200..<300).contains(result.status) else { throw WardrobeError.unavailable }
+            let result: HTTPResult
+            do { result = try await transport.send(URLRequest(url: components.url!, cachePolicy: .reloadIgnoringLocalCacheData)) }
+            catch is CancellationError { throw CancellationError() }
+            catch { throw ScanError.transport(error) == .offline ? WardrobeError.offline : WardrobeError.unavailable }
+            if result.status == 429 { throw WardrobeError.rateLimited }
+            if result.status >= 500 { throw WardrobeError.unavailable }
+            guard (200..<300).contains(result.status) else { throw WardrobeError.missing }
             return result.data
         }
     }
