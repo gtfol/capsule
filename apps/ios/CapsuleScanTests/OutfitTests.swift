@@ -25,6 +25,7 @@ final class OutfitTests: XCTestCase {
         XCTAssertEqual(requests[0].httpBody, mutation.body)
         XCTAssertEqual(requests[0].value(forHTTPHeaderField: "Idempotency-Key"), mutation.key)
         XCTAssertEqual(requests[1].httpMethod, "GET")
+        XCTAssertEqual(requests[1].cachePolicy, .reloadIgnoringLocalCacheData)
         XCTAssertTrue(requests[1].url!.path.hasSuffix(mutation.key))
         XCTAssertTrue(requests.allSatisfy { $0.value(forHTTPHeaderField: "Authorization") == "Bearer test-only" })
         XCTAssertEqual(requests[2].httpMethod, "PUT"); XCTAssertFalse(requests[2].url!.absoluteString.contains("test-fixture"))

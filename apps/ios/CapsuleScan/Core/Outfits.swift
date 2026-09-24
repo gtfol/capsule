@@ -57,7 +57,7 @@ struct CapsuleOutfitClient: OutfitServing {
     private func request(_ path: String, method: String = "GET", body: Data? = nil, key: String? = nil) async throws -> HTTPResult {
         guard let login = try await credentials.capsuleLogin(), login.user.id == expectedUserID else { throw OutfitError.reconnect }
         guard let url = URL(string: "outfits" + path, relativeTo: URL(string: "https://capsule.gtfol.dev/api/v1/")) else { throw OutfitError.invalid }
-        var request = URLRequest(url: url.absoluteURL)
+        var request = URLRequest(url: url.absoluteURL, cachePolicy: .reloadIgnoringLocalCacheData)
         request.httpMethod = method; request.httpBody = body
         request.timeoutInterval = path == "/render" ? 130 : 45
         request.setValue("Bearer \(login.token)", forHTTPHeaderField: "Authorization")

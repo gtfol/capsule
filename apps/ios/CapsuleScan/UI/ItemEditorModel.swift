@@ -116,7 +116,7 @@ import SwiftUI
                 item = existing
             } else {
                 guard let image else { throw ScanError.invalidImage }
-                let reference = try await services.media.write(image, extension: "jpg")
+                let reference = try await services.media.write(image, extension: PhotoEncoding.suffix(image))
                 newImageReference = reference
                 item = ItemRecord(localImageReference: reference, fields: reviewed)
             }
