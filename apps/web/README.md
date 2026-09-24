@@ -11,7 +11,8 @@ On reload, the selected view appears once the active browser/account data is rea
 Node 22.13+ or 24 LTS and npm.
 
 ```sh
-npm install
+cd apps/web
+npm ci
 npm run dev
 ```
 
@@ -111,9 +112,11 @@ Select 1–6 owned pieces and choose Render outfit. The photo, selected garment 
 
 ## Deployment
 
-The public repository is [gtfol/capsule](https://github.com/gtfol/capsule). The Vercel project is `capsule` in the `gtfol` team. Build with `npm run build`; attach `capsule.gtfol.dev` under the project's Domains settings and follow Vercel's DNS instructions. Environment-variable changes require a new deployment.
+The public repository is [gtfol/capsule](https://github.com/gtfol/capsule). The Vercel project is `capsule` in the `gtfol` team. Set its Root Directory to `apps/web`, Framework Preset to Next.js, and use the default install/output settings. Build with `npm run build`; attach `capsule.gtfol.dev` under the project's Domains settings and follow Vercel's DNS instructions. Environment-variable changes require a new deployment.
 
 ## Validation
+
+Run these commands from `apps/web`.
 
 ```sh
 npm run lint

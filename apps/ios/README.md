@@ -10,7 +10,7 @@ The interface follows the shared [design reference](https://github.com/gtfol/ai/
 
 ## Build and run
 
-1. Open `CapsuleScan.xcodeproj` in Xcode 26.6 or newer. Xcode 26.6 works on macOS 26.2–26.x; Xcode 27 requires macOS 26.6 or newer.
+1. Open `apps/ios/CapsuleScan.xcodeproj` in Xcode 26.6 or newer. Xcode 26.6 works on macOS 26.2–26.x; Xcode 27 requires macOS 26.6 or newer.
 2. Select the **CapsuleScan** scheme and an iPhone simulator. Install an iOS runtime under Xcode Settings → Components if needed.
 3. Run. The simulator uses **choose a photo**; the camera is available on a physical iPhone.
 4. For a physical device, select your development team under Signing & Capabilities. The app uses bundle identifier `dev.gtfol.capsule`.
@@ -31,7 +31,7 @@ This is foreground isolation, not garment classification. Use one garment laid o
 
 The browser returns a short-lived, single-use code bound to a PKCE verifier held in the app. The app checks the callback and state, exchanges the code over HTTPS, and stores its account and scoped `items:read`, `wardrobe:write`, and native-only `wardrobe:delete` credential atomically in Keychain. No token copying, account passwords, or new backend is needed. Connections expire after one year and can be revoked in capsule Settings → Integrations; signing out also revokes the connection.
 
-The web handoff must be deployed before using this app. See capsule’s `docs/scan-sign-in.md` for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
+The web handoff must be deployed before using this app. See the [web sign-in protocol](../web/docs/scan-sign-in.md) for the server protocol. Existing manually entered tokens are migrated only after checking their account with capsule.
 
 For unfinished scans, tap **close → save draft**. Drafts and failed uploads appear under the tray button. Signed-in capture and draft editing work offline; uploads wait for an explicit retry. A 401/403 asks you to sign in again and keeps the draft. Drafts are bound to their account and cannot be sent to a different one.
 
@@ -59,7 +59,7 @@ Without a key, Core Image estimates the dominant color in the center of the phot
 
 ## Tests
 
-With Xcode selected and an iPhone simulator installed:
+From `apps/ios`, with Xcode selected and an iPhone simulator installed:
 
 ```sh
 scripts/test-ios.sh
