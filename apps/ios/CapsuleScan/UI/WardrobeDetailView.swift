@@ -31,7 +31,7 @@ import PhotosUI
                 fields
                 if model.collection == .wishlist {
                     RatingPicker(rating: $model.edit.rating).disabled(model.busy)
-                    if !isNew { WishlistPrices(model: model) }
+                    if !isNew { WishlistPrices(model: model).disabled(importing) }
                 }
                 if let error = model.error {
                     Text(error).font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
