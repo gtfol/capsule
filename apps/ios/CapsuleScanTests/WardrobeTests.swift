@@ -64,6 +64,16 @@ final class WardrobeTests: XCTestCase {
         XCTAssertEqual(requests[1].url?.path, "/api/image")
         XCTAssertEqual(requests[1].cachePolicy, .reloadIgnoringLocalCacheData)
     }
+    func testPublicPhotoRateLimitIsNotRetriedAsServerFailure() async throws {
+        var item = wardrobeFixture(); item.imageUrl = "https://store.test/shirt.jpg"
+        let credentials = MemoryCredentials()
+        try await credentials.storeCapsuleLogin(.init(token: "test-only", user: .init(id: "owner", name: "owner")))
+        for (status, expected) in [(429, WardrobeError.rateLimited), (503, .unavailable), (422, .missing)] {
+            let http = WardrobeHTTP([.init(data: Data(), status: 404), .init(data: Data(), status: status)])
+            do { _ = try await CapsuleWardrobeClient(credentials: credentials, transport: http, expectedUserID: "owner").photo(item: item, view: .front); XCTFail() }
+            catch { XCTAssertEqual(error as? WardrobeError, expected) }
+        }
+    }
     func testErrorMappingAndStableMutationHeaders() async throws {
         let credentials = MemoryCredentials()
         try await credentials.storeCapsuleLogin(.init(token: "test-only", user: .init(id: "owner", name: "owner")))
