@@ -1,4 +1,4 @@
-"""Render designed App Store panels from real simulator screens and wardrobe images.
+"""Render designed App Store panels from real simulator screens and unbranded sample garments.
 Uses Pillow only; does not regenerate or retouch the app UI or garments.
 """
 from pathlib import Path
@@ -59,21 +59,20 @@ def footer(canvas):
 
 out=ROOT/'exports'; out.mkdir(exist_ok=True)
 files=[]
-if (ROOT/'screens/sweater.png').exists():
+if (ROOT/'screens/knit.png').exists():
     canvas=base(1,'photo to\nwardrobe.','add your clothes to capsule.')
-    phone(canvas,'sweater.png',(293,720),790,angle=-3)
-    garment(canvas,'denim.webp',(-90,1230),445,angle=9)
+    phone(canvas,'knit.png',(293,720),790,angle=-3)
+    garment(canvas,'jeans.png',(-85,1230),345,angle=9)
     footer(canvas)
     path=out/'01-photo-to-wardrobe.png';canvas.convert('RGB').save(path);files.append(path)
-if (ROOT/'screens/jersey.png').exists():
+if (ROOT/'screens/tee.png').exists():
     canvas=base(2,'every detail,\neditable.','name, brand, color, size, and price.',True)
-    phone(canvas,'jersey.png',(226,720),790)
+    phone(canvas,'tee.png',(226,720),790)
     footer(canvas)
     path=out/'02-editable-details.png';canvas.convert('RGB').save(path);files.append(path)
 if (ROOT/'screens/drafts.png').exists():
     canvas=base(3,'save a draft.\nfinish later.','keep unfinished scans on your iPhone.')
     phone(canvas,'drafts.png',(235,720),790,angle=3)
-    garment(canvas,'dunks.webp',(-75,2080),670,angle=12)
     footer(canvas)
     path=out/'03-drafts.png';canvas.convert('RGB').save(path);files.append(path)
 # A compact contact sheet is for review; individual PNGs are upload sized.
