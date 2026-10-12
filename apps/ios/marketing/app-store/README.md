@@ -14,7 +14,7 @@ The October 11, 2026 revision replaces every branded garment, brand field value,
 
 Use a disposable copy of `apps/ios` from `b702051`, matching the submitted binary. Replace its app entry point with `gallery-entry.swift` and copy the four sample PNGs into its Resources folder. Regenerate that disposable Xcode project with `scripts/generate-project.py`. Build for an iPhone Simulator with a separate bundle identifier (`dev.gtfol.capsule.gallery`) and signing disabled. Do not change the production app or use a real account.
 
-Launch with `GALLERY_SCREEN=knit`, `tee`, or `drafts`. In Simulator, use File → Save Screen… with the device mask disabled; save to `screens/knit.png`, `screens/tee.png`, and `screens/drafts.png`. The editor opens a saved local sample draft so no extraction alters the manually entered example.
+Launch with `GALLERY_SCREEN=knit`, `tee`, or `drafts`. In Simulator, use File → Save Screen… with the device mask disabled; save to `screens/knit.png`, `screens/tee.png`, and `screens/drafts.png`. The editor opens a saved local sample draft so no extraction alters the manually entered example. Preserve the PNGs when writing sample media; converting them to JPEG would flatten their transparent backgrounds onto white.
 
 Run `python3 render.py` with Pillow installed. Visually inspect all three panels, including names, logos, footer clearance, and any overlays. All artwork must end above y=2430, leaving at least 150 px before the footer at y=2580. Verify each upload is 1242 × 2688, RGB, with no alpha channel.
 
