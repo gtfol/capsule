@@ -13,7 +13,7 @@ struct GalleryTransport: HTTPTransport {
 @main @MainActor struct CapsuleScanApp: App {
     @State private var services: AppServices?
     @State private var editor: ItemEditorModel?
-    private let mode = ProcessInfo.processInfo.environment["GALLERY_SCREEN"] ?? "sweater"
+    private let mode = ProcessInfo.processInfo.environment["GALLERY_SCREEN"] ?? "knit"
     var body: some Scene {
         WindowGroup {
             Group {
@@ -35,20 +35,20 @@ struct GalleryTransport: HTTPTransport {
             let app = AppServices(container: container, media: media, credentials: credentials, transport: GalleryTransport())
             await app.refreshCredentials()
             let fixtures: [(String, ItemFields)] = [
-                ("sweater", ItemFields(name: "quarter-zip pullover", brand: "Burberry", category: .tops, color: "navy", size: "M", currency: "USD")),
-                ("denim", ItemFields(name: "reworked bootcut denim", brand: "NO/FAITH STUDIOS", category: .bottoms, color: "faded black", size: "S", currency: "USD")),
-                ("jersey", ItemFields(name: "Madman football jersey", brand: "Horizon Supply Co.", category: .tops, color: "black", size: "L", currency: "USD")),
-                ("dunks", ItemFields(name: "SB Dunk Low", brand: "Nike", category: .shoes, color: "wolf grey", size: "US 9", currency: "USD"))
+                ("knit", ItemFields(name: "crewneck knit", brand: "", category: .tops, color: "charcoal", size: "M", currency: "USD")),
+                ("jeans", ItemFields(name: "wide-leg jeans", brand: "", category: .bottoms, color: "faded black", size: "S", currency: "USD")),
+                ("tee", ItemFields(name: "cotton tee", brand: "", category: .tops, color: "off-white", size: "L", currency: "USD")),
+                ("scarf", ItemFields(name: "wool scarf", brand: "", category: .accessories, color: "charcoal", size: "one size", currency: "USD"))
             ]
             for (index, fixture) in fixtures.enumerated() {
-                let data = try Data(contentsOf: Bundle.main.url(forResource: fixture.0, withExtension: "webp")!)
+                let data = try Data(contentsOf: Bundle.main.url(forResource: fixture.0, withExtension: "png")!)
                 let jpeg = try await app.images.jpeg(data, maxEdge: 1600, quality: 0.9).data
                 let reference = try await media.write(jpeg, extension: "jpg")
                 var record = ItemRecord(localImageReference: reference, fields: fixture.1)
                 record.createdAt = Date().addingTimeInterval(Double(-index))
                 try app.items.save(record)
                 if fixture.0 == mode || (mode == "drafts" && index == 0) {
-                    let model = ItemEditorModel(image: jpeg, services: app)
+                    let model = ItemEditorModel(record: record, services: app)
                     model.fields = fixture.1
                     model.touched(.name); model.touched(.brand); model.touched(.category); model.touched(.color)
                     editor = model

@@ -1,24 +1,30 @@
 # capsule App Store gallery
 
-Designed screenshots, 1242 × 2688 RGB PNG. Lato, monochrome canvases, restrained headings, real app UI, and garment photos supplied from Allen's capsule wardrobe for this listing.
+Designed screenshots, 1242 × 2688 RGB PNG: Lato, monochrome canvases, real app UI, and unbranded sample garments.
 
-- `assets/`: the Burberry quarter-zip, NO/FAITH denim, Madman jersey, and Nike Dunks exported from capsule's visible wardrobe images. No generated garment is used.
-- `screens/`: unretouched, full-resolution Simulator captures of the app's existing views.
-- `render.py`: deterministic gallery compositor using Pillow and the bundled Lato font.
-- `exports/`: upload-sized panels and a compact contact sheet for approval.
-- `index.html`: generated browser preview of the actual exports.
-- `gallery-entry.swift`: disposable screenshot fixture entry point. It renders the production views with sample records, in-memory SwiftData, and a transport that rejects every network request. It must never replace the shipped app entry point or serve as App Review access.
+- `assets/`: original generated sample knit, jeans, tee, and scarf; no brand names, logos, or recognizable third-party graphics. The Lato font and license are bundled.
+- `screens/`: unretouched Simulator captures of production views from `b702051` (version 1.0, build 10, the version under review).
+- `gallery-entry.swift`: screenshot-only fixture using in-memory SwiftData, manually entered fields, and a transport that rejects all network requests. It is never part of the shipped app or App Review access.
+- `render.py`: deterministic Pillow compositor; preserves the real UI, adds headings and device framing, and generates `index.html`.
+- `exports/`: three numbered upload panels and a contact sheet for preview. Only upload the numbered panels.
 
-The fixture build is in `/tmp/capsule-scan-gallery`, installed only on the separate `capsule scan gallery` simulator. `GALLERY_SCREEN=sweater`, `jersey`, or `drafts` selects the scene. Images are bundled in the disposable build, not added to the production app. Garment field examples are manually filled for demonstration; the gallery makes no claim that on-device processing infers names or brands.
+The October 11, 2026 revision replaces every branded garment, brand field value, and shoe decoration in the prior gallery after App Review flagged third-party content. The screenshots do not imply that on-device processing infers names, brands, or categories. Generated sample photos are demonstration input, not an app feature.
 
-Current status: all three panels are approved and uploaded to App Store Connect for version 1.0, English (U.S.), iPhone 6.5-inch. Order: capture, details, drafts. The app has not been submitted for review.
+## Capture and render
 
-All artwork is constrained above y=2430, leaving at least 150 px before the footer at y=2580. Rotated bounds are included, and the browser preview displays the same exported PNGs.
+Use a disposable copy of `apps/ios` from `b702051`, matching the submitted binary. Replace its app entry point with `gallery-entry.swift` and copy the four sample PNGs into its Resources folder. Regenerate that disposable Xcode project with `scripts/generate-project.py`. Build for an iPhone Simulator with a separate bundle identifier (`dev.gtfol.capsule.gallery`) and signing disabled. Do not change the production app or use a real account.
 
-Render the panels and browser preview:
+Launch with `GALLERY_SCREEN=knit`, `tee`, or `drafts`. In Simulator, use File → Save Screen… with the device mask disabled; save to `screens/knit.png`, `screens/tee.png`, and `screens/drafts.png`. The editor opens a saved local sample draft so no extraction alters the manually entered example.
 
-```sh
-python3 render.py
-```
+Run `python3 render.py` with Pillow installed. Visually inspect all three panels, including names, logos, footer clearance, and any overlays. All artwork must end above y=2430, leaving at least 150 px before the footer at y=2580. Verify each upload is 1242 × 2688, RGB, with no alpha channel.
 
-Do not advertise background removal until it is implemented and verified. Do not upload the contact sheet; use each numbered PNG separately after visual approval.
+## Sample image provenance
+
+Generated using the built-in image-generation tool on October 11, 2026. Common prompt constraints: realistic generic catalog garment, full front view with margin, soft neutral light, no people, hangers, brand, logo, label, text, or distinctive trademark; transparent background. Subjects:
+
+- `knit.png`: plain oversized charcoal-black crewneck wool sweater with natural folds.
+- `jeans.png`: plain washed black wide-leg five-pocket denim with tonal stitching and an unmarked button.
+- `tee.png`: plain off-white oversized short-sleeve crewneck cotton tee.
+- `scarf.png`: plain charcoal wool scarf, loosely folded, with frayed ends and no pattern.
+
+These replace the older third-party photos; those images and branded screenshots are removed from the current gallery source. Do not reuse older listing assets from App Store Connect’s Asset Library.
