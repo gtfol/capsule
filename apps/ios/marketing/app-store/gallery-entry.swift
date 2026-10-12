@@ -7,6 +7,19 @@ actor GalleryCredentials: CredentialStore {
     func read(_ credential: Credential) -> String? { values[credential] }
     func write(_ value: String?, for credential: Credential) { values[credential] = value }
 }
+actor GalleryMedia: MediaStoring {
+    private var files: [String: Data] = [:]
+    func write(_ data: Data, extension suffix: String) -> String {
+        let reference = UUID().uuidString + "." + suffix
+        files[reference] = data
+        return reference
+    }
+    func read(_ reference: String) throws -> Data {
+        guard let data = files[reference] else { throw ScanError.storage }
+        return data
+    }
+    func remove(_ reference: String) { files[reference] = nil }
+}
 struct GalleryTransport: HTTPTransport {
     func send(_ request: URLRequest) async throws -> HTTPResult { throw URLError(.notConnectedToInternet) }
 }
@@ -31,7 +44,7 @@ struct GalleryTransport: HTTPTransport {
             let container = try ModelContainer(for: WardrobeItem.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
             let credentials = GalleryCredentials()
             try await credentials.storeCapsuleLogin(CapsuleLogin(token: UUID().uuidString, user: CapsuleUser(id: "gallery-example", name: "")))
-            let media = LocalMediaStore(directory: URL.applicationSupportDirectory.appendingPathComponent("gallery-only"))
+            let media = GalleryMedia()
             let app = AppServices(container: container, media: media, credentials: credentials, transport: GalleryTransport())
             await app.refreshCredentials()
             let fixtures: [(String, ItemFields)] = [
@@ -42,8 +55,8 @@ struct GalleryTransport: HTTPTransport {
             ]
             for (index, fixture) in fixtures.enumerated() {
                 let data = try Data(contentsOf: Bundle.main.url(forResource: fixture.0, withExtension: "png")!)
-                let jpeg = try await app.images.jpeg(data, maxEdge: 1600, quality: 0.9).data
-                let reference = try await media.write(jpeg, extension: "jpg")
+                // Keep the cutouts transparent; JPEG would flatten them onto white.
+                let reference = await media.write(data, extension: "png")
                 var record = ItemRecord(localImageReference: reference, fields: fixture.1)
                 record.createdAt = Date().addingTimeInterval(Double(-index))
                 try app.items.save(record)
