@@ -67,7 +67,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         if (!response.ok) throw new Error("Unable to check sync availability.");
         const data = await response.json();
         const enabled = data.enabled === true;
-        set({ enabled, providers: { google: enabled && data.providers?.google === true, apple: enabled && data.providers?.apple === true, email: enabled && data.providers?.email === true }, status: enabled ? "signed-out" : "disabled" });
+        set({ enabled, providers: { google: enabled && data.providers?.google === true, apple: false, email: enabled && data.providers?.email === true }, status: enabled ? "signed-out" : "disabled" });
         if (enabled) await get().refreshSession();
       } catch {
         set({ status: navigator.onLine ? "error" : "offline", error: "Sync is unavailable. Your wardrobe is saved in this browser." });

@@ -19,7 +19,7 @@ export function ScanConnect({authorization,user,providers}:{authorization:{code_
       window.location.assign(url.toString());
     } catch { setError("couldn’t connect. return to the capsule app and try again."); setBusy(false); }
   }
-  async function social(provider: "google" | "apple") {
+  async function social(provider: "google") {
     setBusy(true); setError("");
     try {
       const result = await authClient.signIn.social({provider,callbackURL:window.location.href});
@@ -43,13 +43,12 @@ export function ScanConnect({authorization,user,providers}:{authorization:{code_
       <p className="text-xs text-muted-foreground">remove access anytime in capsule settings → integrations.</p>
     </> : <>
       {providers.google && <button className={button} disabled={busy} onClick={()=>void social("google")}>{busy ? "connecting…" : "continue with google"}</button>}
-      {providers.apple && <button className={button} disabled={busy} onClick={()=>void social("apple")}>{busy ? "connecting…" : "Continue with Apple"}</button>}
       {providers.email && <form className="space-y-4" onSubmit={emailSignIn}>
         <label className="field-label">email<input className="w-full border-b border-border py-2" type="email" required autoComplete="email" value={email} onChange={event=>setEmail(event.target.value)} /></label>
         <label className="field-label">password<input className="w-full border-b border-border py-2" type="password" required autoComplete="current-password" value={password} onChange={event=>setPassword(event.target.value)} /></label>
         <button className={button} disabled={busy}>{busy ? "connecting…" : "sign in"}</button>
       </form>}
-      {!providers.google && !providers.apple && !providers.email && <p className="text-sm">sign-in is unavailable. try again later.</p>}
+      {!providers.google && !providers.email && <p className="text-sm">sign-in is unavailable. try again later.</p>}
     </>}
     {error && <p className="text-sm" role="alert">{error}</p>}
   </main>;
