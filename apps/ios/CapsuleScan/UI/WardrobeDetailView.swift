@@ -39,7 +39,7 @@ import PhotosUI
                     if model.conflict { Button("reload item") { confirmReload = true }.frame(minHeight: 44) }
                 }
                 Button {
-                    Task { if await model.save() { services.wardrobeReloadID = UUID(); dismiss() } }
+                    Task { if await model.save() { dismiss() } }
                 } label: { HStack { Spacer(); if model.saving { ProgressView() }; Text(model.saving ? "saving…" : (isNew ? "save to wishlist" : "save changes")); Spacer() } }
                     .capsulePrimaryAction().disabled(model.busy || model.processing || importing || !model.hasChanges)
                 if !isNew {
@@ -64,12 +64,12 @@ import PhotosUI
         }
         .interactiveDismissDisabled(model.hasChanges || model.busy || model.processing || importing)
         .confirmationDialog("save changes?", isPresented: $confirmClose, titleVisibility: .visible) {
-            Button("save changes") { Task { if await model.save() { services.wardrobeReloadID = UUID(); dismiss() } } }
+            Button("save changes") { Task { if await model.save() { dismiss() } } }
             Button("discard changes", role: .destructive) { dismiss() }
             Button("keep editing", role: .cancel) {}
         }
         .confirmationDialog("delete this piece?", isPresented: $confirmDelete, titleVisibility: .visible) {
-            Button("delete piece", role: .destructive) { Task { if await model.remove() { services.wardrobeReloadID = UUID(); dismiss() } } }
+            Button("delete piece", role: .destructive) { Task { if await model.remove() { dismiss() } } }
             Button("cancel", role: .cancel) {}
         } message: { Text("removed from your \(model.collection.rawValue) on every device.") }
         .confirmationDialog("reload and discard your changes?", isPresented: $confirmReload, titleVisibility: .visible) {
@@ -77,7 +77,7 @@ import PhotosUI
             Button("cancel", role: .cancel) {}
         }
         .confirmationDialog("move this piece to your wardrobe?", isPresented: $confirmPurchase, titleVisibility: .visible) {
-            Button("move to wardrobe") { Task { if await model.purchase() { services.wardrobeReloadID = UUID(); dismiss() } } }
+            Button("move to wardrobe") { Task { if await model.purchase() { dismiss() } } }
             Button("cancel", role: .cancel) {}
         }
         .task {

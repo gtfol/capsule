@@ -17,8 +17,8 @@ import AVFoundation
                     if model.reconnect { SignInButton() }
                     else { Button("retry") { Task { await model.refresh(client: client) } }.frame(minHeight: 44) }
                 }
-                if model.loading && model.items.isEmpty { ProgressView().frame(maxWidth: .infinity).padding(.top, 48) }
-                else if model.items.isEmpty && model.error == nil {
+                if model.loading && !model.loaded { ProgressView().frame(maxWidth: .infinity).padding(.top, 48) }
+                else if model.loaded && model.items.isEmpty && model.error == nil {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("no outfits yet").font(CapsuleStyle.heading)
                         Text("choose wardrobe pieces to try on.").font(CapsuleStyle.caption).foregroundStyle(CapsuleStyle.secondary)
@@ -41,8 +41,8 @@ import AVFoundation
             }.padding(20)
         }
         .refreshable { await model.refresh(client: client, refreshPhotos: true) }
-        .task(id: services.wardrobeReloadID) { await model.refresh(client: client) }
-        .sheet(isPresented: $creating, onDismiss: { services.wardrobeReloadID = UUID() }) {
+        .task(id: services.wardrobeReloadID) { await model.refresh(client: client, reloadID: services.wardrobeReloadID) }
+        .sheet(isPresented: $creating) {
             if let userID = services.user?.id {
                 NavigationStack {
                     OutfitBuilderView(model: OutfitBuilderModel(client: client, wardrobe: wardrobe, userID: userID, photos: services.modelPhotos, images: services.images, analytics: services.analytics)) { _ in
@@ -53,8 +53,8 @@ import AVFoundation
                 }
             }
         }
-        .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { outfit in
-            NavigationStack { OutfitDetailView(model: OutfitDetailModel(outfit: outfit, client: client), wardrobe: wardrobe) }
+        .sheet(item: $selected) { outfit in
+            NavigationStack { OutfitDetailView(model: OutfitDetailModel(outfit: outfit, client: client, onMutation: { services.wardrobeReloadID = UUID() }), wardrobe: wardrobe) }
         }
         .onChange(of: model.photoReloadID) { _, _ in
             if let account = services.user?.id { PhotoRefreshState.shared.refresh(account: account, collection: "outfit") }
@@ -256,6 +256,7 @@ import AVFoundation
 }
 
 @MainActor struct OutfitDetailView: View {
+    @EnvironmentObject private var services: AppServices
     @Environment(\.dismiss) private var dismiss
     @StateObject var model: OutfitDetailModel
     let wardrobe: any WardrobeServing
@@ -302,7 +303,7 @@ import AVFoundation
         .task {
             for id in model.outfit.itemIds { if let item = try? await wardrobe.item(id: id), !Task.isCancelled { pieces.append(item) } }
         }
-        .sheet(item: $selected) { item in NavigationStack { WardrobeDetailView(model: WardrobeDetailModel(item: item, client: wardrobe, images: ImageProcessor(), isolation: VisionImageIsolator()), client: wardrobe) } }
+        .sheet(item: $selected) { item in NavigationStack { WardrobeDetailView(model: WardrobeDetailModel(item: item, client: wardrobe, images: services.images, isolation: services.isolation, onMutation: { services.wardrobeReloadID = UUID() }), client: wardrobe) } }
         .alert("remove this outfit?", isPresented: $remove) {
             Button("remove", role: .destructive) { Task { await model.save(remove: true); if model.removed { dismiss() } } }
             Button("cancel", role: .cancel) {}

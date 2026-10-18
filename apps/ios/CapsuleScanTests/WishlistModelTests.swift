@@ -20,6 +20,21 @@ actor WishlistStub: WardrobeServing {
     func setFailure(_ error: Error?) { failure = error }
 }
 @MainActor final class WishlistModelTests: XCTestCase {
+    func testPriceChecksPurchasesAndDeletesInvalidateOnlyAfterSuccessfulWrites() async {
+        let item = wardrobeFixture(), client = WishlistStub(wardrobeFixture())
+        var changes = 0
+        let model = WardrobeDetailModel(item: item, client: client, images: ImageProcessor(), isolation: VisionImageIsolator(), collection: .wishlist, onMutation: { changes += 1 })
+        await model.checkPrice(url: "https://shop.test/item")
+        _ = await model.purchase(); _ = await model.remove()
+        XCTAssertEqual(changes, 0)
+        await client.setFailure(nil)
+        await model.checkPrice(url: "https://shop.test/item")
+        XCTAssertEqual(changes, 1)
+        _ = await model.purchase()
+        XCTAssertEqual(changes, 2)
+        _ = await model.remove()
+        XCTAssertEqual(changes, 3)
+    }
     private func model(_ item: RemoteWardrobeItem, _ client: WishlistStub) -> WardrobeDetailModel {
         .init(item:item,client:client,images:ImageProcessor(),isolation:VisionImageIsolator(),collection:.wishlist)
     }

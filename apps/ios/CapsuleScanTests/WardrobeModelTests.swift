@@ -9,8 +9,17 @@ actor LibraryStub: WardrobeServing {
     var photoData: Data?
     var updates: [WardrobeMutation] = []
     var cursors: [Int64] = []
+    var pageFailure: WardrobeError?
+    var delay = false
     init(_ item: RemoteWardrobeItem, pages: [WardrobePage] = []) { current = item; self.pages = pages }
-    func page(cursor: Int64) -> WardrobePage { cursors.append(cursor); return pages.removeFirst() }
+    func page(cursor: Int64) async throws -> WardrobePage {
+        cursors.append(cursor)
+        if delay { try await Task.sleep(for: .seconds(30)) }
+        if let pageFailure { throw pageFailure }
+        return pages.isEmpty ? .init(items: [current], cursor: 12, hasMore: false) : pages.removeFirst()
+    }
+    func failPages(_ error: WardrobeError?) { pageFailure = error }
+    func delayPages(_ value: Bool) { delay = value }
     func item(id: String) -> RemoteWardrobeItem { current }
     func photo(item: RemoteWardrobeItem, view: GarmentView) throws -> Data { guard let photoData else { throw WardrobeError.unavailable }; return photoData }
     func setPhoto(_ data: Data) { photoData = data }
@@ -19,6 +28,72 @@ actor LibraryStub: WardrobeServing {
     func succeed() { failUpdate = false }
 }
 @MainActor final class WardrobeModelTests: XCTestCase {
+    func testAppearanceReusesLoadedAndEmptyResultsUntilMutationOrExplicitRefresh() async {
+        for items in [[], [wardrobeFixture()]] {
+            let service = LibraryStub(wardrobeFixture(), pages: [.init(items: items, cursor: 12, hasMore: false)])
+            let model = WardrobeModel(), revision = UUID()
+            for _ in 0..<5 { await model.load(client: service, reloadID: revision) }
+            XCTAssertTrue(model.loaded); XCTAssertEqual(model.items, items)
+            var requests = await service.cursors; XCTAssertEqual(requests, [0])
+            await model.load(client: service, reloadID: UUID())
+            requests = await service.cursors; XCTAssertEqual(requests, [0, 0])
+            await model.load(client: service, refreshPhotos: true)
+            requests = await service.cursors; XCTAssertEqual(requests, [0, 0, 0])
+        }
+    }
+    func testFailedRefreshKeepsCachedItemsAndRetriesOnlyWhenRequested() async {
+        let item = wardrobeFixture(), service = LibraryStub(wardrobeFixture()), model = WardrobeModel()
+        let revision = UUID()
+        await model.load(client: LibraryStub(item), reloadID: revision)
+        let photos = model.photoReloadID
+        await service.failPages(.offline)
+        await model.load(client: service, refreshPhotos: true)
+        XCTAssertEqual(model.items, [item]); XCTAssertTrue(model.loaded)
+        XCTAssertNotNil(model.error); XCTAssertEqual(model.photoReloadID, photos)
+        await model.load(client: service, reloadID: revision)
+        var requests = await service.cursors; XCTAssertEqual(requests, [0])
+        await service.failPages(nil)
+        await model.load(client: service, refreshPhotos: true)
+        XCTAssertNil(model.error); XCTAssertNotEqual(model.photoReloadID, photos)
+        requests = await service.cursors; XCTAssertEqual(requests, [0, 0])
+    }
+    func testCancelledInitialLoadCanResumeOnNextAppearance() async throws {
+        let service = LibraryStub(wardrobeFixture()), model = WardrobeModel(), revision = UUID()
+        await service.delayPages(true)
+        let task = Task { await model.load(client: service, reloadID: revision) }
+        while await service.cursors.isEmpty { await Task.yield() }
+        task.cancel(); await task.value
+        XCTAssertFalse(model.loaded); XCTAssertNil(model.error)
+        await service.delayPages(false)
+        await model.load(client: service, reloadID: revision)
+        XCTAssertTrue(model.loaded)
+        let requests = await service.cursors; XCTAssertEqual(requests, [0, 0])
+    }
+    func testInitialErrorDoesNotLoopOnAppearanceAndExplicitRetryCanRecover() async {
+        let service = LibraryStub(wardrobeFixture()), model = WardrobeModel(), revision = UUID()
+        await service.failPages(.offline)
+        await model.load(client: service, reloadID: revision)
+        await model.load(client: service, reloadID: revision)
+        XCTAssertFalse(model.loaded); XCTAssertNotNil(model.error)
+        var requests = await service.cursors; XCTAssertEqual(requests, [0])
+        await service.failPages(nil)
+        await model.load(client: service)
+        XCTAssertTrue(model.loaded); XCTAssertNil(model.error)
+        requests = await service.cursors; XCTAssertEqual(requests, [0, 0])
+    }
+    func testOnlySuccessfulWritesInvalidateLibrary() async {
+        let service = LibraryStub(wardrobeFixture())
+        var mutations = 0
+        let model = WardrobeDetailModel(item: wardrobeFixture(), client: service, images: ImageProcessor(), isolation: VisionImageIsolator(), onMutation: { mutations += 1 })
+        await model.reload()
+        model.edit.fields.name = "changed"
+        XCTAssertEqual(mutations, 0)
+        _ = await model.save()
+        XCTAssertEqual(mutations, 0)
+        await service.succeed()
+        _ = await model.save()
+        XCTAssertEqual(mutations, 1)
+    }
     func testEmptyIntermediatePageContinuesAndDeduplicatesLatestRevision() async {
         let item = wardrobeFixture()
         let service = LibraryStub(item, pages: [.init(items: [], cursor: 1, hasMore: true), .init(items: [item, item], cursor: 12, hasMore: false)])
