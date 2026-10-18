@@ -14,6 +14,7 @@ import SwiftUI
     func load(client: any WardrobeServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
         if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
         let current = UUID(); generation = current
+        let initialLoad = !loaded
         loading = true; error = nil; needsSignIn = false
         defer { if generation == current { loading = false } }
         do {
@@ -22,14 +23,22 @@ import SwiftUI
             while true {
                 try Task.checkCancellation()
                 let page = try await client.page(cursor: cursor)
+                try Task.checkCancellation()
+                guard generation == current else { return }
                 for item in page.items { records[item.id] = item }
+                // Make the first page usable immediately, including thumbnail loading.
+                // Refreshes stay atomic so cached content never disappears mid-request.
+                if initialLoad, !records.isEmpty || !page.hasMore {
+                    items = sorted(records)
+                    loaded = true
+                }
                 if !page.hasMore { break }
                 guard page.cursor > cursor else { throw WardrobeError.unavailable }
                 cursor = page.cursor
             }
             try Task.checkCancellation()
             guard generation == current else { return }
-            items = records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
+            items = sorted(records)
             if refreshPhotos { photoReloadID = UUID() }
             loaded = true
             if let reloadID { completedReloadID = reloadID }
@@ -41,6 +50,9 @@ import SwiftUI
             if needsSignIn { items = []; loaded = false }
             if let reloadID { completedReloadID = reloadID }
         }
+    }
+    private func sorted(_ records: [String: RemoteWardrobeItem]) -> [RemoteWardrobeItem] {
+        records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
     }
 }
 

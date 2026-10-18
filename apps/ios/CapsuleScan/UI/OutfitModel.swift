@@ -13,6 +13,7 @@ import SwiftUI
     func refresh(client: any OutfitServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
         if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
         let current = UUID(); generation = current
+        let initialLoad = !loaded
         loading = true; error = nil; reconnect = false
         defer { if generation == current { loading = false } }
         do {
@@ -21,13 +22,20 @@ import SwiftUI
                 try Task.checkCancellation()
                 let page = try await client.page(cursor: cursor)
                 try Task.checkCancellation()
+                guard generation == current else { return }
                 for outfit in page.outfits { records[outfit.id] = outfit }
+                // Show the first page while the remaining metadata loads. Keep explicit
+                // refreshes atomic so the previous collection remains usable on failure.
+                if initialLoad, !records.isEmpty || !page.hasMore {
+                    items = sorted(records)
+                    loaded = true
+                }
                 guard page.hasMore else { break }
                 guard page.cursor > cursor else { throw OutfitError.unavailable }
                 cursor = page.cursor
             }
             guard generation == current else { return }
-            items = records.values.sorted { $0.createdAt > $1.createdAt }
+            items = sorted(records)
             if refreshPhotos { photoReloadID = UUID() }
             loaded = true
             if let reloadID { completedReloadID = reloadID }
@@ -37,6 +45,9 @@ import SwiftUI
             if reconnect { items = []; loaded = false }
             if let reloadID { completedReloadID = reloadID }
         }
+    }
+    private func sorted(_ records: [String: RemoteOutfit]) -> [RemoteOutfit] {
+        records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
     }
 }
 

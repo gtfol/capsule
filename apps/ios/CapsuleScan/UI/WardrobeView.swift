@@ -74,8 +74,8 @@ enum LibraryTab: String, CaseIterable, Identifiable {
     }
 }
 
-// Keep visited screens mounted so models, filters, photos, and scroll positions survive
-// tab changes. The parent keys this container by account and removes it on sign-out.
+// Mount all tabs at sign-in so their independent tasks preload data and visible photos.
+// Keep them mounted across selection changes; the parent resets them with the account.
 @MainActor struct LibraryTabs: View {
     let selection: LibraryTab
     let wardrobe: any WardrobeServing
@@ -84,21 +84,17 @@ enum LibraryTab: String, CaseIterable, Identifiable {
     @Binding var creatingOutfit: Bool
     let addWardrobe: () -> Void
     let addWishlist: () -> Void
-    @State private var visited: Set<LibraryTab> = []
 
     var body: some View {
         ZStack {
             ForEach(LibraryTab.allCases) { tab in
-                if tab == selection || visited.contains(tab) {
-                    content(for: tab)
-                        .opacity(tab == selection ? 1 : 0)
-                        .allowsHitTesting(tab == selection)
-                        .accessibilityHidden(tab != selection)
-                        .zIndex(tab == selection ? 1 : 0)
-                }
+                content(for: tab)
+                    .opacity(tab == selection ? 1 : 0)
+                    .allowsHitTesting(tab == selection)
+                    .accessibilityHidden(tab != selection)
+                    .zIndex(tab == selection ? 1 : 0)
             }
         }
-        .onChange(of: selection, initial: true) { _, tab in visited.insert(tab) }
     }
 
     @ViewBuilder private func content(for tab: LibraryTab) -> some View {
