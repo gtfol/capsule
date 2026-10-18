@@ -1,6 +1,6 @@
 import SwiftUI
 
-private enum LibraryTab: String, CaseIterable, Identifiable {
+enum LibraryTab: String, CaseIterable, Identifiable {
     case wardrobe, wishlist, outfits
     var id: String { rawValue }
 }
@@ -17,22 +17,10 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
             Group {
                 if !services.credentialsReady { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else if let client = services.wardrobe, let user = services.user {
-                    if collection == .wardrobe {
-                        WardrobeGrid(client: client, collection: .wardrobe, add: { capture = true }).id(user.id + collection.rawValue)
-                    } else if collection == .outfits {
-                        if let outfits = services.outfits {
-                            OutfitsView(client: outfits, wardrobe: client, creating: $newOutfit).id(user.id)
-                        } else {
-                            VStack(spacing: 16) { Text("sign in again to connect your outfits.").font(CapsuleStyle.caption); SignInButton() }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                    } else if let wishlist = services.wishlist {
-                        WardrobeGrid(client: wishlist, collection: .wishlist, add: { newWishlistItem = .empty() }).id(user.id + collection.rawValue)
-                    } else {
-                        VStack(spacing: 16) {
-                            Text("sign in again to connect your wishlist.").font(CapsuleStyle.caption)
-                            SignInButton()
-                        }.frame(maxWidth: .infinity, maxHeight: .infinity)
-                    }
+                    LibraryTabs(selection: collection, wardrobe: client, wishlist: services.wishlist,
+                                outfits: services.outfits, creatingOutfit: $newOutfit,
+                                addWardrobe: { capture = true }, addWishlist: { newWishlistItem = .empty() })
+                        .id(user.id)
                 } else {
                     VStack(spacing: 20) {
                         Text("capsule").font(CapsuleStyle.heading)
@@ -65,10 +53,10 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
                     }.frame(maxWidth: .infinity).background(CapsuleStyle.canvas)
                 }
             }
-            .sheet(item: $newWishlistItem, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
+            .sheet(item: $newWishlistItem) { item in
                 if let client = services.wishlist {
                     NavigationStack {
-                        WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: .wishlist, analytics: services.analytics), client: client)
+                        WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: .wishlist, analytics: services.analytics, onMutation: { services.wardrobeReloadID = UUID() }), client: client)
                     }
                 }
             }
@@ -80,9 +68,57 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
                 if let screen = AnalyticsScreen(rawValue: tab.rawValue) { services.analytics.track(.screen(screen)) }
             }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await services.refreshCredentials(); services.wardrobeReloadID = UUID() } }
+                if phase == .active { Task { await services.refreshCredentials() } }
             }
         }
+    }
+}
+
+// Keep visited screens mounted so models, filters, photos, and scroll positions survive
+// tab changes. The parent keys this container by account and removes it on sign-out.
+@MainActor struct LibraryTabs: View {
+    let selection: LibraryTab
+    let wardrobe: any WardrobeServing
+    let wishlist: (any WardrobeServing)?
+    let outfits: (any OutfitServing)?
+    @Binding var creatingOutfit: Bool
+    let addWardrobe: () -> Void
+    let addWishlist: () -> Void
+    @State private var visited: Set<LibraryTab> = []
+
+    var body: some View {
+        ZStack {
+            ForEach(LibraryTab.allCases) { tab in
+                if tab == selection || visited.contains(tab) {
+                    content(for: tab)
+                        .opacity(tab == selection ? 1 : 0)
+                        .allowsHitTesting(tab == selection)
+                        .accessibilityHidden(tab != selection)
+                        .zIndex(tab == selection ? 1 : 0)
+                }
+            }
+        }
+        .onChange(of: selection, initial: true) { _, tab in visited.insert(tab) }
+    }
+
+    @ViewBuilder private func content(for tab: LibraryTab) -> some View {
+        switch tab {
+        case .wardrobe:
+            WardrobeGrid(client: wardrobe, collection: .wardrobe, add: addWardrobe)
+        case .wishlist:
+            if let wishlist { WardrobeGrid(client: wishlist, collection: .wishlist, add: addWishlist) }
+            else { reconnect(tab) }
+        case .outfits:
+            if let outfits { OutfitsView(client: outfits, wardrobe: wardrobe, creating: $creatingOutfit) }
+            else { reconnect(tab) }
+        }
+    }
+
+    private func reconnect(_ tab: LibraryTab) -> some View {
+        VStack(spacing: 16) {
+            Text("sign in again to connect your \(tab.rawValue).").font(CapsuleStyle.caption)
+            SignInButton()
+        }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -150,10 +186,10 @@ private enum LibraryTab: String, CaseIterable, Identifiable {
             }
             .refreshable { await model.load(client: client, refreshPhotos: true) }
         }
-        .task(id: services.wardrobeReloadID) { await model.load(client: client) }
-        .sheet(item: $selected, onDismiss: { services.wardrobeReloadID = UUID() }) { item in
+        .task(id: services.wardrobeReloadID) { await model.load(client: client, reloadID: services.wardrobeReloadID) }
+        .sheet(item: $selected) { item in
             NavigationStack {
-                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection, analytics: services.analytics), client: client)
+                WardrobeDetailView(model: WardrobeDetailModel(item: item, client: client, images: services.images, isolation: services.isolation, collection: collection, analytics: services.analytics, onMutation: { services.wardrobeReloadID = UUID() }), client: client)
             }
         }
         .onChange(of: model.photoReloadID) { _, _ in

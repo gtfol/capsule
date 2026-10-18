@@ -19,7 +19,16 @@ actor OutfitStub: OutfitServing {
     var failure: OutfitError? = .offline
     var statusFailure: OutfitError?
     var itemFailure: OutfitError?
-    func page(cursor: Int64) -> OutfitPage { .init(outfits: [outfit], cursor: 12, hasMore: false) }
+    var pageFailure: OutfitError?
+    var cursors: [Int64] = []
+    var empty = false
+    func page(cursor: Int64) throws -> OutfitPage {
+        cursors.append(cursor)
+        if let pageFailure { throw pageFailure }
+        return .init(outfits: empty ? [] : [outfit], cursor: 12, hasMore: false)
+    }
+    func failPages(_ error: OutfitError?) { pageFailure = error }
+    func setEmpty() { empty = true }
     func item(id: String) throws -> RemoteOutfit { if let itemFailure { throw itemFailure }; return outfit }
     func photo(item: RemoteOutfit) -> Data { Data([1]) }
     func config() -> OutfitConfig { .init(enabled: true, model: "test-model", keyStorageAvailable: true, hasSavedKey: true) }
@@ -45,6 +54,40 @@ actor OutfitPiecesStub: WardrobeServing {
     func remove(id: String, mutation: WardrobeMutation) {}
 }
 @MainActor final class OutfitModelTests: XCTestCase {
+    func testAppearanceCachesEmptyOutfitsUntilWriteOrExplicitRefresh() async {
+        let client = OutfitStub(), model = OutfitLibraryModel(), revision = UUID()
+        await client.setEmpty()
+        for _ in 0..<5 { await model.refresh(client: client, reloadID: revision) }
+        XCTAssertTrue(model.loaded); XCTAssertTrue(model.items.isEmpty)
+        var requests = await client.cursors; XCTAssertEqual(requests, [0])
+        await model.refresh(client: client, reloadID: UUID())
+        await model.refresh(client: client, refreshPhotos: true)
+        requests = await client.cursors; XCTAssertEqual(requests, [0, 0, 0])
+    }
+    func testOfflineRefreshPreservesOutfitsButAuthFailureClearsThem() async {
+        let client = OutfitStub(), model = OutfitLibraryModel(), revision = UUID()
+        await model.refresh(client: client, reloadID: revision)
+        let items = model.items
+        await client.failPages(.offline)
+        await model.refresh(client: client, refreshPhotos: true)
+        XCTAssertEqual(model.items, items); XCTAssertTrue(model.loaded)
+        await model.refresh(client: client, reloadID: revision)
+        let requests = await client.cursors; XCTAssertEqual(requests, [0, 0])
+        await client.failPages(.reconnect)
+        await model.refresh(client: client)
+        XCTAssertTrue(model.items.isEmpty); XCTAssertFalse(model.loaded); XCTAssertTrue(model.reconnect)
+    }
+    func testSuccessfulOutfitWriteInvalidatesEvenIfFollowupReadFails() async {
+        let client = OutfitStub()
+        var mutations = 0
+        let model = OutfitDetailModel(outfit: outfitFixture(), client: client, onMutation: { mutations += 1 })
+        model.name = "changed"
+        await model.save()
+        XCTAssertEqual(mutations, 0)
+        await client.fail(nil); await client.failItem(.offline)
+        await model.save()
+        XCTAssertEqual(mutations, 1)
+    }
     func testModelPhotoSyncLoadsWebPhotoAndRespectsRemoteRemovalAndConflicts() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString), suite = UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

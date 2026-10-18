@@ -8,7 +8,11 @@ import SwiftUI
     @Published private(set) var error: String?
     @Published private(set) var needsSignIn = false
     private var generation = UUID()
-    func load(client: any WardrobeServing, refreshPhotos: Bool = false) async {
+    private var completedReloadID: UUID?
+    // Appearance tasks reuse their last attempt, including empty/error states.
+    // Explicit refresh/retry bypasses this key; successful writes change it.
+    func load(client: any WardrobeServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
+        if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
         let current = UUID(); generation = current
         loading = true; error = nil; needsSignIn = false
         defer { if generation == current { loading = false } }
@@ -28,12 +32,14 @@ import SwiftUI
             items = records.values.sorted { $0.createdAt == $1.createdAt ? $0.id < $1.id : $0.createdAt > $1.createdAt }
             if refreshPhotos { photoReloadID = UUID() }
             loaded = true
+            if let reloadID { completedReloadID = reloadID }
         } catch is CancellationError { }
         catch {
             guard generation == current, !Task.isCancelled else { return }
             needsSignIn = error as? WardrobeError == .reconnect
             self.error = (error as? WardrobeError)?.localizedDescription ?? "couldn’t load your wardrobe. try again."
             if needsSignIn { items = []; loaded = false }
+            if let reloadID { completedReloadID = reloadID }
         }
     }
 }
@@ -54,14 +60,16 @@ import SwiftUI
     private var priceCheck: WardrobeMutation?
     private var movement: WardrobeMutation?
     private let analytics: AppAnalytics
+    private let onMutation: () -> Void
     let collection: CapsuleCollection
     private let client: any WardrobeServing
     private let images: any ImageProcessing
     private let isolation: any ImageIsolating
     private var originals: [GarmentView: Data] = [:]
     private var remoteOriginals: Set<GarmentView> = []
-    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating, collection: CapsuleCollection = .wardrobe, analytics: AppAnalytics = AppAnalytics()) {
+    init(item: RemoteWardrobeItem, client: any WardrobeServing, images: any ImageProcessing, isolation: any ImageIsolating, collection: CapsuleCollection = .wardrobe, analytics: AppAnalytics = AppAnalytics(), onMutation: @escaping () -> Void = {}) {
         self.analytics = analytics
+        self.onMutation = onMutation
         self.collection = collection
         self.item = item; edit = WardrobeEdit(item: item); priceText = Price.display(item.fields.price)
         self.client = client; self.images = images; self.isolation = isolation
@@ -124,6 +132,7 @@ import SwiftUI
                 pending!.key = UUID().uuidString
                 try await submit()
             }
+            onMutation()
             return true
         } catch { handle(error); return false }
     }
@@ -149,6 +158,7 @@ import SwiftUI
                 priceCheck!.key = UUID().uuidString
                 fetched = try await client.checkPrice(id: item.id, mutation: priceCheck!)
             }
+            onMutation()
             let fresh = try await client.item(id: item.id)
             apply(fresh); priceCheck = nil
             if !fetched { error = "couldn’t check this link. your price history is unchanged." }
@@ -166,6 +176,7 @@ import SwiftUI
                 _ = try await client.purchase(id: item.id, mutation: movement!)
             }
             analytics.track(.wishlistPromoted)
+            onMutation()
             return true
         } catch { handle(error); return false }
     }
@@ -193,6 +204,7 @@ import SwiftUI
                 deletion!.key = UUID().uuidString
                 try await client.remove(id: item.id, mutation: deletion!)
             }
+            onMutation()
             analytics.track(.pieceRemoved(collection))
             return true
         } catch { handle(error); return false }

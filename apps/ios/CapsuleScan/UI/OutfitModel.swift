@@ -5,15 +5,20 @@ import SwiftUI
     @Published private(set) var items: [RemoteOutfit] = []
     @Published private(set) var photoReloadID = UUID()
     @Published private(set) var loading = false
+    @Published private(set) var loaded = false
     @Published var error: String?
     @Published private(set) var reconnect = false
-    func refresh(client: any OutfitServing, refreshPhotos: Bool = false) async {
-        guard !loading else { return }
+    private var completedReloadID: UUID?
+    private var generation = UUID()
+    func refresh(client: any OutfitServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
+        if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
+        let current = UUID(); generation = current
         loading = true; error = nil; reconnect = false
-        defer { loading = false }
+        defer { if generation == current { loading = false } }
         do {
             var cursor: Int64 = 0, records: [String: RemoteOutfit] = [:]
             while true {
+                try Task.checkCancellation()
                 let page = try await client.page(cursor: cursor)
                 try Task.checkCancellation()
                 for outfit in page.outfits { records[outfit.id] = outfit }
@@ -21,9 +26,17 @@ import SwiftUI
                 guard page.cursor > cursor else { throw OutfitError.unavailable }
                 cursor = page.cursor
             }
+            guard generation == current else { return }
             items = records.values.sorted { $0.createdAt > $1.createdAt }
             if refreshPhotos { photoReloadID = UUID() }
-        } catch is CancellationError {} catch { reconnect = error as? OutfitError == .reconnect; self.error = error.localizedDescription }
+            loaded = true
+            if let reloadID { completedReloadID = reloadID }
+        } catch is CancellationError {} catch {
+            guard generation == current, !Task.isCancelled else { return }
+            reconnect = error as? OutfitError == .reconnect; self.error = error.localizedDescription
+            if reconnect { items = []; loaded = false }
+            if let reloadID { completedReloadID = reloadID }
+        }
     }
 }
 
@@ -178,9 +191,12 @@ import SwiftUI
     @Published private(set) var removed = false
     @Published private(set) var conflict = false
     private var pending: (method: String, mutation: WardrobeMutation)?
+    private let onMutation: () -> Void
     let client: any OutfitServing
     var changed: Bool { name != outfit.name }
-    init(outfit: RemoteOutfit, client: any OutfitServing) { self.outfit = outfit; self.name = outfit.name; self.client = client }
+    init(outfit: RemoteOutfit, client: any OutfitServing, onMutation: @escaping () -> Void = {}) {
+        self.outfit = outfit; self.name = outfit.name; self.client = client; self.onMutation = onMutation
+    }
     func reload() async {
         guard !busy else { return }
         busy = true; defer { busy = false }
@@ -198,8 +214,12 @@ import SwiftUI
             let body = try JSONSerialization.data(withJSONObject: values, options: [.sortedKeys])
             let method = remove ? "DELETE" : "PATCH"
             if pending?.method != method || pending?.mutation.body != body { pending = (method, WardrobeMutation(body: body)) }
-            if remove { try await client.remove(id: outfit.id, mutation: pending!.mutation); removed = true }
-            else { try await client.update(id: outfit.id, mutation: pending!.mutation); outfit = try await client.item(id: outfit.id); name = outfit.name }
+            if remove { try await client.remove(id: outfit.id, mutation: pending!.mutation); onMutation(); removed = true }
+            else {
+                try await client.update(id: outfit.id, mutation: pending!.mutation)
+                onMutation()
+                outfit = try await client.item(id: outfit.id); name = outfit.name
+            }
             pending = nil
         } catch { conflict = error as? OutfitError == .conflict; self.error = error.localizedDescription }
     }
