@@ -7,27 +7,54 @@ actor LibraryStub: WardrobeServing {
     var current: RemoteWardrobeItem
     var failUpdate = true
     var photoData: Data?
+    var photoRequests = 0
     var updates: [WardrobeMutation] = []
     var cursors: [Int64] = []
     var pageFailure: WardrobeError?
     var delay = false
+    var delayedCursor: Int64?
     init(_ item: RemoteWardrobeItem, pages: [WardrobePage] = []) { current = item; self.pages = pages }
     func page(cursor: Int64) async throws -> WardrobePage {
         cursors.append(cursor)
-        if delay { try await Task.sleep(for: .seconds(30)) }
+        if delay, delayedCursor == nil || delayedCursor == cursor { try await Task.sleep(for: .seconds(30)) }
         if let pageFailure { throw pageFailure }
         return pages.isEmpty ? .init(items: [current], cursor: 12, hasMore: false) : pages.removeFirst()
     }
     func failPages(_ error: WardrobeError?) { pageFailure = error }
-    func delayPages(_ value: Bool) { delay = value }
+    func delayPages(_ value: Bool, cursor: Int64? = nil) { delay = value; delayedCursor = cursor }
     func item(id: String) -> RemoteWardrobeItem { current }
-    func photo(item: RemoteWardrobeItem, view: GarmentView) throws -> Data { guard let photoData else { throw WardrobeError.unavailable }; return photoData }
+    func photo(item: RemoteWardrobeItem, view: GarmentView) throws -> Data { photoRequests += 1; guard let photoData else { throw WardrobeError.unavailable }; return photoData }
     func setPhoto(_ data: Data) { photoData = data }
     func update(id: String, mutation: WardrobeMutation) throws { updates.append(mutation); if failUpdate { throw WardrobeError.unavailable } }
     func remove(id: String, mutation: WardrobeMutation) throws { throw WardrobeError.conflict }
     func succeed() { failUpdate = false }
 }
 @MainActor final class WardrobeModelTests: XCTestCase {
+    func testFirstPageIsUsableWhileRemainingPagesLoadAndCancellationCanRetry() async {
+        let item = wardrobeFixture(), service = LibraryStub(wardrobeFixture(), pages: [.init(items: [wardrobeFixture()], cursor: 12, hasMore: true)])
+        let model = WardrobeModel(), revision = UUID()
+        await service.delayPages(true, cursor: 12)
+        let task = Task { await model.load(client: service, reloadID: revision) }
+        while await service.cursors.count < 2 { await Task.yield() }
+        XCTAssertTrue(model.loaded); XCTAssertTrue(model.loading); XCTAssertEqual(model.items.count, 1)
+        XCTAssertNil(model.error)
+        task.cancel(); await task.value
+        XCTAssertTrue(model.loaded); XCTAssertFalse(model.loading); XCTAssertNil(model.error)
+        // An interrupted multi-page load isn't marked complete for this reload ID.
+        await model.load(client: LibraryStub(item), reloadID: revision)
+        XCTAssertEqual(model.items, [item])
+    }
+    func testRefreshDoesNotReplaceCachedItemsUntilAllPagesArrive() async {
+        let original = wardrobeFixture(), model = WardrobeModel()
+        await model.load(client: LibraryStub(original))
+        let client = LibraryStub(wardrobeFixture(), pages: [.init(items: [wardrobeFixture()], cursor: 12, hasMore: true)])
+        await client.delayPages(true, cursor: 12)
+        let task = Task { await model.load(client: client, refreshPhotos: true) }
+        while await client.cursors.count < 2 { await Task.yield() }
+        XCTAssertEqual(model.items, [original]); XCTAssertTrue(model.loading)
+        task.cancel(); await task.value
+        XCTAssertEqual(model.items, [original]); XCTAssertNil(model.error)
+    }
     func testAppearanceReusesLoadedAndEmptyResultsUntilMutationOrExplicitRefresh() async {
         for items in [[], [wardrobeFixture()]] {
             let service = LibraryStub(wardrobeFixture(), pages: [.init(items: items, cursor: 12, hasMore: false)])

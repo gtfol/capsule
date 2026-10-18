@@ -22,15 +22,21 @@ actor OutfitStub: OutfitServing {
     var pageFailure: OutfitError?
     var cursors: [Int64] = []
     var empty = false
-    func page(cursor: Int64) throws -> OutfitPage {
+    var photoRequests = 0
+    var pages: [OutfitPage] = []
+    var delayedCursor: Int64?
+    func page(cursor: Int64) async throws -> OutfitPage {
         cursors.append(cursor)
+        if delayedCursor == cursor { try await Task.sleep(for: .seconds(30)) }
         if let pageFailure { throw pageFailure }
+        if !pages.isEmpty { return pages.removeFirst() }
         return .init(outfits: empty ? [] : [outfit], cursor: 12, hasMore: false)
     }
+    func setPages(_ values: [OutfitPage], delayedCursor: Int64? = nil) { pages = values; self.delayedCursor = delayedCursor }
     func failPages(_ error: OutfitError?) { pageFailure = error }
     func setEmpty() { empty = true }
     func item(id: String) throws -> RemoteOutfit { if let itemFailure { throw itemFailure }; return outfit }
-    func photo(item: RemoteOutfit) -> Data { Data([1]) }
+    func photo(item: RemoteOutfit) -> Data { photoRequests += 1; return Data([1]) }
     func config() -> OutfitConfig { .init(enabled: true, model: "test-model", keyStorageAvailable: true, hasSavedKey: true) }
     func saveKey(_ value: String?) {}
     func update(id: String, mutation: WardrobeMutation) throws {
@@ -54,6 +60,30 @@ actor OutfitPiecesStub: WardrobeServing {
     func remove(id: String, mutation: WardrobeMutation) {}
 }
 @MainActor final class OutfitModelTests: XCTestCase {
+    func testFirstOutfitPageIsUsableBeforeRemainingPagesFinishAndRetryCanComplete() async {
+        let item = outfitFixture(), client = OutfitStub(), model = OutfitLibraryModel(), revision = UUID()
+        await client.setPages([.init(outfits: [item], cursor: 12, hasMore: true)], delayedCursor: 12)
+        let task = Task { await model.refresh(client: client, reloadID: revision) }
+        while await client.cursors.count < 2 { await Task.yield() }
+        XCTAssertTrue(model.loaded); XCTAssertTrue(model.loading); XCTAssertEqual(model.items, [item])
+        task.cancel(); await task.value
+        XCTAssertTrue(model.loaded); XCTAssertFalse(model.loading); XCTAssertNil(model.error)
+        await client.setPages([.init(outfits: [], cursor: 12, hasMore: false)])
+        await model.refresh(client: client, reloadID: revision)
+        XCTAssertTrue(model.items.isEmpty); XCTAssertTrue(model.loaded)
+        let calls = await client.cursors; XCTAssertEqual(calls, [0, 12, 0])
+    }
+    func testOutfitRefreshKeepsCachedItemsUntilAllPagesArrive() async {
+        let client = OutfitStub(), model = OutfitLibraryModel()
+        await model.refresh(client: client)
+        let original = model.items
+        await client.setPages([.init(outfits: [outfitFixture()], cursor: 12, hasMore: true)], delayedCursor: 12)
+        let task = Task { await model.refresh(client: client, refreshPhotos: true) }
+        while await client.cursors.count < 3 { await Task.yield() }
+        XCTAssertEqual(model.items, original); XCTAssertTrue(model.loading)
+        task.cancel(); await task.value
+        XCTAssertEqual(model.items, original); XCTAssertNil(model.error)
+    }
     func testAppearanceCachesEmptyOutfitsUntilWriteOrExplicitRefresh() async {
         let client = OutfitStub(), model = OutfitLibraryModel(), revision = UUID()
         await client.setEmpty()
