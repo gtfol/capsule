@@ -12,7 +12,7 @@ import SwiftUI
     // Appearance tasks reuse their last attempt, including empty/error states.
     // Explicit refresh/retry bypasses this key; successful writes change it.
     func load(client: any WardrobeServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
-        if let reloadID, completedReloadID == reloadID { return }
+        if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
         let current = UUID(); generation = current
         loading = true; error = nil; needsSignIn = false
         defer { if generation == current { loading = false } }

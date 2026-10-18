@@ -11,7 +11,7 @@ import SwiftUI
     private var completedReloadID: UUID?
     private var generation = UUID()
     func refresh(client: any OutfitServing, refreshPhotos: Bool = false, reloadID: UUID? = nil) async {
-        if let reloadID, completedReloadID == reloadID { return }
+        if !refreshPhotos, let reloadID, completedReloadID == reloadID { return }
         let current = UUID(); generation = current
         loading = true; error = nil; reconnect = false
         defer { if generation == current { loading = false } }
