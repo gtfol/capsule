@@ -102,8 +102,7 @@ Tests use generated images and ephemeral mock credentials, never real capsule or
 - `CapsuleScan/UI`: sign-in, capture, review, drafts, settings.
 - `CapsuleScanTests`: request, error, retry, extraction, image-limit, persistence, and editor regression tests.
 - `scripts/generate-project.py`: optional standard-library-only project generator. The complete generated Xcode project is committed; no generation step is needed to build.
-- `marketing/brand/app-icon-source.png`: approved silver capsule on black leather, at its original proportions.
-- `scripts/make-icon.swift`: exports that artwork as the opaque 1024 × 1024 sRGB app icon. Run with `swift scripts/make-icon.swift`; iOS supplies the rounded corners.
+- `scripts/make-icon.swift`: renders the original black lowercase “c” on opaque white, centered by its visible glyph bounds at the original size. Run with `swift scripts/make-icon.swift` to generate the 1024 × 1024 sRGB app icon; iOS supplies the rounded corners.
 
 `ItemExtractor` and `WardrobeDestination` are the extension seams. Sharing, shopping-link import, batch capture, search, and export remain separate features.
 
